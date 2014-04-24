@@ -1,0 +1,10 @@
+nltk
+lxml
+pymongo
+beautifulsoup
+goose-extractor
+beautifulsoup4
+pattern
+scipy
+scikit-learn
+flask
