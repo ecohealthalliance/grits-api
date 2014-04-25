@@ -6,7 +6,7 @@ from diagnose import diagnose
 app = flask.Flask(__name__)
 
 
-@app.route('/diagnose', methods = ['POST'])
+@app.route('/diagnose', methods = ['POST', 'GET'])
 def diagnosis():
     data = json.loads(request.data)
     content = data.get('content')
