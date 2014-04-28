@@ -20,9 +20,9 @@ def diagnose(content):
             feature_vector[found_keywords.index(keyword)] = count
         except ValueError as e:
             print e
-    prediction = clf.predict(feature_vector)[0]
-    print prediction
-    return {'features': feature_dict, 'disease': prediction}
+    predictions = clf.predict(feature_vector)
+    print predictions
+    return {'features': feature_dict, 'diseases': predictions}
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

@@ -10,8 +10,13 @@ app = flask.Flask(__name__)
 def diagnosis():
     data = json.loads(request.data)
     content = data.get('content')
-    return json.dumps(diagnose(content))
-
+    diagnosis = diagnose(content)
+    diseases = diagnosis['diseases']
+    features = diagnosis['features'].keys()
+    result = []
+    for index, disease in enumerate(diseases):
+        result.append({'name': disease, 'rank': index + 1, 'features': features})
+    return json.dumps(result)
 
 if __name__ == '__main__':
     app.run(host='localhost', debug=True)
