@@ -1,4 +1,5 @@
-from extract_features import extract_features
+from KeywordExtractor import KeywordExtractor
+extract_features = KeywordExtractor().extract_features
 
 def get_keywords():
     import nltk

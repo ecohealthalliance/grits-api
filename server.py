@@ -1,22 +1,24 @@
 import json
 import flask
 from flask import render_template, request
-from diagnose import diagnose
+
+import datetime
+def date_serializer(obj):
+    if isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    else:
+        raise TypeError()
+
+from Diagnoser import Diagnoser
+my_diagnoser = Diagnoser()
 
 app = flask.Flask(__name__)
-
 
 @app.route('/diagnose', methods = ['POST', 'GET'])
 def diagnosis():
     data = json.loads(request.data)
     content = data.get('content')
-    diagnosis = diagnose(content)
-    diseases = diagnosis['diseases']
-    features = diagnosis['features'].keys()
-    result = []
-    for index, disease in enumerate(diseases):
-        result.append({'name': disease, 'rank': index + 1, 'features': features})
-    return json.dumps(result)
+    return json.dumps(my_diagnoser.diagnose(content), default=date_serializer)
 
 if __name__ == '__main__':
     app.run(host='localhost', debug=True)
