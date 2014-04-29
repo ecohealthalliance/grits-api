@@ -1,7 +1,12 @@
 from KeywordExtractor import KeywordExtractor
-extract_features = KeywordExtractor().extract_features
 
 def get_keywords():
+    import json
+    with open("keywords.json") as f:
+        keywords = json.load(f)
+        extract_features = KeywordExtractor(keywords['symptoms'] +
+            keywords['biocaster_symptoms']).extract_features
+        
     import nltk
     synset = nltk.wordnet.wordnet.synsets("pathogens")[0].hypernyms() + nltk.wordnet.wordnet.synsets("virus")
     def traverse_hyponyms(synset, depth=3):
