@@ -5,7 +5,7 @@ aVsevere headaches
 p2
 aVpheasant
 p3
-aVcough
+aVdark urine
 p4
 aVrod
 p5
@@ -17,1372 +17,1600 @@ aVe. coli
 p8
 aVasymptomatic
 p9
-aVaggression
+aVwebworm
 p10
-aVklebsiella
+aVaggression
 p11
-aVrunny nose
+aVklebsiella
 p12
-aVrickettsia
+aVrunny nose
 p13
-aVnorovirus
+aVrickettsia
 p14
-aVblowfly
+aVnorovirus
 p15
-aVpeanut
+aVblowfly
 p16
-aVdry cough
+aVpeanut
 p17
-aVbacillus anthracis
+aVdry cough
 p18
-aVrespiratory illness
+aVbacillus anthracis
 p19
-aVlassa virus
-p20
-aVnodules
-p21
-aVheadaches
-p22
-aVstiff neck
-p23
-aVmuscle spasms
-p24
-aVweight loss
-p25
-aVpoliovirus
-p26
-aVbrain inflammation
-p27
-aVsalmonella
-p28
-aVmeasles virus
-p29
-aVnausea
-p30
-aVstomach ache
-p31
-aVeschar
-p32
-aVneck stiffness
-p33
-aVshock
-p34
-aVhepatitis e virus
-p35
-aVhendra virus
-p36
-aVvector
-p37
-aVmammal
-p38
-aVtrypanosoma
-p39
-aVhuman enterovirus 71
-p40
-aVdiarrhoea
-p41
-aVenterovirus
-p42
-aVlantana
-p43
-aVornamental
-p44
-aVneck pain
-p45
-aVtired
-p46
-aVbleeding
-p47
-aVtea
-p48
-aVcytomegalovirus
-p49
-aVlavender
-p50
-aVcrop
-p51
-aVcactus
-p52
-aVbacteria
-p53
-aVdepression
-p54
-aVblue
-p55
-aVpoke
-p56
-aVmagnolia
-p57
-aVconjunctivitis
-p58
-aVneurological symptoms
-p59
-aVtrillium
-p60
-aVjaundice
-p61
-aVbird
-p62
-aVrift valley fever virus
-p63
-aVmyalgias
-p64
-aVsmall white
-p65
-aVasthenia
-p66
-aVstallion
-p67
-aVurethritis
-p68
-aVmule
-p69
-aVdecreased appetite
-p70
-aVintestinal flora
-p71
-aVmiscarriage
-p72
-aVbox
-p73
-aVstupor
-p74
-aVnumbness
-p75
-aVmouth sores
-p76
-aVbot
-p77
-aVpoor appetite
-p78
-aVhamster
-p79
-aVstiffness
-p80
-aVbuckwheat
-p81
-aVraccoon
-p82
-aVbreathing difficulties
-p83
-aVhydrophobia
-p84
-aVlymphadenitis
-p85
-aVstray
-p86
-aVbrain damage
-p87
-aVbullock
-p88
-aVphotophobia
-p89
-aVcoxsackievirus
-p90
-aVape
-p91
-aVsweating
-p92
-aVcelery
-p93
-aVash
-p94
-aVsalmonella typhimurium
-p95
-aVthroat pain
-p96
-aVfrog
-p97
-aVtachycardia
-p98
-aVcalf
-p99
-aVlinden
-p100
-aVloss of appetite
-p101
-aVretro-orbital pain
-p102
-aVrespiratory signs
-p103
-aVinfection
-p104
-aVgroup a streptococcus
-p105
-aVmelon
-p106
-aVparvo
-p107
-aVrabbit
-p108
-aVprotozoan
-p109
-aVcoyote
-p110
-aVsevere respiratory disease
-p111
-aVkrill
-p112
-aVfly
-p113
-aVeee virus
-p114
-aVprimate
-p115
-aVabortion
-p116
-aVcat
-p117
-aVstreptococcus
-p118
-aVden
-p119
-aVhaemorrhagic fever
-p120
-aVhippopotamus
-p121
-aVrespiratory infection
-p122
-aVbent
-p123
-aVconfused
-p124
-aVcarrot
-p125
-aVborrelia burgdorferi
-p126
-aVsimian
-p127
-aVfmdv
-p128
-aVrape
-p129
-aVredness
-p130
-aVpink
-p131
-aVhog
-p132
-aVyellow fever virus
-p133
-aVruminant
-p134
-aVsiv
-p135
-aVulcers in the mouth
-p136
-aVscarring
-p137
-aVpoisonous plant
-p138
-aVred and watery eyes
-p139
-aVlesions
-p140
-aVexcessive salivation
-p141
-aVlisteria monocytogenes
-p142
-aVanimal
-p143
-aVstock
-p144
-aVmap
-p145
-aVplant
-p146
-aVfever
-p147
-aVplasmodium
-p148
-aVflu-like symptoms
-p149
-aVabscess
-p150
-aVclostridium
-p151
-aVarthritis
-p152
-aVmac
-p153
-aVdyspnoea
-p154
-aVfatigue
-p155
-aVfits
-p156
-aVmarrow
-p157
-aVhawk
-p158
-aVterrier
-p159
-aVtomato
-p160
-aVleishmania
-p161
-aVbloating
-p162
-aVmemory loss
-p163
-aVarthralgia
-p164
-aVstop breathing
-p165
-aVhib
-p166
-aVst
-p167
-aVchest pain
-p168
-aVjoint pains
-p169
-aVcomatose
-p170
-aVmonocot
-p171
-aVtaro
-p172
-aVfetus
-p173
-aVwillow
-p174
-aVmeningococcus
-p175
-aVswollen glands
-p176
-aVrespiratory problems
-p177
-aVbleeding gums
-p178
-aVfoot and mouth disease virus
-p179
-aVsomnolence
-p180
-aVchihuahua
-p181
-aVmuscle atrophy
-p182
-aVbacteremia
-p183
-aVurinary tract infection
-p184
-aVbuttercup
-p185
-aVtwitching
-p186
-aVfig
-p187
-aVdengue virus
-p188
-aVanemia
-p189
-aVinsect
-p190
-aVbackache
-p191
-aVthoroughbred
-p192
-aVcoffee
-p193
-aVdrenching sweats
-p194
-aVsars coronavirus
-p195
-aVweakness
-p196
-aVdrowsiness
-p197
-aVsleepiness
-p198
-aVh3n8
-p199
-aVvomit
-p200
-aVsnake
-p201
-aVflea
-p202
-aVdisorientation
-p203
-aVh3n2
-p204
-aVsore throat
-p205
-aVparainfluenza virus
-p206
-aVlettuce
-p207
-aVh5n1
-p208
-aVhemoptysis
-p209
-aVross river virus
-p210
-aVcoagulation
-p211
-aVehd virus
-p212
-aVnasal congestion
-p213
-aVrosemary
-p214
-aVencephalitis
-p215
-aVincoordination
-p216
-aVhemorrhagic fever
-p217
-aVsevere headache
-p218
-aVconstipation
-p219
-aVwild boar
-p220
-aVfish
-p221
-aVzebra
-p222
-aVirritation
-p223
-aVh1n1 flu virus
-p224
-aVlemongrass
-p225
-aVvibrio
-p226
-aVvertigo
-p227
-aVhcv
-p228
-aVallergic reaction
-p229
-aVhigh fevers
-p230
-aVheart failure
-p231
-aVatypical pneumonia
-p232
-aVdehydrated
-p233
-aVmaple
-p234
-aVstud
-p235
-aValphavirus
-p236
-aVbreathlessness
-p237
-aVeagle
-p238
-aVmental confusion
-p239
-aVmurmur
-p240
-aVpoppy
-p241
-aVweed
-p242
-aVpup
-p243
-aVblister
-p244
-aVequine
-p245
-aVh1n1
-p246
-aVdiscomfort
-p247
-aVprotist
-p248
-aVostrich
-p249
-aVswine
-p250
-aVdaisy
-p251
-aVchills
-p252
-aVcopper
-p253
-aVev 71
-p254
-aVguan
-p255
-aVhsv-1
-p256
-aVfeeder
-p257
-aVelder
-p258
-aVstillbirth
-p259
-aVlegionellosis
-p260
-aVwhale
-p261
-aVendemic
-p262
-aVcassava
-p263
-aVseizures
-p264
-aVtimothy
-p265
-aVhorse
-p266
-aVbreathless
-p267
-aVmonkey
-p268
-aVailanthus
-p269
-aVacute respiratory symptoms
-p270
-aVcivet
-p271
-aVprickly pear
-p272
-aVadenovirus
-p273
-aVanaemia
-p274
-aVtom
-p275
-aVbanana
-p276
-aVchikungunya virus
-p277
-aVheadache
-p278
-aVafrican swine fever virus
-p279
-aVswelling of the brain
-p280
-aVsores
-p281
-aVpharyngitis
-p282
-aVparvovirus
-p283
-aVcardiac arrest
-p284
-aVgastroenteritis
-p285
-aVbreathing problems
-p286
-aVrsv
-p287
-aVsymptom
-p288
-aVpneumococcus
-p289
-aVanxiety
-p290
-aVsevere respiratory infection
-p291
-aVeiav
-p292
-aVtree
-p293
-aVmyalgia
-p294
-aVbee
-p295
-aVpurpura
-p296
-aVpneumonia
-p297
-aVpathogen
-p298
-aVfruit bat
-p299
-aVlarva
-p300
-aVcoconut
-p301
-aVmink
-p302
-aVorgan failure
-p303
-aVsepticemia
-p304
-aVavian influenza virus
-p305
-aVtupelo
-p306
-aVencephalopathy
-p307
-aVchikv
-p308
-aVmarijuana
-p309
-aVboil
-p310
-aVant
-p311
-aVrat
-p312
-aVlung infection
-p313
-aVbordetella pertussis
-p314
-aVdementia
-p315
-aVmuscle pain
-p316
-aVpreterm
-p317
-aVsevere pain
-p318
-aVfitting
-p319
-aVmild fever
-p320
-aVskin lesions
-p321
-aVfrail
-p322
-aVwaterfowl
-p323
-aVlisteria
-p324
-aVexcessive sweating
-p325
-aVsars virus
-p326
-aVaids virus
-p327
-aVpain
-p328
-aVvision loss
-p329
-aVsugarcane
-p330
-aVelectrolyte imbalance
-p331
-aVseptic shock
-p332
-aVvirus
-p333
-aVrigor
-p334
-aVcracking
-p335
-aVneurological damage
-p336
-aVoyster
-p337
-aVmaria
-p338
-aVpremature birth
-p339
-aVpersistent vomiting
-p340
-aVbracken
-p341
-aVpyrexia
-p342
-aVhydrocephalus
-p343
-aVfilly
-p344
-aVdoe
-p345
-aVpineapple
-p346
-aVpersonality changes
-p347
-aVskunk
-p348
-aVaquatic
-p349
-aVcereal
-p350
-aVsparrow
-p351
-aVlotus
-p352
-aVswelling
-p353
-aVhigh temperature
-p354
-aVqueen
-p355
-aVbeech
-p356
-aVinfluenza a ( h1n1 ) virus
-p357
-aVseaweed
-p358
-aVtiredness
-p359
-aVa/h1n1 virus
-p360
-aVgasping
-p361
-aVlivestock
-p362
-aVgnat
-p363
-aVinfluenza a(h3n2 ) virus
-p364
-aVherbivore
-p365
-aVcamel
-p366
-aVrash
-p367
-aVlansing
-p368
-aVdermatitis
-p369
-aVmaculopapular
-p370
-aVcoryza
-p371
-aVnewcastle disease virus
-p372
-aVa/h1n1
-p373
-aVhiv
-p374
-aVbody ache
-p375
-aVcoxiella burnetii
-p376
-aVrespiratory failure
-p377
-aVbear
-p378
-aVbean
-p379
-aVmalaise
-p380
-aVwatermelon
-p381
-aVinfluenza a virus
-p382
-aVabscess formation
-p383
-aValexander
-p384
-aVbat
-p385
-aVskin rash
-p386
-aVintense pain
-p387
-aVcoughs
-p388
-aVdizziness
-p389
-aVflu symptoms
-p390
-aVsuckling
-p391
-aVlethargy
-p392
-aVabdominal pain
-p393
-aVcanine
-p394
-aVliver dysfunction
-p395
-aVthistle
-p396
-aVseal
-p397
-aVliver failure
-p398
-aVmiserable
-p399
-aVmycobacterium tuberculosis
-p400
-aVthrombocytopenia
-p401
-aVbloody diarrhea
-p402
-aVfeline
-p403
-aVred eyes
-p404
-aVc. difficile
-p405
-aVserious respiratory illness
-p406
-aVlow grade fever
-p407
-aVamazon
-p408
-aVsin nombre virus
-p409
-aVconfusion
-p410
-aVweak
-p411
-aVreovirus
-p412
-aVswine flu virus
-p413
-aVhiv-2
-p414
-aVcachexia
-p415
-aVsimian immunodeficiency virus
-p416
-aVvre
-p417
-aVcoma
-p418
-aVneisseria gonorrhea
-p419
-aVvomiting
-p420
-aVescherichia coli
-p421
-aVcolony collapse
-p422
-aVrashes
-p423
-aVcow
-p424
-aVitchy rash
-p425
-aVannual
-p426
-aVhantavirus
-p427
-aVa(h3n2 )
-p428
-aVarbor
-p429
-aVclassical swine fever virus
-p430
-aVchronic diarrhea
-p431
-aVwatery diarrhea
-p432
-aVabdominal cramps
-p433
-aVnasal discharge
-p434
-aVdysphagia
-p435
-aVdistress
-p436
-aVsimple
-p437
-aVsepsis
-p438
-aVh3n2 virus
-p439
-aVleon
-p440
-aValtered mental status
-p441
-aVbegonia
-p442
-aVpetechiae
-p443
-aVataxia
-p444
-aVpoll
-p445
-aVdyspnea
-p446
-aVoral lesions
-p447
-aVrenal failure
-p448
-aVmara
-p449
-aVinternal and external bleeding
-p450
-aVhepatomegaly
-p451
-aVabaca
-p452
-aVvertebrate
-p453
-aVrespiratory arrest
-p454
-aVhaemorrhage
-p455
-aVchrysanthemum
-p456
-aVwheezing
-p457
-aVchlamydophila abortus
-p458
-aVexhaustion
-p459
-aVmuscle aches
-p460
-aVsquirrel
-p461
-aVphytoplankton
-p462
-aVcoughing
-p463
-aVgas
-p464
-aVchill
-p465
-aVlumpy skin disease virus
-p466
-aVginger
-p467
-aVbull
-p468
-aVpeste des petits ruminants virus
-p469
 aVwildcat
-p470
-aVgeneralized aches and pains
-p471
-aVgreen algae
-p472
+p20
+aVlassa virus
+p21
+aVhopper
+p22
+aVnodules
+p23
+aVwave
+p24
+aVheadaches
+p25
+aVstiff neck
+p26
 aVhypotension
-p473
-aVseedling
-p474
-aVtang
-p475
-aVcapsicum
-p476
+p27
+aVweight loss
+p28
+aVpoliovirus
+p29
+aVfall
+p30
+aVsalmonella
+p31
+aVblast
+p32
+aVmeasles virus
+p33
+aVnausea
+p34
+aVentire
+p35
+aVstomach ache
+p36
+aVeschar
+p37
+aVneck stiffness
+p38
+aVshock
+p39
+aVchikungunya virus
+p40
+aVhendra virus
+p41
+aVdry season
+p42
+aVvector
+p43
+aVbiting midge
+p44
+aVmammal
+p45
+aVtrypanosoma
+p46
+aVhuman enterovirus 71
+p47
+aVdiarrhoea
+p48
+aVenterovirus
+p49
+aVlantana
+p50
+aVornamental
+p51
+aVneck pain
+p52
+aVtired
+p53
+aVbleeding
+p54
+aVtea
+p55
+aVcytomegalovirus
+p56
+aVlavender
+p57
+aVcrop
+p58
 aVpustules
-p477
-aVsesame
-p478
-aVherpes zoster
-p479
-aVmultiple organ failure
-p480
-aVveronica
-p481
-aVequine arteritis virus
-p482
-aVswollen lymph glands
-p483
-aVagitation
-p484
-aVmoth
-p485
-aVsquid
-p486
-aVanil
-p487
-aVjoint pain
-p488
-aVargus
-p489
-aVaggressiveness
-p490
-aVbeaver
-p491
-aVmouse
-p492
-aVworry
-p493
-aVleafhopper
-p494
-aVrespiratory distress
-p495
-aVsevere joint pains
-p496
-aVplaques
-p497
-aVmedic
-p498
-aVinfectious agent
-p499
-aVlymphangitis
-p500
-aVaphid
-p501
-aVotitis
-p502
-aVflower
-p503
-aVdam
-p504
-aVvegetable
-p505
+p59
+aVbacteria
+p60
+aVdepression
+p61
+aVblue
+p62
+aVmammalian
+p63
+aVpoke
+p64
+aVmagnolia
+p65
+aVgreenbrier
+p66
+aVconjunctivitis
+p67
+aVneurological symptoms
+p68
+aVtrillium
+p69
+aVjaundice
+p70
+aVbird
+p71
+aVrift valley fever virus
+p72
+aVmyalgias
+p73
+aVsmall white
+p74
+aVasthenia
+p75
+aVstallion
+p76
+aVurethritis
+p77
+aVmule
+p78
+aVdecreased appetite
+p79
+aVintestinal flora
+p80
+aVmiscarriage
+p81
+aVnausea and vomiting
+p82
+aVshellfish
+p83
+aVbox
+p84
 aVmonarch
-p506
-aVhoneybee
-p507
-aVsucculent
-p508
-aVeggplant
-p509
-aVdifficulty feeding
-p510
-aVfoal
-p511
-aVkit
-p512
-aVgarlic
-p513
-aVjapanese encephalitis virus
-p514
-aVbirch
-p515
-aVbronchiolitis
-p516
-aVstomach pain
-p517
-aVtuna
-p518
-aVcultivar
-p519
-aVeucalyptus
-p520
-aVtoxicity
-p521
-aVperennial
-p522
-aVinfertility
-p523
-aVshortness of breath
-p524
-aVwest nile virus
-p525
-aVbody pain
-p526
-aVmultiple abscesses
-p527
-aVrespiratory insufficiency
-p528
-aVsuperbug
-p529
-aVedema
-p530
-aVhuman immunodeficiency virus
-p531
-aVlow blood pressure
-p532
-aVrodent
-p533
-aVdehydration
-p534
-aVstunt
-p535
-aVlaurel
-p536
-aVscabs
-p537
-aVinternal bleeding
-p538
-aVhyperesthesia
-p539
-aVrotavirus
-p540
-aVdeath
-p541
-aVasthma
-p542
-aVrose
-p543
-aVnipah virus
-p544
-aVroyal
-p545
-aVdifficulty breathing
-p546
-aVpupa
-p547
-aVrhinovirus
-p548
-aVdark urine
-p549
-aVparamyxovirus
-p550
-aVcerebral hemorrhage
-p551
-aVrespiratory symptoms
-p552
-aVh5n1 virus
-p553
-aVa(h1n1 )
-p554
-aVmanatee
-p555
-aVclam
-p556
-aVgangrene
-p557
-aVhallucinations
-p558
-aVworld
-p559
-aVmoa
-p560
-aVtick
-p561
+p85
+aVstupor
+p86
+aVnumbness
+p87
+aVmouth sores
+p88
+aVbot
+p89
+aVmental confusion
+p90
+aVhamster
+p91
+aVstiffness
+p92
+aVbuckwheat
+p93
+aVraccoon
+p94
+aVbreathing difficulties
+p95
+aVhydrophobia
+p96
+aVlymphadenitis
+p97
+aVhogg
+p98
+aVstray
+p99
+aVwesterly
+p100
+aVbrain damage
+p101
+aVbullock
+p102
+aVphotophobia
+p103
+aVsoybean
+p104
+aVlansing
+p105
+aVlime
+p106
+aVsweating
+p107
+aVcelery
+p108
+aVcough
+p109
+aVaedes aegypti
+p110
+aVsalmonella typhimurium
+p111
+aVheat wave
+p112
+aVthroat pain
+p113
+aVfrog
+p114
+aVcalm
+p115
+aVtachycardia
+p116
+aVcalf
+p117
+aVlinden
+p118
+aVrainfall
+p119
+aVloss of appetite
+p120
+aVretro-orbital pain
+p121
+aVrespiratory signs
+p122
+aVinfection
+p123
+aVgroup a streptococcus
+p124
+aVmelon
+p125
+aVflag
+p126
+aVparvo
+p127
+aVrabbit
+p128
+aVprotozoan
+p129
+aVcoyote
+p130
+aVsevere respiratory disease
+p131
+aVkrill
+p132
+aVglad
+p133
+aVcharity
+p134
+aVfly
+p135
+aVhigh
+p136
+aVflora
+p137
+aVeee virus
+p138
+aVprimate
+p139
+aVabortion
+p140
+aVcat
+p141
+aVstreptococcus
+p142
+aVden
+p143
+aVhaemorrhagic fever
+p144
+aVhippopotamus
+p145
+aVrespiratory infection
+p146
+aVbent
+p147
+aVbuckeye
+p148
+aVconfused
+p149
+aVautumn
+p150
+aVrainy season
+p151
+aVcarrot
+p152
+aVrainstorm
+p153
 aVscavenger
-p562
-aVabnormal behavior
-p563
-aVonion
-p564
-aVmidge
-p565
-aVretrovirus
-p566
-aVmuscle tremors
-p567
-aVexhausted
-p568
-aVmosquito
-p569
-aVclay
-p570
-aVchick
-p571
-aVunable to fly
-p572
-aVsoft
-p573
-aVlocust
-p574
-aVskunk cabbage
-p575
-aVboar
-p576
-aVgrowth retardation
-p577
-aVb. anthracis
-p578
-aVsalmonella typhi
-p579
-aVescape
-p580
-aVhemorrhage
-p581
-aVbruising
-p582
-aVflavivirus
-p583
-aVsevere respiratory illness
-p584
-aVsars-cov
-p585
-aVpet
-p586
-aVfox
-p587
-aVretinitis
-p588
-aVhepatitis
-p589
-aVgastrointestinal symptoms
-p590
-aVplantain
-p591
-aVconvulsions
-p592
-aVacute respiratory distress
-p593
-aVhigh fever
-p594
-aVpepper
-p595
-aVmarine animal
-p596
-aVitching
-p597
-aVslurred speech
-p598
-aVchest tightness
-p599
-aVhygrophyte
-p600
-aVpondweed
-p601
-aVtremors
-p602
-aVlegionella
-p603
-aVmite
-p604
-aVherpes
-p605
-aVcoral
-p606
-aVparalysis
-p607
-aVhematuria
-p608
-aVmuscle weakness
-p609
-aVbiennial
-p610
-aVchow
-p611
-aVmarburg virus
-p612
-aVmuscle pains
-p613
-aVndv
-p614
-aVtriton
-p615
-aVkidney failure
-p616
-aVreptile
-p617
-aVmicroorganism
-p618
-aVburning
-p619
-aVwasting
-p620
-aVdeafness
-p621
-aVbone pain
-p622
-aVswollen lymph nodes
-p623
-aVfern
-p624
-aVviral fever
-p625
-aVproteinuria
-p626
-aVsow
-p627
-aVsoy
-p628
-aVblurred vision
-p629
-aVanorexia
-p630
-aVdry mouth
-p631
-aVsneezing
-p632
-aVgroundnut
-p633
-aVmyoclonus
-p634
-aVhen
-p635
-aVsevere pneumonia
-p636
-aVthrips
-p637
-aVebola virus
-p638
-aVpetechial rash
-p639
-aVhaemophilus influenzae
-p640
-aVnightshade
-p641
-aVbrucella
-p642
-aVwnv
-p643
-aVling
-p644
-aVbug
-p645
-aVdifficulty swallowing
-p646
-aVrush
-p647
-aVdysentery
-p648
-aVsalmonella enteritidis
-p649
-aVpotato
-p650
-aVerica
-p651
-aVpalm
-p652
-aVbody aches
-p653
-aVgrass
-p654
-aVev71
-p655
-aVneuritis
-p656
-aVmycobacterium
-p657
-aVfour o'clock
-p658
-aVpia
-p659
-aVmarmot
-p660
-aVdeer
-p661
-aVenterococcus
-p662
-aVdog
-p663
-aVhypertension
-p664
-aVspasms
-p665
-aVrespiratory syncytial virus
-p666
-aVchlamydia
-p667
-aVquail
-p668
-aVmachupo virus
-p669
-aVheather
-p670
-aVinfluenza-like illness
-p671
-aVdomestic animal
-p672
-aVdiarrhea
-p673
-aVapnea
-p674
+p154
+aVfmdv
+p155
+aVoffspring
+p156
+aVrape
+p157
+aVredness
+p158
+aVpink
+p159
+aVhog
+p160
+aVdyspnoea
+p161
+aVruminant
+p162
+aVsiv
+p163
+aVulcers in the mouth
+p164
+aVscarring
+p165
+aVpoisonous plant
+p166
+aVred and watery eyes
+p167
+aVlesions
+p168
+aVlisteria monocytogenes
+p169
+aVanimal
+p170
+aVstock
+p171
+aVmap
+p172
+aVplant
+p173
+aVfever
+p174
+aVplasmodium
+p175
+aVflu-like symptoms
+p176
+aVabscess
+p177
+aVmay
+p178
+aVclostridium
+p179
+aVarthritis
+p180
+aVmac
+p181
+aVyellow fever virus
+p182
+aVfatigue
+p183
+aVfits
+p184
+aVmarrow
+p185
+aVhawk
+p186
+aVterrier
+p187
+aVwinter
+p188
+aVa
+p189
+aVleishmania
+p190
+aVbloating
+p191
+aVmemory loss
+p192
+aVarthralgia
+p193
+aVstop breathing
+p194
+aVhib
+p195
+aVst
+p196
+aVchest pain
+p197
+aVjoint pains
+p198
+aVcomatose
+p199
+aVmonocot
+p200
+aVwind
+p201
+aVfetus
+p202
+aVcheese
+p203
+aVbrain inflammation
+p204
+aVequid
+p205
+aVmeningococcus
+p206
+aVtrade
+p207
+aVswollen glands
+p208
+aVthermal
+p209
+aVdomesticated animal
+p210
+aVrespiratory problems
+p211
 aVnephritis
-p675
-aVpuppy
-p676
-aVsevere diarrhea
-p677
-aVneisseria meningitidis
-p678
-aVbacillus
-p679
-aVback pain
-p680
-aVlymphadenopathy
-p681
-aVnight sweats
-p682
-aVfebrile illness
-p683
-aVcyanosis
-p684
-aVtick-borne encephalitis virus
-p685
-aVmeningitis
-p686
-aVrock hyrax
-p687
-aVvaricella-zoster virus
-p688
+p212
+aVcole
+p213
+aVgalaxy
+p214
+aVfoot and mouth disease virus
+p215
+aVsomnolence
+p216
+aVchihuahua
+p217
+aVmuscle atrophy
+p218
+aVmycobacterium tuberculosis
+p219
+aVurinary tract infection
+p220
+aVbuttercup
+p221
+aVtwitching
+p222
+aVfig
+p223
+aVdengue virus
+p224
+aVanemia
+p225
+aVhematuria
+p226
+aVbackache
+p227
+aVthoroughbred
+p228
+aVcoffee
+p229
+aVdrenching sweats
+p230
+aVsars coronavirus
+p231
+aVweakness
+p232
+aVdrowsiness
+p233
+aVsleepiness
+p234
+aVdak
+p235
+aVh3n8
+p236
+aVvomit
+p237
+aVsnake
+p238
+aVdas
+p239
+aVflea
+p240
+aVdisorientation
+p241
+aVh3n2
+p242
+aVhumanity
+p243
+aVsore throat
+p244
+aVparainfluenza virus
+p245
+aVlettuce
+p246
+aVh5n1
+p247
+aVhemoptysis
+p248
+aVborrelia
+p249
+aVretinitis
+p250
+aVcoagulation
+p251
+aVehd virus
+p252
+aVmonsoon
+p253
+aVnasal congestion
+p254
+aVcreature
+p255
+aVrosemary
+p256
+aVencephalitis
+p257
+aVincoordination
+p258
+aVproteinuria
+p259
+aVhemorrhagic fever
+p260
+aVsevere headache
+p261
+aVconstipation
+p262
+aVwild boar
+p263
+aVfish
+p264
+aVzebra
+p265
+aVirritation
+p266
+aVh1n1 flu virus
+p267
+aVlemongrass
+p268
+aVvibrio
+p269
+aVsoutherly
+p270
+aVvertigo
+p271
+aVhcv
+p272
+aVallergic reaction
+p273
 aVfevers
+p274
+aVatypical pneumonia
+p275
+aVdehydrated
+p276
+aVendemic
+p277
+aVstud
+p278
+aVinfluenza a(h3n2) virus
+p279
+aValphavirus
+p280
+aVbreathlessness
+p281
+aVeagle
+p282
+aVsuperbug
+p283
+aVpoor appetite
+p284
+aVmurmur
+p285
+aVpoppy
+p286
+aVweed
+p287
+aVpup
+p288
+aVsandfly
+p289
+aVblister
+p290
+aVequine
+p291
+aVh1n1
+p292
+aVgallina
+p293
+aVprotist
+p294
+aVostrich
+p295
+aVswine
+p296
+aVdaisy
+p297
+aVfree-tailed bat
+p298
+aVchills
+p299
+aVcopper
+p300
+aVev 71
+p301
+aVguan
+p302
+aVhsv-1
+p303
+aVfeeder
+p304
+aVelder
+p305
+aVstillbirth
+p306
+aVlegionellosis
+p307
+aVwhale
+p308
+aVbad weather
+p309
+aVcassava
+p310
+aVseizures
+p311
+aVtimothy
+p312
+aVhorse
+p313
+aVtoy
+p314
+aVmonkey
+p315
+aVtung
+p316
+aVailanthus
+p317
+aVacute respiratory symptoms
+p318
+aVcivet
+p319
+aVprickly pear
+p320
+aVadenovirus
+p321
+aVdraft
+p322
+aVanaemia
+p323
+aVtom
+p324
+aVman
+p325
+aVbanana
+p326
+aVpathogen
+p327
+aVheadache
+p328
+aVtomato
+p329
+aVswelling of the brain
+p330
+aVquarry
+p331
+aVdog
+p332
+aVseason
+p333
+aVpharyngitis
+p334
+aVparvovirus
+p335
+aVcardiac arrest
+p336
+aVgastroenteritis
+p337
+aVbreathing problems
+p338
+aVrsv
+p339
+aVsymptom
+p340
+aVvesper mouse
+p341
+aVpneumococcus
+p342
+aVanxiety
+p343
+aVsevere respiratory infection
+p344
+aVeiav
+p345
+aVtree
+p346
+aVmyalgia
+p347
+aVbee
+p348
+aVshower
+p349
+aVpneumonia
+p350
+aVboil
+p351
+aVfruit bat
+p352
+aVtorrent
+p353
+aVlarva
+p354
+aVsugar cane
+p355
+aVcoconut
+p356
+aVmink
+p357
+aVorgan failure
+p358
+aVsepticemia
+p359
+aVavian influenza virus
+p360
+aVfowl
+p361
+aVtupelo
+p362
+aVencephalopathy
+p363
+aVphytoplankton
+p364
+aVmarijuana
+p365
+aVginger
+p366
+aVant
+p367
+aVgale
+p368
+aVrat
+p369
+aVlull
+p370
+aVmiserable
+p371
+aVbordetella pertussis
+p372
+aVdementia
+p373
+aVmuscle pain
+p374
+aVfauna
+p375
+aVcactus
+p376
+aVpreterm
+p377
+aVsevere pain
+p378
+aVfitting
+p379
+aVmild fever
+p380
+aVskin lesions
+p381
+aVhaemophilus influenzae type b
+p382
+aVwaterfowl
+p383
+aVlisteria
+p384
+aVexcessive sweating
+p385
+aVsars virus
+p386
+aVaids virus
+p387
+aVpain
+p388
+aVsars-cov
+p389
+aVgastrointestinal symptoms
+p390
+aVelectrolyte imbalance
+p391
+aVseptic shock
+p392
+aVvirus
+p393
+aVrigor
+p394
+aVafrican swine fever virus
+p395
+aVcracking
+p396
+aVneuritis
+p397
+aVneurological damage
+p398
+aVoyster
+p399
+aVmaria
+p400
+aVpremature birth
+p401
+aVpersistent vomiting
+p402
+aVbracken
+p403
+aVpyrexia
+p404
+aVlocust
+p405
+aVfilly
+p406
+aVsores
+p407
+aVdoe
+p408
+aVargus
+p409
+aVpineapple
+p410
+aVwarming
+p411
+aVpersonality changes
+p412
+aVskunk
+p413
+aVatmosphere
+p414
+aVaquatic
+p415
+aVcereal
+p416
+aVsparrow
+p417
+aVlotus
+p418
+aVswelling
+p419
+aVqueen
+p420
+aVparvo virus
+p421
+aVling
+p422
+aVseaweed
+p423
+aVtiredness
+p424
+aVmiller
+p425
+aVgasping
+p426
+aVculex pipiens
+p427
+aVgnat
+p428
+aVherbivore
+p429
+aVcamel
+p430
+aVrash
+p431
+aVbug
+p432
+aVdermatitis
+p433
+aVbush
+p434
+aVmaculopapular
+p435
+aVcoryza
+p436
+aVnewcastle disease virus
+p437
+aVwoodchuck
+p438
+aVhippo
+p439
+aVhiv
+p440
+aVbody ache
+p441
+aVcoxiella burnetii
+p442
+aVrespiratory failure
+p443
+aVbear
+p444
+aVbean
+p445
+aVmalaise
+p446
+aVwatermelon
+p447
+aVinfluenza a virus
+p448
+aVabscess formation
+p449
+aValexander
+p450
+aVbat
+p451
+aVskin rash
+p452
+aVsteamer
+p453
+aVintense pain
+p454
+aVcoughs
+p455
+aVdizziness
+p456
+aVflu symptoms
+p457
+aVsuckling
+p458
+aVlethargy
+p459
+aVabdominal pain
+p460
+aVhumans
+p461
+aVcanine
+p462
+aVfreeze
+p463
+aVliver dysfunction
+p464
+aVthistle
+p465
+aVseal
+p466
+aVsanta ana
+p467
+aVlung infection
+p468
+aVpurpura
+p469
+aVdysentery
+p470
+aVthrombocytopenia
+p471
+aVscattering
+p472
+aVfeline
+p473
+aVred eyes
+p474
+aVhumankind
+p475
+aVross river virus
+p476
+aVconditions
+p477
+aVc. difficile
+p478
+aVserious respiratory illness
+p479
+aVlow grade fever
+p480
+aVamazon
+p481
+aVsin nombre virus
+p482
+aVconfusion
+p483
+aVweak
+p484
+aVreovirus
+p485
+aVsamba
+p486
+aVsimian immunodeficiency virus
+p487
+aVvre
+p488
+aVcoma
+p489
+aVneisseria gonorrhea
+p490
+aVheather
+p491
+aVvomiting
+p492
+aVescherichia coli
+p493
+aVcolony collapse
+p494
+aVrashes
+p495
+aVcow
+p496
+aVitchy rash
+p497
+aVannual
+p498
+aVhantavirus
+p499
+aVsevere joint pains
+p500
+aVarbor
+p501
+aVclassical swine fever virus
+p502
+aVeggplant
+p503
+aVwatery diarrhea
+p504
+aVbody pain
+p505
+aVnasal discharge
+p506
+aVdysphagia
+p507
+aVdistress
+p508
+aVsimple
+p509
+aVsepsis
+p510
+aVh3n2 virus
+p511
+aVleon
+p512
+aValtered mental status
+p513
+aVbegonia
+p514
+aVpetechiae
+p515
+aVtadarida brasiliensis
+p516
+aVataxia
+p517
+aVpoll
+p518
+aVdyspnea
+p519
+aVoral lesions
+p520
+aVrenal failure
+p521
+aVmara
+p522
+aVhepatomegaly
+p523
+aVabaca
+p524
+aVvertebrate
+p525
+aVrespiratory arrest
+p526
+aVhaemorrhage
+p527
+aVchrysanthemum
+p528
+aVwheezing
+p529
+aVchlamydophila abortus
+p530
+aVexhaustion
+p531
+aVclostridium difficile
+p532
+aVmuscle aches
+p533
+aVmeningitis
+p534
+aVchikv
+p535
+aVcoughing
+p536
+aVsunshine
+p537
+aVgas
+p538
+aVlumpy skin disease virus
+p539
+aVbull
+p540
+aVpeste des petits ruminants virus
+p541
+aVchill
+p542
+aVpsyllid
+p543
+aVgeneralized aches and pains
+p544
+aVgreen algae
+p545
+aVspasms
+p546
+aVseedling
+p547
+aVtang
+p548
+aVcapsicum
+p549
+aVair
+p550
+aVape
+p551
+aVherpes zoster
+p552
+aVcoca
+p553
+aVcoco
+p554
+aVmultiple organ failure
+p555
+aVveronica
+p556
+aVswollen lymph glands
+p557
+aVagitation
+p558
+aVmoth
+p559
+aVsquid
+p560
+aVanil
+p561
+aVjoint pain
+p562
+aVquiet
+p563
+aVaggressiveness
+p564
+aVbeaver
+p565
+aVmouse
+p566
+aVworry
+p567
+aVleafhopper
+p568
+aVrespiratory distress
+p569
+aVplaques
+p570
+aVmedic
+p571
+aVinfectious agent
+p572
+aVlymphangitis
+p573
+aVaphid
+p574
+aVtime of year
+p575
+aVflower
+p576
+aVdam
+p577
+aVvegetable
+p578
+aVbreathless
+p579
+aVhoneybee
+p580
+aVliver failure
+p581
+aVsucculent
+p582
+aVchronic diarrhea
+p583
+aVmachupo virus
+p584
+aVfoal
+p585
+aVrain
+p586
+aVkit
+p587
+aVplant virus
+p588
+aVgarlic
+p589
+aVjapanese encephalitis virus
+p590
+aVbirch
+p591
+aVbronchiolitis
+p592
+aVstomach pain
+p593
+aVtuna
+p594
+aVafghan
+p595
+aVcultivar
+p596
+aVhot weather
+p597
+aVpoultry
+p598
+aVeucalyptus
+p599
+aVtoxicity
+p600
+aVweld
+p601
+aVperennial
+p602
+aVinfertility
+p603
+aVshortness of breath
+p604
+aVwest nile virus
+p605
+aVabdominal cramps
+p606
+aVmultiple abscesses
+p607
+aVbreeze
+p608
+aVrespiratory insufficiency
+p609
+aVsummer
+p610
+aVlivestock
+p611
+aVedema
+p612
+aVhuman immunodeficiency virus
+p613
+aVsimian
+p614
+aVrodent
+p615
+aVdehydration
+p616
+aVhuman
+p617
+aVlaurel
+p618
+aVscabs
+p619
+aVinternal bleeding
+p620
+aVromaine lettuce
+p621
+aVblow
+p622
+aVhyperesthesia
+p623
+aVrotavirus
+p624
+aVdeath
+p625
+aVasthma
+p626
+aVrose
+p627
+aVnipah virus
+p628
+aVroyal
+p629
+aVhag
+p630
+aVdifficulty breathing
+p631
+aVpupa
+p632
+aVrhinovirus
+p633
+aVeaster
+p634
+aVcervid
+p635
+aVbloody diarrhea
+p636
+aVparamyxovirus
+p637
+aVcerebral hemorrhage
+p638
+aVrespiratory symptoms
+p639
+aVh5n1 virus
+p640
+aVotitis
+p641
+aVreptilian
+p642
+aVfrail
+p643
+aVmanatee
+p644
+aVabnormal behavior
+p645
+aVgangrene
+p646
+aVhallucinations
+p647
+aVstunt
+p648
+aVmoa
+p649
+aVtick
+p650
+aVprecipitation
+p651
+aVclam
+p652
+aVonion
+p653
+aVmidge
+p654
+aVretrovirus
+p655
+aVdiscomfort
+p656
+aVmuscle tremors
+p657
+aVai
+p658
+aVmosquito
+p659
+aVclay
+p660
+aVchick
+p661
+aVunable to fly
+p662
+aVsoft
+p663
+aVspring
+p664
+aVash
+p665
+aVhydrocephalus
+p666
+aVskunk cabbage
+p667
+aVharmattan
+p668
+aVboar
+p669
+aVgrowth retardation
+p670
+aVcachexia
+p671
+aVb. anthracis
+p672
+aVsalmonella typhi
+p673
+aVescape
+p674
+aVhemorrhage
+p675
+aVbruising
+p676
+aVflavivirus
+p677
+aVsevere respiratory illness
+p678
+aVcoxsackievirus
+p679
+aVvision loss
+p680
+aVpet
+p681
+aVpain in the joints
+p682
+aVfox
+p683
+aVvibrio cholerae
+p684
+aVhepatitis
+p685
+aVsugarcane
+p686
+aVfog
+p687
+aVplantain
+p688
+aVconvulsions
 p689
-aVorchitis
+aVacute respiratory distress
 p690
-aVheath
+aVpepper
 p691
-aVfall webworm
+aVsquirrel
 p692
-aVh1n1 virus
+aVmarine animal
 p693
+aVitching
+p694
+aVslurred speech
+p695
+aVchest tightness
+p696
+aVhygrophyte
+p697
+aVpondweed
+p698
+aVtremors
+p699
+aVlegionella
+p700
+aVmite
+p701
+aVherpes
+p702
+aVcoral
+p703
+aVparalysis
+p704
+aVinsect
+p705
+aVwillow
+p706
+aVvibrio parahaemolyticus
+p707
+aVounce
+p708
+aVmuscle weakness
+p709
+aVbiennial
+p710
+aVchow
+p711
+aVpolar bear
+p712
+aVmuscle pains
+p713
+aVndv
+p714
+aVtriton
+p715
+aVkidney failure
+p716
+aVreptile
+p717
+aVcoconut palm
+p718
+aVmicroorganism
+p719
+aVburning
+p720
+aVwasting
+p721
+aVdeafness
+p722
+aVbone pain
+p723
+aVswollen lymph nodes
+p724
+aVfern
+p725
+aVviral fever
+p726
+aVrespiratory illness
+p727
+aVweather
+p728
+aVwater plant
+p729
+aVsow
+p730
+aVsoy
+p731
+aVblurred vision
+p732
+aVanorexia
+p733
+aVbreath
+p734
+aVmaple
+p735
+aVdry mouth
+p736
+aVsneezing
+p737
+aVborer
+p738
+aVgroundnut
+p739
+aVlow
+p740
+aVmyoclonus
+p741
+aVhen
+p742
+aVsesame
+p743
+aVsevere pneumonia
+p744
+aVthrips
+p745
+aVwaterbird
+p746
+aVebola virus
+p747
+aVpetechial rash
+p748
+aVnightshade
+p749
+aVfrost
+p750
+aVbrucella
+p751
+aVwnv
+p752
+aVbeech
+p753
+aVsprinkling
+p754
+aVinternal and external bleeding
+p755
+aVdifficulty swallowing
+p756
+aVdromedary
+p757
+aVrush
+p758
+aVsalmonella enteritidis
+p759
+aVrock hyrax
+p760
+aVerica
+p761
+aVpalm
+p762
+aVbody aches
+p763
+aVgrass
+p764
+aVev71
+p765
+aVmuscle spasms
+p766
+aVinfluenza a (h1n1) virus
+p767
+aVmycobacterium
+p768
+aVfour o'clock
+p769
+aVpia
+p770
+aVmarmot
+p771
+aVdeer
+p772
+aVenterococcus
+p773
+aVpig
+p774
+aVhypertension
+p775
+aVexcessive salivation
+p776
+aVharvest
+p777
+aVrespiratory syncytial virus
+p778
+aVexhausted
+p779
+aVchlamydia
+p780
+aVquail
+p781
+aVdifficulty feeding
+p782
+aVtaro
+p783
+aVinfluenza-like illness
+p784
+aVdomestic animal
+p785
+aVdiarrhea
+p786
+aVgasping for air
+p787
+aVapnea
+p788
+aVpuppy
+p789
+aVsevere diarrhea
+p790
+aVneisseria meningitidis
+p791
+aVelements
+p792
+aVbacillus
+p793
+aVback pain
+p794
+aVlymphadenopathy
+p795
+aVnight sweats
+p796
+aVfebrile illness
+p797
+aVcyanosis
+p798
+aVfoetus
+p799
+aVtick-borne encephalitis virus
+p800
+aVpotato
+p801
+aVvaricella-zoster virus
+p802
+aVheart failure
+p803
+aVorchitis
+p804
+aVheath
+p805
+aVbacteremia
+p806
+aVmarburg virus
+p807
 a.
