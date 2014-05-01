@@ -21,4 +21,5 @@ def diagnosis():
     return json.dumps(my_diagnoser.diagnose(content), default=date_serializer)
 
 if __name__ == '__main__':
+    print Diagnoser().diagnose("fever")
     app.run(host='localhost', debug=True)
