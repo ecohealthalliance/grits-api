@@ -9,7 +9,7 @@ class Diagnoser():
         self.classifier = pickle.load(open(classifier, "rb"))
         self.keywords = pickle.load(open(keywords, "rb"))
         self.extract_features = KeywordExtractor([k.strip() for k in self.keywords]).extract_features
-        
+
     def diagnose(self, content):
         feature_dict = self.extract_features(content)
         X = np.array([feature_dict.get(f, 0) for f in self.keywords])
@@ -19,10 +19,14 @@ class Diagnoser():
         diseases = [{
             'name' : self.classifier.classes_[i],
             'probability' : p,
-            'keywords' : [[kwd, co] for co, kwd in zip(self.classifier.coef_[i] * X, self.keywords)
+            'keywords' : [{'name': kwd, 'coefficient': co} for co, kwd in zip(self.classifier.coef_[i] * X, self.keywords)
                                     if co > 0]
         } for i, p in enumerate(probs)
           if p >= p_max * CUTOFF_RATIO]
+        all_keywords = set()
+        for disease in diseases:
+            for keyword in disease['keywords']:
+                all_keywords.add(keyword['name'])
         return {
             'diseases': diseases,
             'features': [
@@ -40,6 +44,11 @@ class Diagnoser():
                     'type' : 'deathCount',
                     'value' : count,
                 } for count in extract_death_counts(content)
+            ] + [
+                {
+                    'type' : 'keyword',
+                    'value' : keyword
+                } for keyword in all_keywords
             ]
         }
 
