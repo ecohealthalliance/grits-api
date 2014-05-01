@@ -5,6 +5,7 @@ beautifulsoup
 goose-extractor
 beautifulsoup4
 pattern
+numpy
 scipy
 scikit-learn
 flask
