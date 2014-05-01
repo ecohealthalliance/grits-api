@@ -3,6 +3,18 @@ import pickle
 import numpy as np
 from KeywordExtractor import KeywordExtractor
 from feature_extractors import extract_case_counts, extract_death_counts, extract_dates
+from sklearn.multiclass import OneVsRestClassifier
+
+class MyOVRClassifier(OneVsRestClassifier):
+    """
+    This OVR classifier will always choose at least one label,
+    regardless of the probability
+    """
+    CUTOFF_RATIO = 1.0 / 1.5
+    def predict(self, X):
+        probs = self.predict_proba(X)[0]
+        p_max = max(probs)
+        return [tuple([self.classes_[i] for i, p in enumerate(probs) if p >= p_max * self.CUTOFF_RATIO ])]
 
 class Diagnoser():
     def __init__(self, classifier="classifier.p", keywords="found_keywords.p"):
