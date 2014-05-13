@@ -1,4 +1,5 @@
 import json
+import pickle
 import flask
 from flask import render_template, request
 
@@ -9,8 +10,9 @@ def date_serializer(obj):
     else:
         raise TypeError()
 
-from Diagnoser import Diagnoser
-my_diagnoser = Diagnoser()
+from diagnosis.Diagnoser import Diagnoser
+with open('diagnoser.p', 'rb') as f:
+    my_diagnoser = pickle.load(f)
 
 app = flask.Flask(__name__)
 
@@ -21,5 +23,4 @@ def diagnosis():
     return json.dumps(my_diagnoser.diagnose(content), default=date_serializer)
 
 if __name__ == '__main__':
-    print Diagnoser().diagnose("fever")
     app.run(host='localhost', debug=True)
