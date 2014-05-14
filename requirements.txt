@@ -9,3 +9,6 @@ numpy
 scipy
 scikit-learn
 flask
+unicodecsv
+geopy
+futures

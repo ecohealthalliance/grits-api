@@ -42,7 +42,7 @@ def read_geonames(file_path):
         'timezone',
         'modification date',
     ]
-    omitted_geonames = ['Many', 'May']
+    omitted_geonames = ['Many', 'May', 'Center']
     with open(file_path, 'rb') as f:
         reader = unicodecsv.DictReader(f,
             fieldnames=fieldnames,
@@ -136,12 +136,6 @@ def compute_centroid(geoname_objects):
         print lats, longs
 class LocationExtractor():
     def __init__(self):
-        nltk.download([
-            'maxent_ne_chunker',
-            'maxent_treebank_pos_tagger',
-            'words',
-            'punkt'
-        ])
         geoname_roa = read_geonames('geonames/cities1000.txt')
         
         country_index = {}
@@ -200,10 +194,12 @@ class LocationExtractor():
                     min_samples=max_count / 2,
                     metric='precomputed'
                 ).fit(distance_matrix).labels_
-            clusters = {}
-            for geoname, cluster in zip(found_geonames, cluster_labels):
-                if cluster < 0: continue
-                clusters[cluster] = clusters.get(cluster, []) + [geoname]
+            clusters = {k : [] for k in set(cluster_labels)}
+            for geoname, cluster_id in zip(found_geonames, cluster_labels):
+                if cluster_id < 0: continue
+                cluster = clusters[cluster_id]
+                if geoname not in cluster:
+                    cluster.append(geoname)
             if len(clusters) > 0:
                 min_cluster_size = min(5, max(map(len, clusters.values())))
                 return [

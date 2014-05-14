@@ -8,19 +8,22 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import Pipeline
 
 class Diagnoser():
-    def __init__(self, classifier, dict_vectorizer, keyword_links):
+    def __init__(self, classifier, dict_vectorizer, keyword_links,
+                 keyword_categories=None, cutoff_ratio=0.7):
         self.classifier = classifier
         self.keyword_links = keyword_links
-        self.keyword_processor = Pipeline([('addr', LinkedKeywordAdder(keyword_links)),
+        self.keyword_categories = keyword_categories if keyword_categories else {}
+        self.keyword_processor = Pipeline([('link', LinkedKeywordAdder(keyword_links)),
                                            ('limit', LimitCounts(1))])
         self.dict_vectorizer = dict_vectorizer
         self.keywords = dict_vectorizer.get_feature_names()
         self.keyword_extractor = KeywordExtractor(self.keywords)
         self.location_extractor = LocationExtractor()
-    def best_guess(self, X, cutoff_ratio = 0.65):
+        self.cutoff_ratio = cutoff_ratio
+    def best_guess(self, X):
         probs = self.classifier.predict_proba(X)[0]
         p_max = max(probs)
-        return [(i,p) for i,p in enumerate(probs)if p >= p_max * cutoff_ratio]
+        return [(i,p) for i,p in enumerate(probs) if p >= p_max * self.cutoff_ratio]
     def diagnose(self, content):
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
         feature_dict = self.keyword_processor.transform([base_keyword_dict])
@@ -31,16 +34,20 @@ class Diagnoser():
                 'name' : self.classifier.classes_[i],
                 'probability' : p,
                 'keywords' : [{
-                        'keyword' : kwd,
+                        'name' : kwd,
                         'score' : score,
-                        'links' : self.keyword_links[kwd],
+                        'categories' : [cat
+                            for cat, kws in self.keyword_categories.items()
+                            if kwd in kws]
                     }
                     for kwd, score in scored_keywords
                     if score > 0 and kwd in base_keyword_dict],
                 'inferred_keywords' : [{
-                        'keyword' : kwd,
+                        'name' : kwd,
                         'score' : score,
-                        'links' : self.keyword_links[kwd],
+                        'categories' : [cat 
+                            for cat, kws in self.keyword_categories.items()
+                            if kwd in kws]
                     }
                     for kwd, score in scored_keywords
                     if score > 0 and kwd not in base_keyword_dict]
@@ -54,15 +61,9 @@ class Diagnoser():
                     'value' : d,
                 } for d in extract_dates(content)
             ] + [
-                {
-                    'type' : 'caseCount',
-                    'value' : count,
-                } for count in extract_case_counts(content)
+                count_object for count_object in extract_case_counts(content)
             ] + [
-                {
-                    'type' : 'deathCount',
-                    'value' : count,
-                } for count in extract_death_counts(content)
+                count_object for count_object in extract_death_counts(content)
             ] + [
                 {
                     'type' : 'cluster',

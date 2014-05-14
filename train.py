@@ -1,3 +1,7 @@
+"""
+This is currently out of sync with the diagnostics code here:
+http://54.83.200.115/notebooks/nathan/Diagnosis.ipynb
+"""
 from KeywordExtractor import KeywordExtractor
 
 def get_keywords():
