@@ -131,7 +131,10 @@ def compute_centroid(geoname_objects):
     lats = [gn['latitude'] for gn in geoname_objects]
     longs = [gn['longitude'] for gn in geoname_objects]
     try:
-        return (sum(lats)/len(lats), sum(longs)/len(longs))
+        return {
+            'latitude' : sum(lats)/len(lats),
+            'longitude' : sum(longs)/len(longs)
+        }
     except:
         print lats, longs
 class LocationExtractor():

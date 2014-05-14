@@ -1,5 +1,14 @@
 import re
 
+def partition(iterable, batch_size=200):
+    batch = []
+    for item in iterable:
+        batch.append(item)
+        if len(batch) >= batch_size:
+            yield batch
+            batch = []
+    yield batch
+
 class KeywordExtractor():
     """
     Does case insensitive matching and all returned keywords are lowercase.
@@ -7,14 +16,17 @@ class KeywordExtractor():
     """
     def __init__(self, keywords):
         self.keywords = set([re.escape(kw.lower()) for kw in keywords])
-        self.kw_re = re.compile('\\b(' + '|'.join(self.keywords) + ')\\b', re.I)
+        self.kw_res = []
+        for batch in partition(self.keywords):
+            self.kw_res.append(re.compile('\\b(' + '|'.join(batch) + ')\\b', re.I))
     def fit(self, X, y):
         pass
     def transform_one(self, text):
         feature_dict = {}
-        for match in self.kw_re.finditer(text):
-            keyword = text[match.start():match.end()].lower()
-            feature_dict[keyword] = feature_dict.get(keyword, 0) + 1
+        for kw_re in self.kw_res:
+            for match in kw_re.finditer(text):
+                keyword = text[match.start():match.end()].lower()
+                feature_dict[keyword] = feature_dict.get(keyword, 0) + 1
         return feature_dict
     def transform(self, texts):
         return map(self.transform_one, texts)
