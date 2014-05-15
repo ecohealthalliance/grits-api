@@ -1,6 +1,6 @@
 import re
 
-def partition(iterable, batch_size=200):
+def partition(iterable, batch_size=500):
     batch = []
     for item in iterable:
         batch.append(item)

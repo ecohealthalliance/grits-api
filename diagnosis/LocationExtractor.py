@@ -7,9 +7,6 @@ from geopy.distance import great_circle
 import math
 import nltk
 
-#Loading geonames data may cause errors without this line:
-csv.field_size_limit(sys.maxsize / 16)
-
 def parse_number(num, default):
     try:
         return int(num)
@@ -42,7 +39,15 @@ def read_geonames(file_path):
         'timezone',
         'modification date',
     ]
-    omitted_geonames = ['Many', 'May', 'Center']
+    omitted_geonames = [
+        'Many',
+        'May',
+        'March',
+        'Center',
+        'As',
+        'See',
+        'University',
+    ]
     with open(file_path, 'rb') as f:
         reader = unicodecsv.DictReader(f,
             fieldnames=fieldnames,
@@ -100,12 +105,12 @@ def read_country_names(file_path):
 def geodistance_with_population(latLngPopA, latLngPopB):
     """
     This geodistance formula measures the distance between
-    geographically located circles, which a radius based on
+    geographically located circles, with a radius based on
     the population given for a geopoint.
     To determine radius we assume population density of 120/sqmi becasue:
     http://www.wolframalpha.com/input/?i=global+human+population+%2F+global+land+area
     Since the points we're looking at are all cities this is probably a low estimate.
-    Then we determine the area as follows:
+    Then we determine the radius as follows:
     A = pi * r^2
     A = pop / 120
     r = sqrt(pop / (120pi))
@@ -139,6 +144,9 @@ def compute_centroid(geoname_objects):
         print lats, longs
 class LocationExtractor():
     def __init__(self):
+        #Loading geonames data may cause errors without this line:
+        csv.field_size_limit(sys.maxsize / 16)
+
         geoname_roa = read_geonames('geonames/cities1000.txt')
         
         country_index = {}
@@ -168,7 +176,7 @@ class LocationExtractor():
                 # TODO: Filter location that are substrings of NLTK GPEs e.g. York Road?
                 ngram_string = ' '.join([unicode(token) for token in ngram])
                 ngram_counts[ngram_string] = ngram_counts.get(ngram_string, 0) + 1
-        found_geopoints = []
+        
         found_geonames = []
         max_count = 0
         for ngram, count in sorted(ngram_counts.items(), key=lambda k:k[1]):
@@ -177,12 +185,12 @@ class LocationExtractor():
                 if count > max_count:
                     max_count = count
                 for geoname in matching_geonames:
-                    latLng = (geoname['latitude'], geoname['longitude'])
                     # Additional geopoints are created for repeated geonames
                     # to increase their weight when clustering them.
-                    found_geopoints += [latLng] * (1 + count / 2)
                     found_geonames += [geoname] * (1 + count / 2)
-        if len(found_geopoints) > 0:
+        
+        if len(found_geonames) > 0:
+            found_geopoints = [(g['latitude'], g['longitude']) for g in found_geonames]
             distance_matrix = pairwise_distances(np.c_[np.array(found_geopoints),
                                                  [[gn['population']] for gn in found_geonames]],
                                                  metric=geodistance_with_population)
@@ -199,10 +207,23 @@ class LocationExtractor():
                 ).fit(distance_matrix).labels_
             clusters = {k : [] for k in set(cluster_labels)}
             for geoname, cluster_id in zip(found_geonames, cluster_labels):
-                if cluster_id < 0: continue
+                if cluster_id < 0:
+                    #outlier
+                    continue
                 cluster = clusters[cluster_id]
                 if geoname not in cluster:
                     cluster.append(geoname)
+            for cluster_id, cluster in clusters.items():
+                # If a cluster contains more than one location with a given name
+                # the article probably only refers to one of them, so guess
+                # the one with the greatest population
+                most_populous_locations = {}
+                for location in cluster:
+                    if location['name'] in most_populous_locations:
+                        if most_populous_locations[location['name']]['population'] >= location['population']:
+                            continue
+                    most_populous_locations[location['name']] = location
+                clusters[cluster_id] = most_populous_locations.values()
             if len(clusters) > 0:
                 min_cluster_size = min(5, max(map(len, clusters.values())))
                 return [
@@ -211,7 +232,7 @@ class LocationExtractor():
                         'locations' : v
                     }
                     for k,v in clusters.items()
-                    if len(v) > min_cluster_size
+                    if len(v) >= min_cluster_size
                 ]
         return []
     def transform(self, texts):

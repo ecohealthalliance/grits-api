@@ -130,22 +130,24 @@ def extract_dates(text):
     promed_publication_date_re = re.compile(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})", re.I)
     mdy_date_re = re.compile(month_re_str + r"\s(" + day_re_str + r"\s)?" + year_re_str, re.I | re.M)
     for match in itertools.chain( promed_body_date_re.finditer(text),
-                                  mdy_date_re.finditer(text)):
-        date_dict = {}
+                                  mdy_date_re.finditer(text)
+                                ):
+        date_info = {}
         for k, v in match.groupdict().items():
             if v is None: continue
             v = v.lower()
             if k == 'monthabrev':
-                date_dict['month'] = monthabrev.index(v) + 1
+                date_info['month'] = monthabrev.index(v) + 1
             elif k == 'monthname':
-                date_dict['month'] = monthnames.index(v) + 1
+                date_info['month'] = monthnames.index(v) + 1
             else:
-                date_dict[k] = int(v)
-        if 'day' not in date_dict:
-            date_dict['day'] = 1
+                date_info[k] = int(v)
+        datetime_args = {'day':1}
+        datetime_args.update(date_info)
         yield {
-            'dateInformation' : date_dict,
-            'datetime' : datetime.datetime(**date_dict),
+            'type' : 'datetime',
+            'dateInformation' : date_info,
+            'value' : datetime.datetime(**datetime_args),
             'startOffset' : match.start(),
             'endOffset' : match.end(),
             'text' : text[match.start():match.end()]

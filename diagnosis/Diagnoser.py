@@ -8,13 +8,17 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import Pipeline
 
 class Diagnoser():
-    def __init__(self, classifier, dict_vectorizer, keyword_links,
+    def __init__(self, classifier, dict_vectorizer,
+                 keyword_links=None,
                  keyword_categories=None, cutoff_ratio=0.7):
         self.classifier = classifier
-        self.keyword_links = keyword_links
         self.keyword_categories = keyword_categories if keyword_categories else {}
-        self.keyword_processor = Pipeline([('link', LinkedKeywordAdder(keyword_links)),
-                                           ('limit', LimitCounts(1))])
+        processing_pipeline = []
+        if keyword_links:
+            self.keyword_links = keyword_links
+            processing_pipeline.append(('link', LinkedKeywordAdder(keyword_links)))
+        processing_pipeline.append(('limit', LimitCounts(1)))
+        self.keyword_processor = Pipeline(processing_pipeline)
         self.dict_vectorizer = dict_vectorizer
         self.keywords = dict_vectorizer.get_feature_names()
         self.keyword_extractor = KeywordExtractor(self.keywords)
@@ -56,10 +60,7 @@ class Diagnoser():
             'keywords_found' : base_keyword_dict,
             'diseases': [diagnosis(i,p) for i,p in self.best_guess(X)],
             'features': [
-                {
-                    'type' : 'datetime',
-                    'value' : d,
-                } for d in extract_dates(content)
+                d for d in extract_dates(content)
             ] + [
                 count_object for count_object in extract_case_counts(content)
             ] + [
