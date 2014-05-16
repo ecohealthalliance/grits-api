@@ -78,17 +78,15 @@ def parse_spelled_number(tokens):
 
 my_taxonomy = None
 
-def extract_case_counts(text):
-    #Fatality count:
-    #"In El Salvador 33 people died in 2009 due to influenza A, while 851 others contracted the virus, and in 2010 was at least one death, officials said."
+def extract_counts(text):
     global my_taxonomy
     if not my_taxonomy:
         my_taxonomy = pattern.search.Taxonomy()
         my_taxonomy.append(pattern.search.WordNetClassifier())
-    
+    #Case counts
     tree = pattern.en.parsetree(text, lemmata=True)
     matches = pattern.search.search('{CD+ CC? CD?} NP? PATIENT|CASE|INFECTION', tree, taxonomy=my_taxonomy)
-    matches += pattern.search.search('CASES :? {CD+}', tree, taxonomy=my_taxonomy)
+    matches += pattern.search.search('DEATHS :? {CD+}', tree, taxonomy=my_taxonomy)
     for m in matches:
         n = parse_spelled_number([s.string for s in m.group(1)])
         if n is not None:
@@ -97,14 +95,18 @@ def extract_case_counts(text):
                 'value' : n,
                 'text' : m.string
             }
-
-def extract_death_counts(text):
-    global my_taxonomy
-    if not my_taxonomy:
-        my_taxonomy = pattern.search.Taxonomy()
-        my_taxonomy.append(pattern.search.WordNetClassifier())
-    
-    tree = pattern.en.parsetree(text, lemmata=True)
+    #Hospitalizations
+    matches = pattern.search.search('{CD+ CC? CD?} NP? HOSPITALIZED', tree, taxonomy=my_taxonomy)
+    matches += pattern.search.search('{CD+ CC? CD?} NP? VP TO? HOSPITAL', tree, taxonomy=my_taxonomy)
+    for m in matches:
+        n = parse_spelled_number([s.string for s in m.group(1)])
+        if n is not None:
+            yield {
+                'type' : 'hospitalizationCount',
+                'value' : n,
+                'text' : m.string
+            }
+    #Deaths
     matches = pattern.search.search('{CD+ CC? CD?} NP? DIED|DEATHS|FATALITIES|KILLED', tree, taxonomy=my_taxonomy)
     matches += pattern.search.search('DEATHS :? {CD+}', tree, taxonomy=my_taxonomy)
     for m in matches:
@@ -117,6 +119,8 @@ def extract_death_counts(text):
             }
 
 def extract_dates(text):
+    def maybe(text_re):
+        return r"(" + text_re + r")?"
     #We could try this instead: https://code.google.com/p/nltk/source/browse/trunk/nltk_contrib/nltk_contrib/timex.py
     #I'm not using daynames because they aren't used in the typical promed format.
     #If daynames do provide information it will be hard to parse it,
@@ -128,7 +132,9 @@ def extract_dates(text):
     year_re_str = r"(?P<year>\d{4})"
     promed_body_date_re = re.compile(day_re_str + r"\s" + month_re_str + r"\s" + year_re_str, re.I | re.M)
     promed_publication_date_re = re.compile(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})", re.I)
-    mdy_date_re = re.compile(month_re_str + r"\s(" + day_re_str + r"\s)?" + year_re_str, re.I | re.M)
+    mdy_date_re = re.compile(r"(?P<monthname>" + '|'.join(monthnames) + r")" +
+        maybe(r'\s' + day_re_str) + maybe(r'\s' + year_re_str), re.I | re.M)
+    date_info_dicts = []
     for match in itertools.chain( promed_body_date_re.finditer(text),
                                   mdy_date_re.finditer(text)
                                 ):
@@ -142,7 +148,13 @@ def extract_dates(text):
                 date_info['month'] = monthnames.index(v) + 1
             else:
                 date_info[k] = int(v)
-        datetime_args = {'day':1}
+        date_info_dicts.append(date_info)
+    probable_year = datetime.datetime.now().year
+    years = [d['year'] for d in date_info_dicts if 'year' in d]
+    if len(years) > 0:
+        probable_year = int(sum(years) / len(years))
+    for date_info in date_info_dicts:
+        datetime_args = {'day':1, 'year':probable_year}
         datetime_args.update(date_info)
         yield {
             'type' : 'datetime',

@@ -2,7 +2,7 @@ import argparse
 import pickle
 import numpy as np
 from KeywordExtractor import *
-from feature_extractors import extract_case_counts, extract_death_counts, extract_dates
+import feature_extractors
 from LocationExtractor import LocationExtractor
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import Pipeline
@@ -40,32 +40,30 @@ class Diagnoser():
                 'keywords' : [{
                         'name' : kwd,
                         'score' : score,
-                        'categories' : [cat
-                            for cat, kws in self.keyword_categories.items()
-                            if kwd in kws]
                     }
                     for kwd, score in scored_keywords
                     if score > 0 and kwd in base_keyword_dict],
                 'inferred_keywords' : [{
                         'name' : kwd,
                         'score' : score,
-                        'categories' : [cat 
-                            for cat, kws in self.keyword_categories.items()
-                            if kwd in kws]
                     }
                     for kwd, score in scored_keywords
                     if score > 0 and kwd not in base_keyword_dict]
             }
         return {
-            'keywords_found' : base_keyword_dict,
+            'keywords_found' : [
+                {
+                    'name' : keyword,
+                    'count' : count,
+                    'categories' : [cat 
+                            for cat, kws in self.keyword_categories.items()
+                            if keyword in kws]
+                }
+                for keyword, count in base_keyword_dict.items()
+            ],
             'diseases': [diagnosis(i,p) for i,p in self.best_guess(X)],
-            'features': [
-                d for d in extract_dates(content)
-            ] + [
-                count_object for count_object in extract_case_counts(content)
-            ] + [
-                count_object for count_object in extract_death_counts(content)
-            ] + [
+            'features': list(feature_extractors.extract_dates(content)) +\
+                list(feature_extractors.extract_counts(content)) + [
                 {
                     'type' : 'cluster',
                     'centroid' : cluster['centroid'],

@@ -46,6 +46,7 @@ def read_geonames(file_path):
         'Center',
         'As',
         'See',
+        'Valley',
         'University',
     ]
     with open(file_path, 'rb') as f:
