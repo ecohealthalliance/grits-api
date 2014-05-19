@@ -132,8 +132,8 @@ def extract_dates(text):
     year_re_str = r"(?P<year>\d{4})"
     promed_body_date_re = re.compile(day_re_str + r"\s" + month_re_str + r"\s" + year_re_str, re.I | re.M)
     promed_publication_date_re = re.compile(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})", re.I)
-    mdy_date_re = re.compile(r"(?P<monthname>" + '|'.join(monthnames) + r")" +
-        maybe(r'\s' + day_re_str) + maybe(r'\s' + year_re_str), re.I | re.M)
+    mdy_date_re = re.compile(r"\b(?P<monthname>" + '|'.join(monthnames) + r")" +
+        maybe(r'\s' + day_re_str) + maybe(r'\s' + year_re_str) + r"\b", re.I | re.M)
     date_info_dicts = []
     for match in itertools.chain( promed_body_date_re.finditer(text),
                                   mdy_date_re.finditer(text)

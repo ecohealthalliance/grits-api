@@ -1,8 +1,10 @@
 
 # coding: utf-8
 
-# ### Loading the resources from the corpora repository on the local file system.
-# This could take a few minutes...
+print """
+Loading the resources from the corpora repository on the local file system.
+This could take a few minutes...
+"""
 
 # In[4]:
 

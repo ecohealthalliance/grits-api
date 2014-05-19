@@ -7,6 +7,11 @@ from geopy.distance import great_circle
 import math
 import nltk
 
+def flatten(li):
+    for subli in li:
+        for it in subli:
+            yield it
+
 def parse_number(num, default):
     try:
         return int(num)
@@ -52,7 +57,7 @@ def read_geonames(file_path):
     with open(file_path, 'rb') as f:
         reader = unicodecsv.DictReader(f,
             fieldnames=fieldnames,
-            encoding='utf-8', delimiter='\t', quotechar='\"')
+            encoding='utf-8', delimiter='\t', quoting=csv.QUOTE_NONE)
         geoname_roa = []
         for d in reader:
             if d['name'] in omitted_geonames: continue
@@ -128,7 +133,7 @@ def ngrams(li, maxlen):
     Returns all the n-grams in li of length less than or equal to maxlen
     """
     if maxlen > 0:
-        for idx in range(len(li) - maxlen):
+        for idx in xrange(len(li) - maxlen + 1):
             yield li[idx:idx+maxlen]
         for ngram in ngrams(li, maxlen - 1):
             yield ngram
@@ -142,7 +147,7 @@ def compute_centroid(geoname_objects):
             'longitude' : sum(longs)/len(longs)
         }
     except:
-        print lats, longs
+        print geoname_objects
 class LocationExtractor():
     def __init__(self):
         #Loading geonames data may cause errors without this line:
@@ -185,10 +190,9 @@ class LocationExtractor():
             if matching_geonames:
                 if count > max_count:
                     max_count = count
-                for geoname in matching_geonames:
-                    # Additional geopoints are created for repeated geonames
-                    # to increase their weight when clustering them.
-                    found_geonames += [geoname] * (1 + count / 2)
+                # Additional geopoints are created for repeated geonames
+                # to increase their weight when clustering them.
+                found_geonames += matching_geonames * (1 + count / 2)
         
         if len(found_geonames) > 0:
             found_geopoints = [(g['latitude'], g['longitude']) for g in found_geonames]
@@ -198,12 +202,11 @@ class LocationExtractor():
             cluster_labels = DBSCAN(
                     #500 miles is the maximum distance between two samples
                     #for them to be considered as in the same neighborhood.
-                    eps=500,
-                    #min_samples=max(2, len(found_geopoints)/5),
+                    eps=400,
                     #The number of samples required to form a cluster is
                     #dependent on how many samples we have for the most
                     #repeated geoname.
-                    min_samples=max_count / 2,
+                    min_samples=1 + max_count / 2,
                     metric='precomputed'
                 ).fit(distance_matrix).labels_
             clusters = {k : [] for k in set(cluster_labels)}
@@ -214,17 +217,26 @@ class LocationExtractor():
                 cluster = clusters[cluster_id]
                 if geoname not in cluster:
                     cluster.append(geoname)
+            
+            class AnnotatedLocationDict(dict):
+                pass
+                    
+            # Keep track of the most likely locations for each name so we can
+            # filter the others out
+            most_likely_locations = {}
             for cluster_id, cluster in clusters.items():
-                # If a cluster contains more than one location with a given name
-                # the article probably only refers to one of them, so guess
-                # the one with the greatest population
-                most_populous_locations = {}
                 for location in cluster:
-                    if location['name'] in most_populous_locations:
-                        if most_populous_locations[location['name']]['population'] >= location['population']:
+                    name = location['name']
+                    annotated_location = AnnotatedLocationDict(location)
+                    annotated_location.liklyhood_score = (10 + len(cluster)) * location['population']
+                    annotated_location.cluster_id = cluster_id
+                    if name in most_likely_locations:
+                        if most_likely_locations[name].liklyhood_score >= annotated_location.liklyhood_score:
                             continue
-                    most_populous_locations[location['name']] = location
-                clusters[cluster_id] = most_populous_locations.values()
+                    most_likely_locations[name] = annotated_location
+            clusters = {k:[] for k in clusters.keys()}
+            for annotated_location in most_likely_locations.values():
+                clusters[annotated_location.cluster_id] += [annotated_location]
             if len(clusters) > 0:
                 min_cluster_size = min(5, max(map(len, clusters.values())))
                 return [
