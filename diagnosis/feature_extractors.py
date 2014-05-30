@@ -139,7 +139,7 @@ def extract_dates(text):
     year_re_str = r"(?P<year>\d{4})"
     promed_body_date_re = re.compile(r"\b" + day_re_str + r"\s(" + month_re_str + r'|' +
         month_abrev_re_str + r")\s" + year_re_str + r"\b", re.I | re.M)
-    promed_publication_date_re = re.compile(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})", re.I)
+    promed_publication_date_re = re.compile(r"\b(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})\b", re.I)
     mdy_date_re = re.compile(r"\b" + month_re_str +
         maybe(r'\s' + day_re_str) + maybe(r'\s' + year_re_str) + r"\b", re.I | re.M)
     #dmy_date_re = re.compile(r"\b" + day_re_str + r'\s' + month_re_str + r'\s' + year_re_str + r"\b", re.I | re.M)
