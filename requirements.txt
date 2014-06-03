@@ -12,3 +12,4 @@ flask
 unicodecsv
 geopy
 futures
+celery[mongodb]

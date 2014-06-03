@@ -34,6 +34,7 @@ class TestCountExtractor(unittest.TestCase):
     def test_misc(self):
         examples = {
             "1200 children between the ages of 2-5 are afflicted with a mystery illness" : 1200,
+            "These 2 new cases bring to 4 the number of people stricken in California this year [2012]." : 2,
         }
         for example, count in examples.items():
             self.assertEqual(extract_counts(example).next()['value'], count)
