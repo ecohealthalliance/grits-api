@@ -76,3 +76,41 @@ class LimitCounts():
         return { k : min(self.max_count, v) for k,v in in_dict.items() }
     def transform(self, keyword_count_dicts):
         return map(self.transform_one, keyword_count_dicts)
+
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lsa import LsaSummarizer as Summarizer
+#from sumy.summarizers.lex_rank import LexRankSummarizer as Summarizer
+from sumy.nlp.stemmers import Stemmer
+from sumy.utils import get_stop_words
+
+class Summarize():
+    def __init__(self, num_sentences=10):
+        self.num_sentences = num_sentences
+        stemmer = Stemmer("english")
+        self.summarizer = Summarizer(stemmer)
+        self.summarizer.stop_words = get_stop_words("english")
+    def fit(self, X, y):
+        pass
+    def transform_one(self, text):
+        parser = PlaintextParser.from_string(text, Tokenizer("english"))
+        try:
+            return ' '.join([unicode(s) for s in self.summarizer(parser.document, self.num_sentences)])
+        except ZeroDivisionError as e:
+            return text
+    def transform(self, texts):
+        return map(self.transform_one, texts)
+
+class RemoveSentences():
+    def __init__(self, stop_words=None):
+        if not stop_words:
+            stop_words = ['not']
+        self.regex = re.compile(r'(?<=[\.\n\A]).*?\b(' +\
+            r'|'.join(map(re.escape, stop_words)) +\
+            r')\b.*?[\.\n]', re.I | re.DOTALL)
+    def fit(self, X, y):
+        pass
+    def transform_one(self, text):
+        return self.regex.subn('', text)[0]
+    def transform(self, texts):
+        return map(self.transform_one, texts)

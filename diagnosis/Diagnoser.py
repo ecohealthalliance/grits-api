@@ -9,6 +9,7 @@ from sklearn.pipeline import Pipeline
 
 class Diagnoser():
     def __init__(self, classifier, dict_vectorizer,
+                 summarizer=None,
                  keyword_links=None,
                  keyword_categories=None, cutoff_ratio=0.65):
         self.classifier = classifier
@@ -21,7 +22,13 @@ class Diagnoser():
         self.keyword_processor = Pipeline(processing_pipeline)
         self.dict_vectorizer = dict_vectorizer
         self.keywords = dict_vectorizer.get_feature_names()
-        self.keyword_extractor = KeywordExtractor(self.keywords)
+        if summarizer:
+            self.keyword_extractor = Pipeline([
+                ('summ', summarizer),
+                ('kwe', KeywordExtractor(self.keywords))
+            ])
+        else:
+            self.keyword_extractor = KeywordExtractor(self.keywords)
         self.location_extractor = LocationExtractor()
         self.cutoff_ratio = cutoff_ratio
     def best_guess(self, X):

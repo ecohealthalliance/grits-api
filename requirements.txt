@@ -13,3 +13,4 @@ unicodecsv
 geopy
 futures
 celery[mongodb]
+sumy
