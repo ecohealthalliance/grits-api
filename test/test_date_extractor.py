@@ -13,3 +13,8 @@ class TestCountExtractor(unittest.TestCase):
             datetime(2014, 6, 23, 0, 0)
         ]))
     
+    def test_overlap(self):
+        dates = extract_dates("On 30 May 1966 Surveyor 1 was launched.")
+        self.assertSetEqual(set([d['value'] for d in dates]), set([
+            datetime(1966, 5, 30, 0, 0, 0)
+        ]))

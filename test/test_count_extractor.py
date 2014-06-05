@@ -6,7 +6,7 @@ class TestCountExtractor(unittest.TestCase):
 
     def test_verbal_counts(self):
         examples = {
-            "it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28" : 27,
+            "it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28" : 28,
             "The number of cases exceeds 30" : 30,
         }
         for example, count in examples.items():
@@ -26,8 +26,9 @@ class TestCountExtractor(unittest.TestCase):
             self.assertEqual(extract_counts(example).next()['value'], count)
     def test_death_counts(self):
         examples = {
+            "Nine patients died last week" : 9,
+            # This is a pattern lib problem, the 2 doesn't get tagged as a CD
             "Deaths: 2" : 2,
-            "Nine patients died last week" : 9
         }
         for example, count in examples.items():
             self.assertEqual(extract_counts(example).next()['value'], count)
