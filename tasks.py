@@ -104,5 +104,19 @@ def process_girder_resource(item_id=None):
                     'translationDate' : datetime.datetime.now(),
                     'translationService' : 'stored corpora translation'
                 }
+            else:
+                from mstranslate import MSTranslate
+                try:
+                    # TODO: This should be an EHA account
+                    translation_api = MSTranslate('grits_api', 't75FbdCCeHfdUufng27hFbtEzSmxQMbaUr7M3jq/0VY=')
+                    private['translation'] = {
+                        'english' : translation_api.translate(clean_content, 'en'),
+                        'translationDate' : datetime.datetime.now(),
+                        'translationService' : 'microsoft'
+                    }
+                except:
+                    private['translation'] = {
+                        'error' : 'Exception during translation.'
+                    }
     girder_db.item.update({'_id': item_id}, resource)
     return resource
