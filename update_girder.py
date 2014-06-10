@@ -9,7 +9,7 @@ if __name__ == "__main__":
     girder_db = pymongo.Connection('localhost')['girder']
     resources = girder_db.item.find({
         'meta.diagnosis' : {"$exists": False},
-        'private.scraped_data.unscrapable' : { '$ne' : True }
+        'private.scrapedData.unscrapable' : { '$ne' : True }
     }).batch_size(100)
     print "Resources to process:", resources.count()
     for idx, resource in enumerate(resources):

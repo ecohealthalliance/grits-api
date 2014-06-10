@@ -6,6 +6,7 @@ import feature_extractors
 from LocationExtractor import LocationExtractor
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import Pipeline
+import datetime
 
 class Diagnoser():
     def __init__(self, classifier, dict_vectorizer,
@@ -34,6 +35,8 @@ class Diagnoser():
         X = self.dict_vectorizer.transform(feature_dict)[0]
         def diagnosis(i, p):
             scores = self.classifier.coef_[i] * X
+            # Scores are normalized so they can be compared across different
+            # classifications.
             norm = np.linalg.norm(scores)
             if norm > 0:
                scores /= norm
@@ -56,6 +59,8 @@ class Diagnoser():
                     if score > 0 and kwd not in base_keyword_dict]
             }
         return {
+            'diagnoserVersion' : '0.0.0',
+            'dateOfDiagnosis' : datetime.datetime.now(),
             'keywords_found' : [
                 {
                     'name' : keyword,

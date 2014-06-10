@@ -5,6 +5,7 @@ import diagnosis
 import pymongo
 from celery import Celery
 import datetime
+from distutils.version import StrictVersion
 
 BROKER_URL = 'mongodb://localhost:27017/tasks'
 celery_tasks = Celery('tasks', broker=BROKER_URL)
@@ -23,34 +24,43 @@ def serialize_dates(obj):
 from diagnosis.Diagnoser import Diagnoser
 with open('diagnoser.p', 'rb') as f:
     my_diagnoser = pickle.load(f)
-    
+
+def rm_key(d, key):
+    if key in d:
+        d.pop(key)
+    return d
+
 @celery_tasks.task
-def diagnose_girder_resource(prev, item_id=None):
+def diagnose_girder_resource(prev_result=None, item_id=None):
     """
     Run the diagnostic classifiers/feature extractors
     on the girder item with the given id.
     """
     resource = girder_db.item.find_one(item_id)
-    clean_english_content = resource.get('private', {}).get('clean_content_en')
-    if clean_english_content:
-        diagnosis = my_diagnoser.diagnose(clean_english_content)
+    meta = resource['meta']
+    rm_key(meta, 'diagnosing')
+    
+    prev_diagnosis = resource.get('meta').get('diagnosis')
+    if prev_diagnosis and\
+       StrictVersion(prev_diagnosis.diagnoserVersion) >=\
+       StrictVersion(Diagnoser.__version__):
+        girder_db.item.update({'_id': item_id}, resource)
+        return resource
+    translation = resource.get('private', {}).get('translation')
+    if translation:
+        clean_english_content = translation.get('english')
     else:
-        diagnosis = { 'error' : 'No content available to diagnose.' }
-    diagnosis['apiVersion'] = '0.0.0'
-    diagnosis['dateOfDiagnosis'] = datetime.datetime.now() 
-    girder_db.item.update({'_id': item_id}, {
-        '$set': {
-            'meta.diagnosis' : diagnosis,
-        },
-        '$unset': {
-            'meta.diagnosing' : '',
-        }
-    })
+        clean_english_content = resource.get('private', {}).get('cleanContent')
+    if clean_english_content:
+        meta['diagnosis'] = my_diagnoser.diagnose(clean_english_content)
+    else:
+        meta['diagnosis'] = { 'error' : 'No content available to diagnose.' }
+    girder_db.item.update({'_id': item_id}, resource)
     return resource
 
 from corpora_shared.process_resources import extract_clean_content, attach_translations
 from corpora_shared import translation
-from corpora_shared.scrape import scrape
+import corpora_shared.scrape as scraper
 @celery_tasks.task
 def process_girder_resource(item_id=None):
     """
@@ -58,42 +68,41 @@ def process_girder_resource(item_id=None):
     Update the entry with the results, then update it with cleaned and 
     translated versions of the scraped content.
     """
+    # The version of this function
+    version = '0.0.1'
     resource = girder_db.item.find_one(item_id)
-    scraped_data = scrape(resource['meta']['link'])
-    if scraped_data.get('unscrapable'):
-        girder_db.item.update({'_id': item_id}, {
-            '$set': {
-                'private.scraped_data': scraped_data,
-            },
-            '$unset': {
-                'meta.processing' : '',
-                'meta.diagnosing' : '',
-            }
-        })
-        return
-    content = scraped_data['content']
+    private = resource['private'] = resource.get('private', {})
+    private['processorVersion'] = version
+    meta = resource['meta']
+    rm_key(meta, 'processing')
+    # Unset the diagnosis because the content might have changed.
+    rm_key(meta, 'diagnosis')
+    
+    prev_scraped_data = private.get('scrapedData')
+    if not prev_scraped_data or\
+       StrictVersion(prev_scraped_data['scraperVersion']) <\
+       StrictVersion(scraper.__version__):
+        private['scrapedData'] = scraper.scrape(resource['meta']['link'])
+    if private['scrapedData'].get('unscrapable'):
+        return resource
+    
+    content = private['scrapedData']['content']
     clean_content = extract_clean_content(content)
     if not clean_content:
-        girder_db.item.update({'_id': item_id}, {
-            '$set': {
-                'meta.error': "Could not clean content.",
-            },
-            '$unset': {
-                'meta.processing' : '',
-                'meta.diagnosing' : '',
-            }
-        })
-        return
-    clean_content_en = clean_content
+        meta['error'] = "Could not clean content."
+        girder_db.item.update({'_id': item_id}, resource)
+        return resource
+    private['cleanContent'] = clean_content
+    
     if not translation.is_english(clean_content):
-        clean_content_en = translation.get_translation(str(item_id))
-    girder_db.item.update({'_id': item_id}, {
-        '$set': {
-            'private.scraped_data': scraped_data,
-            'private.clean_content': clean_content,
-            'private.clean_content_en' : clean_content_en,
-        },
-        '$unset': {
-            'meta.processing' : '',
-        }
-    })
+        prev_translation = resource.get('private', {}).get('translation')
+        if not prev_translation:
+            clean_content_en = translation.get_translation(str(item_id))
+            if clean_content_en:
+                private['translation'] = {
+                    'english' : clean_content_en,
+                    'translationDate' : datetime.datetime.now(),
+                    'translationService' : 'stored corpora translation'
+                }
+    girder_db.item.update({'_id': item_id}, resource)
+    return resource
