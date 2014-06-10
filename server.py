@@ -3,11 +3,12 @@ import pickle
 import flask
 from flask import render_template, request
 
+from celery import chain
 import tasks
 
 import bson
 import pymongo
-db = pymongo.Connection('localhost', port=27017)['girder']
+girder_db = pymongo.Connection('localhost')['girder']
 
 import datetime
 def date_serializer(obj):
@@ -27,28 +28,27 @@ def diagnosis():
     data = request.values
     content = data.get('content')
     return json.dumps(my_diagnoser.diagnose(content), default=date_serializer)
-
-@app.route('/enqueue_diagnosis', methods = ['POST', 'GET'])
-def enqueue_diagnosis():
-    data = request.values.to_dict()
-    item_id = str(bson.ObjectId())
-    if 'link' in data:
-        for item in db.item.find({'meta.link': data['link']}):
-            return flask.jsonify(item)
-        db.item.insert({
-            '_id': item_id,
-            'diagnosing' : True,
-            'meta' : { 'link' : data['link'] }
+    
+@app.route('/enqueue_girder_diagnosis/<item_id>', methods = ['POST', 'GET'])
+def enqueue_diagnosis(item_id):
+    item_id = bson.ObjectId(item_id)
+    if girder_db.item.find_one(item_id):
+        girder_db.item.update({'_id':item_id}, {
+            '$set': {
+                'meta.processing' : True,
+                'meta.diagnosing' : True
+            }
         })
+        chain(
+            tasks.process_girder_resource.s(item_id=item_id),
+            tasks.diagnose_girder_resource.s(item_id=item_id)
+        )()
         return flask.jsonify(
-            _id=item_id,
-            task_id=tasks.scrape_and_diagnose.delay(data, item_id=item_id).id
+             success=True
         )
     else:
-        db.item.insert({'_id': item_id, 'diagnosing' : True})
         return flask.jsonify(
-            _id=item_id,
-            task_id=tasks.diagnose.delay(data, item_id=item_id).id
+             success=False
         )
 
 if __name__ == '__main__':
