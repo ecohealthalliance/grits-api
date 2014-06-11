@@ -22,8 +22,19 @@ def serialize_dates(obj):
         return obj
 
 from diagnosis.Diagnoser import Diagnoser
-with open('diagnoser.p', 'rb') as f:
-    my_diagnoser = pickle.load(f)
+with open('classifier.p') as f:
+    my_classifier = pickle.load(f)
+with open('dict_vectorizer.p') as f:
+    my_dict_vectorizer = pickle.load(f)
+with open('keyword_links.p') as f:
+    keyword_links = pickle.load(f)
+with open('keyword_sets.p') as f:
+    keyword_sets = pickle.load(f)
+my_diagnoser = Diagnoser(my_classifier,
+                         my_dict_vectorizer,
+                         keyword_links=keyword_links,
+                         keyword_categories=keyword_sets,
+                         cutoff_ratio=.7)
 
 def rm_key(d, key):
     if key in d:

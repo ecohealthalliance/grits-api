@@ -12,4 +12,8 @@ flask
 unicodecsv
 geopy
 futures
+supervisor
+boto
+python-dateutil
+tzlocal
 celery[mongodb]

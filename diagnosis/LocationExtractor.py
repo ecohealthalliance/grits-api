@@ -79,6 +79,9 @@ class LocationExtractor(sklearn.pipeline.Pipeline):
         'about'
     ])
     def __init__(self, geonames_collection=None):
+        # I'm using Mongo to import geonames because it is too big to fit in a
+        # python dictionary array, and the $in operator provides a fast way to
+        # search for all the ngrams in a document.
         if not geonames_collection:
             import pymongo
             db = pymongo.Connection('localhost', port=27017)['geonames']
