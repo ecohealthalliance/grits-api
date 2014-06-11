@@ -5,6 +5,7 @@ from sklearn.metrics.pairwise import pairwise_distances
 from geopy.distance import great_circle
 import math
 import nltk
+import config
 
 def geodistance_with_population(latLngPopA, latLngPopB):
     """
@@ -84,7 +85,7 @@ class LocationExtractor(sklearn.pipeline.Pipeline):
         # search for all the ngrams in a document.
         if not geonames_collection:
             import pymongo
-            db = pymongo.Connection('localhost', port=27017)['geonames']
+            db = pymongo.Connection(config.mongo_url)['geonames']
             geonames_collection = db.allCountries
         self.geonames_collection = geonames_collection
         

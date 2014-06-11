@@ -3,12 +3,13 @@ from boto.s3.connection import S3Connection, Location
 import datetime
 import os
 import pickle
+import config
 def get_pickle(filename):
     """
     Download the pickle from the AWS bucket if it's stale,
     save it in the workspace, and return the loaded data.
     """
-    conn = S3Connection('AKIAJCUHF3G7PGECFHOQ', 'hVHfuh4XmV6wzO1F92BgjSREJS1uqs5XCm2EACo+')
+    conn = S3Connection(config.aws_access_key, config.aws_secret_key)
     bucket = conn.get_bucket('classifier-data')
     k = bucket.get_key(filename)
     from dateutil import parser
@@ -17,7 +18,7 @@ def get_pickle(filename):
     if os.path.exists(filename):
         local_copy_time = datetime.datetime.fromtimestamp(os.path.getctime(filename))
     else:
-        local_copy_time = datetime.datetime(1,1,1)
+        local_copy_time = datetime.datetime.min
     remote_copy_time = parser.parse(k.last_modified)
     if tz.localize(local_copy_time) < remote_copy_time:
         print "Downloading", filename
@@ -26,6 +27,7 @@ def get_pickle(filename):
         result = pickle.load(f)
         print filename, "loaded"
         return result
+
 training_set = get_pickle('training.p')
 validation_set = get_pickle('validation.p')
 ontologies = get_pickle('ontologies.p')
@@ -201,8 +203,8 @@ print  set(DictVectorizer(sparse=False).fit(validation_feature_dicts).vocabulary
 
 #Training
 
-X_train, y_train, resources_train = get_features_and_classifications(train_feature_dicts, my_dict_vectorizer, training_set)
-X_validation, y_validation, resources_validation = get_features_and_classifications(validation_feature_dicts, my_dict_vectorizer, validation_set)
+feature_mat_train, labels_train, resources_train = get_features_and_classifications(train_feature_dicts, my_dict_vectorizer, training_set)
+feature_mat_validation, labels_validation, resources_validation = get_features_and_classifications(validation_feature_dicts, my_dict_vectorizer, validation_set)
 
 print "artlces we could extract keywords from:"
 print len(resources_validation), '/', len(validation_set)
@@ -210,7 +212,7 @@ print len(resources_validation), '/', len(validation_set)
 #Check for duplicate features:
 
 unique_features = {}
-for feature_a, resource_a in zip(X_train, resources_train):
+for feature_a, resource_a in zip(feature_mat_train, resources_train):
     for feature_b, resource_b in unique_features.items():
         if not all(feature_a == feature_b):
             print "Duplicate found:"
@@ -225,8 +227,8 @@ def flatten(li):
     for subli in li:
         for it in subli:
             yield it
-not_in_train = [y for y in flatten(y_validation) if (y not in flatten(y_train))]
-print len(not_in_train),'/',len(y_validation)
+not_in_train = [y for y in flatten(labels_validation) if (y not in flatten(labels_train))]
+print len(not_in_train),'/',len(labels_validation)
 print not_in_train
 
 from sklearn.multiclass import OneVsRestClassifier
@@ -248,7 +250,7 @@ my_classifier = OneVsRestClassifier(LogisticRegression(
     # class_weight='auto',
 ), n_jobs=-1)
 
-my_classifier.fit(X_train, y_train)
+my_classifier.fit(feature_mat_train, labels_train)
 
 # Pickle everything that will be needed for classification
 with open('classifier.p', 'wb') as f:
@@ -280,26 +282,26 @@ my_diagnoser = Diagnoser(my_classifier,
 print "macro average:"
 training_predictions = [
     tuple([my_diagnoser.classifier.classes_[i] for i, p in my_diagnoser.best_guess(X)])
-    for X in X_train
+    for X in feature_mat_train
 ]
 print "Training set:\nprecision: %s recall: %s f-score: %s" %\
-    sklearn.metrics.precision_recall_fscore_support(y_train, training_predictions, average='macro')[0:3]
+    sklearn.metrics.precision_recall_fscore_support(labels_train, training_predictions, average='macro')[0:3]
 
 predictions = training_predictions = [
     tuple([my_diagnoser.classifier.classes_[i] for i, p in my_diagnoser.best_guess(X)])
-    for X in X_validation
+    for X in feature_mat_validation
 ]
-prfs = sklearn.metrics.precision_recall_fscore_support(y_validation, predictions)
+prfs = sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions)
 print "Validation set:\nprecision: %s recall: %s f-score: %s" %\
-    sklearn.metrics.precision_recall_fscore_support(y_validation, predictions, average='macro')[0:3]
+    sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions, average='macro')[0:3]
 print "micro average:"
 print "precision: %s recall: %s f-score: %s" %\
-    sklearn.metrics.precision_recall_fscore_support(y_validation, predictions, average='micro')[0:3]
+    sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions, average='micro')[0:3]
 
 print "Which classes are we performing poorly on?"
 
-labels = list(set(flatten(y_validation)) | set(flatten(predictions)))
-prfs = sklearn.metrics.precision_recall_fscore_support(y_validation, predictions, labels=labels)
+labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
+prfs = sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions, labels=labels)
 for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
     print cl
     print "precision:",p,"recall",r,"F-score:",f,"support:",s

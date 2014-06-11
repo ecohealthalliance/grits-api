@@ -3,6 +3,7 @@ lxml
 pymongo
 beautifulsoup
 goose-extractor
+readability-lxml
 beautifulsoup4
 pattern
 numpy

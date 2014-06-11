@@ -6,20 +6,11 @@ import pymongo
 from celery import Celery
 import datetime
 from distutils.version import StrictVersion
+import config
 
-BROKER_URL = 'mongodb://localhost:27017/tasks'
-celery_tasks = Celery('tasks', broker=BROKER_URL)
-girder_db = pymongo.Connection('localhost')['girder']
-
-def serialize_dates(obj):
-    if isinstance(obj, dict):
-        return { k: serialize_dates(v) for k, v in obj.items() }
-    elif isinstance(obj, list):
-        return map(serialize_dates, obj)
-    elif isinstance(obj, datetime.datetime):
-        return obj.isoformat()
-    else:
-        return obj
+celery_tasks = Celery('tasks', broker=config.BROKER_URL)
+db_handle = pymongo.Connection(config.mongo_url)
+girder_db = db_handle['girder']
 
 from diagnosis.Diagnoser import Diagnoser
 with open('classifier.p') as f:

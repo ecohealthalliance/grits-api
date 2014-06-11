@@ -3,19 +3,26 @@ import pickle
 import flask
 from flask import render_template, request
 
+import config
+
 from celery import chain
 import tasks
 
 import bson
 import pymongo
-girder_db = pymongo.Connection('localhost')['girder']
+girder_db = pymongo.Connection(config.mongo_url)['girder']
 
 import datetime
-def date_serializer(obj):
+def my_serializer(obj):
+    """
+    Serializes dates, ObjectIds and potentially other useful things
+    """
     if isinstance(obj, datetime.datetime):
         return obj.isoformat()
+    if isinstance(obj, bson.ObjectId):
+        return str(obj)
     else:
-        raise TypeError()
+        raise TypeError(obj)
 
 from diagnosis.Diagnoser import Diagnoser
 with open('classifier.p') as f:
@@ -38,7 +45,7 @@ app = flask.Flask(__name__)
 def diagnosis():
     data = request.values
     content = data.get('content')
-    return json.dumps(my_diagnoser.diagnose(content), default=date_serializer)
+    return json.dumps(my_diagnoser.diagnose(content), default=my_serializer)
     
 @app.route('/enqueue_girder_diagnosis/<item_id>', methods = ['POST', 'GET'])
 def enqueue_diagnosis(item_id):
