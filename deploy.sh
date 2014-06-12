@@ -1,8 +1,10 @@
 #!/bin/bash
-workon venv
+export WORKON_HOME=~/Envs
+source /usr/local/bin/virtualenvwrapper.sh
+workon grits_api_env
 pip install -r requirements.txt
-python deploy.py
+python deploy_helper.py
 python train.py
 supervisorctl update
 supervisorctl restart celery
-detach
+deactivate

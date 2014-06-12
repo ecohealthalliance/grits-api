@@ -1,3 +1,6 @@
+"""
+This contains any python code that needs to run during deployment.
+"""
 import nltk
 nltk.download([
     'maxent_ne_chunker',

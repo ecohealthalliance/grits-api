@@ -1,6 +1,8 @@
 GRITS API Set-up
 ================
 
+From the directory you clone this repository into do the following:
+
     # create a config file
     cp config.sample.py config.py
     pico config.py
