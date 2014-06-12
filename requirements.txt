@@ -3,6 +3,7 @@ lxml
 pymongo
 beautifulsoup
 goose-extractor
+readability-lxml
 beautifulsoup4
 pattern
 numpy
@@ -12,3 +13,8 @@ flask
 unicodecsv
 geopy
 futures
+supervisor
+boto
+python-dateutil
+tzlocal
+celery[mongodb]

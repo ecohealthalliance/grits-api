@@ -58,7 +58,7 @@ def parse_spelled_number(tokens):
                     return numbers[t]
                 else:
                     return t
-    cleaned_tokens = [clean_token(t) for t in tokens if t != 'and']
+    cleaned_tokens = [clean_token(t) for t in tokens if t not in ['and', 'or']]
     numeric_tokens = map(parse_token, cleaned_tokens)
     if any(filter(lambda t: isinstance(t, basestring), numeric_tokens)) or len(numeric_tokens) == 0:
         print 'Error: Could not parse number: ' + unicode(tokens)
@@ -86,6 +86,9 @@ def extract_counts(text):
     #Case counts
     tree = pattern.en.parsetree(text, lemmata=True)
     matches = pattern.search.search('{CD+ CC? CD?} NP? PATIENT|CASE|INFECTION', tree, taxonomy=my_taxonomy)
+    #Ex: it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28
+    #Ex: The number of cases has exceeded 30
+    matches += pattern.search.search('NUMBER OF PATIENT|CASE|INFECTION *? *? *? *? *? *? *? (VP|TO) {CD+ CC? CD?}', tree, taxonomy=my_taxonomy)
     matches += pattern.search.search('DEATHS :? {CD+}', tree, taxonomy=my_taxonomy)
     for m in matches:
         n = parse_spelled_number([s.string for s in m.group(1)])
@@ -97,6 +100,7 @@ def extract_counts(text):
             }
     #Hospitalizations
     matches = pattern.search.search('{CD+ CC? CD?} NP? HOSPITALIZED', tree, taxonomy=my_taxonomy)
+    #Ex: 222 were admitted to hospitals with symptoms of diarrhea
     matches += pattern.search.search('{CD+ CC? CD?} NP? VP TO? HOSPITAL', tree, taxonomy=my_taxonomy)
     for m in matches:
         n = parse_spelled_number([s.string for s in m.group(1)])
@@ -119,24 +123,33 @@ def extract_counts(text):
             }
 
 def extract_dates(text):
+    # I tried this package but the results weren't great.
+    # https://code.google.com/p/nltk/source/browse/trunk/nltk_contrib/nltk_contrib/timex.py
+    # I also tried HeidelTime, but I don't think it provides enough of an improvement
+    # to make up for the added dependencies (Java, GPL). 
+    # The nice the about HeidelTime is that it extracts a lot of additional information.
+    # For instance, it can extract intervals and vague time references like "currently" or "recently". 
     def maybe(text_re):
         return r"(" + text_re + r")?"
-    #We could try this instead: https://code.google.com/p/nltk/source/browse/trunk/nltk_contrib/nltk_contrib/timex.py
-    #I'm not using daynames because they aren't used in the typical promed format.
-    #If daynames do provide information it will be hard to parse it,
-    #as they are ambiguous if they are not relative to another date.
     monthnames = "january february march april may june july august september october november december".split(" ")
     monthabrev = [s.lower() for s in "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ")]
-    month_re_str = r"((?P<monthabrev>" + '|'.join(monthabrev) + r")|(?P<monthname>" + '|'.join(monthnames) + r"))"
+    month_re_str = r"(?P<monthname>" + '|'.join(monthnames) + r")"
+    month_abrev_re_str = r"(?P<monthabrev>" + '|'.join(monthabrev) + r")"
     day_re_str = r"(?P<day>\d{1,2})(st|nd|rd|th)?"
     year_re_str = r"(?P<year>\d{4})"
-    promed_body_date_re = re.compile(day_re_str + r"\s" + month_re_str + r"\s" + year_re_str, re.I | re.M)
-    promed_publication_date_re = re.compile(r"(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})", re.I)
-    mdy_date_re = re.compile(r"\b(?P<monthname>" + '|'.join(monthnames) + r")" +
+    promed_body_date_re = re.compile(r"\b" + day_re_str + r"\s(" + month_re_str + r'|' +
+        month_abrev_re_str + r")\s" + year_re_str + r"\b", re.I | re.M)
+    promed_publication_date_re = re.compile(r"\b(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})\b", re.I)
+    # Amy suggested using a negative look behind to avoid overlapping matching with the other date re.
+    # Look behind expressions require a fixed width.
+    mdy_date_re = re.compile(r"(?<!(\d|\s)\d\s)\b" + month_re_str +
         maybe(r'\s' + day_re_str) + maybe(r'\s' + year_re_str) + r"\b", re.I | re.M)
+    #dmy_date_re = re.compile(r"\b" + day_re_str + r'\s' + month_re_str + r'\s' + year_re_str + r"\b", re.I | re.M)
     date_info_dicts = []
+    matches = []
     for match in itertools.chain( promed_body_date_re.finditer(text),
-                                  mdy_date_re.finditer(text)
+                                  mdy_date_re.finditer(text),
+                                  promed_publication_date_re.finditer(text)
                                 ):
         date_info = {}
         for k, v in match.groupdict().items():
@@ -149,18 +162,28 @@ def extract_dates(text):
             else:
                 date_info[k] = int(v)
         date_info_dicts.append(date_info)
+        matches.append(match)
     probable_year = datetime.datetime.now().year
     years = [d['year'] for d in date_info_dicts if 'year' in d]
     if len(years) > 0:
         probable_year = int(sum(years) / len(years))
-    for date_info in date_info_dicts:
+    for date_info, match in zip(date_info_dicts, matches):
         datetime_args = {'day':1, 'year':probable_year}
         datetime_args.update(date_info)
-        yield {
-            'type' : 'datetime',
-            'dateInformation' : date_info,
-            'value' : datetime.datetime(**datetime_args),
-            'startOffset' : match.start(),
-            'endOffset' : match.end(),
-            'text' : text[match.start():match.end()]
-        }
+        try:
+            value = datetime.datetime(**datetime_args)
+            yield {
+                'type' : 'datetime',
+                'dateInformation' : date_info,
+                'value' : datetime.datetime(**datetime_args),
+                'startOffset' : match.start(),
+                'endOffset' : match.end(),
+                'text' : text[match.start():match.end()]
+            }
+        except ValueError:
+            # This can happen if there are incorrect dates in a document (e.g. April 31st)
+            print "Could not parse date:"
+            print text[max(0, match.start()-100):match.start()]
+            print '>', text[match.start():match.end()], '<'
+            print datetime_args
+            print text[match.end():match.end()+100]
