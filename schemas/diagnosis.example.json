@@ -1,13 +1,18 @@
 {
+  "sourceDocumentId" : "123asdf",
+  "published" : true,
   "keywords_found": [
     {
-      "count": 1,
       "name": "fever",
       "categories": [
         "biocaster/symptoms",
         "doid/has_symptom",
         "pm/symptom",
         "symp/symptoms"
+      ],
+      "textOffsets" : [
+        [0,21],
+        [77,94]
       ]
     }
   ],
@@ -38,7 +43,11 @@
           "dem": "56",
           "latitude": 47.60621,
           "asciiname": "Seattle",
-          "_id": "5387309d2594c43dbdd98711"
+          "_id": "5387309d2594c43dbdd98711",
+          "textOffsets" : [
+            [0,21],
+            [77,94]
+          ]
         },
         {
           "dateInformation": {
@@ -53,7 +62,9 @@
           "type": "datetime"
         }, {
           "text": "33 new patients",
-          "type": "caseCount"
+          "type": "caseCount",
+          "startOffset": 180,
+          "endOffset": 195,
         }
       ]
     }

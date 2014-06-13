@@ -11,6 +11,7 @@
       "translationDate": "2014-06-10T21:17:29.386Z",
       "english": "\n������������������������������������������������������������������\n\n\n"
     },
+    "error": "Could not clean content.",
     "cleanContent": "\n������������������������������������������������������������������\n\n\n",
     "scrapedData": {
       "content": "<html><body><div><div class=\"mod-left Tzbjb-Article-QQ\" id=\"Tzbjb-Article-QQ\" bosszone=\"tzbjb\">\n<div class=\"innerBox\"><p>..."
@@ -29,10 +30,6 @@
     "longitude": -77,
     "date": "2012-07-10T17:30:32Z",
     "link": "http://news.google.com/news/url?sa=t&fd=R&usg=AFQjCNHDINQbULDrBdpzdF2j4WVBWPeQ4A&url=http://news.qq.com/a/20120711/000150.htm",
-    "diagnosis": {
-      "$ref": "diagnosis.example.json"
-    },
-    "error": "Could not clean content.",
     "latitude": 20.25,
     "species": "Humans"
   },

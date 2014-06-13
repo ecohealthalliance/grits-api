@@ -3,14 +3,15 @@
   "updated": "2014-03-21T22:09:27.863Z",
   "folderId": "$user_submission_folder",
   "created": "2014-03-21T22:09:27.733Z",
+  "published" : true,
   "private": {
-    "content" : "If the user submits text rather than a link we could keep in here."
+    "content" : "If the user submits text rather than a link we could keep in here.",
+    "error": "Could not clean content."
   },
   "name": "11968960000",
   "meta": {
     "link": "http://news.google.com/news/url?sa=t&fd=R&usg=AFQjCNHDINQbULDrBdpzdF2j4WVBWPeQ4A&url=http://news.qq.com/a/20120711/000150.htm",
-    "diagnosis": {},
-    "error": "Could not clean content."
+    "diagnosis": {}
   },
   "creatorId": "$user_id?",
   "size": 0
