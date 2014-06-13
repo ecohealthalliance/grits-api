@@ -18,6 +18,9 @@ cd ..
 # install python dependencies
 pip install --requirement requirements.txt
 
+# install other python deps
+pip install requests dateutil
+
 # install grunt globally (or modify $PATH)
 npm install -g grunt
 
@@ -61,5 +64,63 @@ chmod +x start_girder.sh
 
 # start up girder now
 ./start_girder.sh &
+
+# either start up girder in a browser or run the following
+# to create the grits user and enable the grits plugin
+python <<EOF
+import requests
+
+url = 'https://grits.ecohealth.io/gritsdb/api/v1'
+
+passwd = 'rtKUQynf'  # should be changed
+
+# do initialization of girder for healthmap import
+# create main grits user
+resp = requests.post(
+    url + '/user',
+    params={
+        'login': 'grits',
+        'password': passwd,
+        'firstName': 'grits',
+        'lastName': 'grits',
+        'email': 'grits@not-an-email.com'
+    },
+    verify=False
+)
+
+# login as grits user (or as an admin)
+resp = requests.get(
+    url + '/user/authentication',
+    auth=('grits', passwd),
+    verify=False
+)
+
+token = resp.json()['authToken']['token']
+
+# enable grits plugin
+resp = requests.put(
+    url + '/system/plugins',
+    params={
+        'plugins': '["grits"]',
+        'token': token
+    }
+)
+EOF
+
+# now we have to restart girder to enable the plugin
+kill %1
+./start_girder.sh &
+
+# now hit the grits api to initialize the database
+curl https://grits.ecohealth.io/gritsdb/api/v1/resource/grits
+
+# At this point everything is ready to start importing the healthmap data.
+# To import the last day, use the script in this repo `healthMapGirder.py`:
+
+# PYTHONPATH=/opt/girder HEALTHMAP_APIKEY=<put api key here> python healthMapGirder.py --day
+
+# for a full two year import:
+
+# PYTHONPATH=/opt/girder HEALTHMAP_APIKEY=<put api key here> python healthMapGirder.py --full
 
 
