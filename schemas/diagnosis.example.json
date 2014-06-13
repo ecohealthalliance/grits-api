@@ -1,0 +1,80 @@
+{
+  "keywords_found": [
+    {
+      "count": 1,
+      "name": "fever",
+      "categories": [
+        "biocaster/symptoms",
+        "doid/has_symptom",
+        "pm/symptom",
+        "symp/symptoms"
+      ]
+    }
+  ],
+  "features": [
+    {
+      "centroid": {
+        "latitude": 47.60621,
+        "longitude": -122.33207
+      },
+      "type": "cluster",
+      "locations": [
+        {
+          "admin1 code": "WA",
+          "elevation": 56,
+          "country code": "US",
+          "feature code": "PPLA2",
+          "population": 608660,
+          "timezone": "America/Los_Angeles",
+          "admin2 code": "033",
+          "admin3 code": "",
+          "name": "Seattle",
+          "geonameid": "5809844",
+          "lemmatized_name": "seattle",
+          "admin4 code": "",
+          "longitude": -122.33207,
+          "cc2": "",
+          "feature class": "P",
+          "dem": "56",
+          "latitude": 47.60621,
+          "asciiname": "Seattle",
+          "_id": "5387309d2594c43dbdd98711"
+        },
+        {
+          "dateInformation": {
+            "year": 2001,
+            "day": 22,
+            "month": 3
+          },
+          "value": "2001-03-22T00:00:00",
+          "startOffset": 19,
+          "endOffset": 32,
+          "text": "22 March 2001",
+          "type": "datetime"
+        }, {
+          "text": "33 new patients",
+          "type": "caseCount"
+        }
+      ]
+    }
+  ],
+  "dateOfDiagnosis": "2014-06-12T21:07:23.396365",
+  "diagnoserVersion": "0.0.0",
+  "diseases": [
+    {
+      "keywords": [],
+      "inferred_keywords": [
+        {
+          "score": 0.05539227791116875,
+          "name": "neurological and physiological symptom"
+        },
+        {
+          "score": 0.21453468078048757,
+          "name": "pyrexia"
+        }
+      ],
+      "name": "Fever",
+      "probability": 0.22184394226308848
+    }
+  ]
+}

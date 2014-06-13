@@ -1,0 +1,41 @@
+{
+  "_id": "532cb897f99fe75cf5387dfc",
+  "updated": "2014-03-21T22:09:27.863Z",
+  "folderId": "532c66cdf99fe75cf53758f7",
+  "description": "Cuban officials said the cholera outbreak in the basic control has caused three deaths - Tencent",
+  "created": "2014-03-21T22:09:27.733Z",
+  "private": {
+    "processorVersion": "0.0.1",
+    "translation": {
+      "translationService": "microsoft",
+      "translationDate": "2014-06-10T21:17:29.386Z",
+      "english": "\n������������������������������������������������������������������\n\n\n"
+    },
+    "cleanContent": "\n������������������������������������������������������������������\n\n\n",
+    "scrapedData": {
+      "content": "<html><body><div><div class=\"mod-left Tzbjb-Article-QQ\" id=\"Tzbjb-Article-QQ\" bosszone=\"tzbjb\">\n<div class=\"innerBox\"><p>..."
+      "scraperVersion": "0.0.0",
+      "sourceUrl": "http://news.qq.com/a/20120711/000150.htm",
+      "scrapeDate": "2014-06-10T21:17:27.502Z"
+    }
+  },
+  "name": "11968960000",
+  "meta": {
+    "feed": "Google 资讯",
+    "rating": 5,
+    "description": " 古巴官方称霍乱 疫情 得到基本控制已致3人死亡 腾讯网 关于本次霍乱 疫情 爆发的原因，古巴公共卫生部的这名官员说，很可能是有人将 疫情 从海地带回古巴。据了解，自从海地2010年发生大地震并爆发霍乱 疫情 以来，有数百名古巴医疗工作者在海地工作，在古巴 ... 更多 » ",
+    "country": "Cuba",
+    "disease": "Cholera",
+    "longitude": -77,
+    "date": "2012-07-10T17:30:32Z",
+    "link": "http://news.google.com/news/url?sa=t&fd=R&usg=AFQjCNHDINQbULDrBdpzdF2j4WVBWPeQ4A&url=http://news.qq.com/a/20120711/000150.htm",
+    "diagnosis": {
+      "$ref": "diagnosis.example.json"
+    },
+    "error": "Could not clean content.",
+    "latitude": 20.25,
+    "species": "Humans"
+  },
+  "creatorId": "532c6649f99fe75cf53758f2",
+  "size": 0
+}
