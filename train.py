@@ -18,7 +18,10 @@ def get_pickle(filename):
     if os.path.exists(filename):
         local_copy_time = datetime.datetime.fromtimestamp(os.path.getctime(filename))
     else:
-        local_copy_time = datetime.datetime.min
+        # This datetime that should always be before the remote copy timestamp.
+        # However, if it is too close to datetime min it can't be
+        # localized in some timezones.
+        local_copy_time = datetime.datetime(1,2,3)
     remote_copy_time = parser.parse(k.last_modified)
     if tz.localize(local_copy_time) < remote_copy_time:
         print "Downloading", filename

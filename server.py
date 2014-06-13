@@ -70,4 +70,8 @@ def enqueue_diagnosis(item_id):
         )
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-debug', action='store_true')
+    args = parser.parse_args()
+    app.run(host='0.0.0.0', debug=args.debug)
