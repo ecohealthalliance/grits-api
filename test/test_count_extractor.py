@@ -11,6 +11,15 @@ class TestCountExtractor(unittest.TestCase):
         }
         for example, count in examples.items():
             self.assertEqual(extract_counts(example).next()['value'], count)
+            
+    def test_count_offsets(self):
+        examples = {
+            "The ministry of health reports seventy five new patients were admitted" : "seventy five"
+        }
+        for example, count_text in examples.items():
+            expected_offset = [example.find(count_text), example.find(count_text) + len(count_text)]
+            self.assertListEqual(extract_counts(example).next()['textOffsets'], expected_offset)
+            
     def test_hospital_counts(self):
         examples = {
             "222 were admitted to hospitals with symptoms of diarrhea" : 222,

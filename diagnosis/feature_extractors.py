@@ -83,44 +83,44 @@ def extract_counts(text):
     if not my_taxonomy:
         my_taxonomy = pattern.search.Taxonomy()
         my_taxonomy.append(pattern.search.WordNetClassifier())
-    #Case counts
     tree = pattern.en.parsetree(text, lemmata=True)
-    matches = pattern.search.search('{CD+ CC? CD?} NP? PATIENT|CASE|INFECTION', tree, taxonomy=my_taxonomy)
-    #Ex: it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28
-    #Ex: The number of cases has exceeded 30
-    matches += pattern.search.search('NUMBER OF PATIENT|CASE|INFECTION *? *? *? *? *? *? *? (VP|TO) {CD+ CC? CD?}', tree, taxonomy=my_taxonomy)
-    matches += pattern.search.search('DEATHS :? {CD+}', tree, taxonomy=my_taxonomy)
-    for m in matches:
-        n = parse_spelled_number([s.string for s in m.group(1)])
-        if n is not None:
-            yield {
-                'type' : 'caseCount',
-                'value' : n,
-                'text' : m.string
-            }
-    #Hospitalizations
-    matches = pattern.search.search('{CD+ CC? CD?} NP? HOSPITALIZED', tree, taxonomy=my_taxonomy)
-    #Ex: 222 were admitted to hospitals with symptoms of diarrhea
-    matches += pattern.search.search('{CD+ CC? CD?} NP? VP TO? HOSPITAL', tree, taxonomy=my_taxonomy)
-    for m in matches:
-        n = parse_spelled_number([s.string for s in m.group(1)])
-        if n is not None:
-            yield {
-                'type' : 'hospitalizationCount',
-                'value' : n,
-                'text' : m.string
-            }
-    #Deaths
-    matches = pattern.search.search('{CD+ CC? CD?} NP? DIED|DEATHS|FATALITIES|KILLED', tree, taxonomy=my_taxonomy)
-    matches += pattern.search.search('DEATHS :? {CD+}', tree, taxonomy=my_taxonomy)
-    for m in matches:
-        n = parse_spelled_number([s.string for s in m.group(1)])
-        if n is not None:
-            yield {
-                'type' : 'deathCount',
-                'value' : n,
-                'text' : m.string
-            }
+    def yield_search_results(patterns, **args):
+        matches = []
+        for p in patterns:
+            matches += pattern.search.search(p, tree, taxonomy=my_taxonomy)
+        for m in matches:
+            n = parse_spelled_number([s.string for s in m.group(1)])
+            if n is not None:
+                start_offset = text.find(m.string)
+                yield dict({
+                    'value' : n,
+                    'text' : m.group(1).string,
+                    'textOffsets' : [start_offset, start_offset + len(m.group(1).string)]
+                }, **args)
+    
+    for x in yield_search_results([
+            '{CD+ CC? CD?} NP? PATIENT|CASE|INFECTION',
+            #Ex: it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28
+            #Ex: The number of cases has exceeded 30
+            'NUMBER OF PATIENT|CASE|INFECTION *? *? *? *? *? *? *? (VP|TO) {CD+ CC? CD?}'
+        ],
+        type='caseCount'):
+        yield x
+    
+    for x in yield_search_results([
+            '{CD+ CC? CD? CD?} NP? DIED|DEATHS|FATALITIES|KILLED',
+            'DEATHS :? {CD+}'
+        ],
+        type='deathCount'):
+        yield x
+    
+    for x in yield_search_results([
+            '{CD+ CC? CD?} NP? HOSPITALIZED',
+            #Ex: 222 were admitted to hospitals with symptoms of diarrhea
+            '{CD+ CC? CD?} NP? VP TO? HOSPITAL'
+        ],
+        type='hospitalizationCount'):
+        yield x
 
 def extract_dates(text):
     # I tried this package but the results weren't great.
@@ -176,8 +176,7 @@ def extract_dates(text):
                 'type' : 'datetime',
                 'dateInformation' : date_info,
                 'value' : datetime.datetime(**datetime_args),
-                'startOffset' : match.start(),
-                'endOffset' : match.end(),
+                'textOffsets' : [[match.start(),match.end()]],
                 'text' : text[match.start():match.end()]
             }
         except ValueError:
