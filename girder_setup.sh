@@ -123,4 +123,16 @@ curl https://grits.ecohealth.io/gritsdb/api/v1/resource/grits
 
 # PYTHONPATH=/opt/girder HEALTHMAP_APIKEY=<put api key here> python healthMapGirder.py --full
 
+# To run the script automatically every day, you can create a script in /etc/cron.daily.
+# (make sure the script name does not contain any '.' characters, otherwise cron will
+# ignore them.  This is what I did for grits.ecohealth.io:
 
+cat > /etc/cron.daily/hmapImportDay <<EOF
+#!/bin/bash
+
+cd /home/ubuntu/healthMap
+HEALTHMAP_APIKEY=<...> PYTHONPATH=/opt/girder python healthMapGirder.py --twoday &> /var/log/hmapLastImport.log
+EOF
+chmod +x /etc/cron.daily/hmapImportDay
+
+# This runs a two day import every day just to make sure it gets the full days data.
