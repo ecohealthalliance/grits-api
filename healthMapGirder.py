@@ -20,7 +20,6 @@ def loadConfig():
         raise Exception("HEALTHMAP_APIKEY is not set.")
     config = {
         'girderUsername': 'grits',
-        'girderRoot': 'http://localhost:8080/api/v1',
         'girderCollectionName': 'healthMap',
         'healthMapRoot': 'http://healthmap.org/HMapi.php',
         'healthMapDayFMT': '%Y-%m-%d',
