@@ -35,7 +35,10 @@
     "date": "2012-07-10T17:30:32Z",
     "link": "http://news.google.com/news/url?sa=t&fd=R&usg=AFQjCNHDINQbULDrBdpzdF2j4WVBWPeQ4A&url=http://news.qq.com/a/20120711/000150.htm",
     "latitude": 20.25,
-    "species": "Humans"
+    "species": "Humans",
+    "diagnosis": {
+       "$ref": "diagnosis.example.json"
+    }
   },
   "creatorId": "532c6649f99fe75cf53758f2",
   "size": 0
