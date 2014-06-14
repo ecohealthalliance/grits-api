@@ -15,7 +15,7 @@ From the directory you clone this repository into do the following:
     mkdir celery
     mkdir supervisord
     # Some system packages that will be required
-    sudo apt-get install libapache2-mod-wsgi lib32z1-dev mongodb-server
+    sudo apt-get install lib32z1-dev mongodb-server
     sudo apt-get install zip unzip
     # Import geonames for the location extractor
     ./import-geonames.sh
