@@ -1,5 +1,5 @@
 {
-  "sourceDocumentId" : "123asdf",
+  "itemId" : "123asdf",
   "published" : true,
   "keywords_found": [
     {
@@ -56,15 +56,13 @@
             "month": 3
           },
           "value": "2001-03-22T00:00:00",
-          "startOffset": 19,
-          "endOffset": 32,
+          "textOffsets": [[19, 32]]
           "text": "22 March 2001",
           "type": "datetime"
         }, {
           "text": "33 new patients",
           "type": "caseCount",
-          "startOffset": 180,
-          "endOffset": 195,
+          "textOffsets": [[180, 195]]
         }
       ]
     }
