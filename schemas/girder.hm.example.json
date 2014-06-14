@@ -9,12 +9,16 @@
     "translation": {
       "translationService": "microsoft",
       "translationDate": "2014-06-10T21:17:29.386Z",
+      "error": "We ran out of free translations.",
       "english": "\n������������������������������������������������������������������\n\n\n"
     },
-    "error": "Could not clean content.",
-    "cleanContent": "\n������������������������������������������������������������������\n\n\n",
+    "cleanContent": {
+      "content": "\n������������������������������������������������������������������\n\n\n",
+      "error": "Could not clean content."
+    },
     "scrapedData": {
       "content": "<html><body><div><div class=\"mod-left Tzbjb-Article-QQ\" id=\"Tzbjb-Article-QQ\" bosszone=\"tzbjb\">\n<div class=\"innerBox\"><p>..."
+      "error": "404",
       "scraperVersion": "0.0.0",
       "sourceUrl": "http://news.qq.com/a/20120711/000150.htm",
       "scrapeDate": "2014-06-10T21:17:27.502Z"
