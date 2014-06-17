@@ -15,10 +15,13 @@ From the directory you clone this repository into do the following:
     mkdir celery
     mkdir supervisord
     # Some system packages that will be required
-    sudo apt-get install lib32z1-dev mongodb-server
-    sudo apt-get install zip unzip
+    sudo apt-get install lib32z1-dev zip unzip libxml2-dev libxslt1-dev
+    pip install -r requirements.txt
+    supervisord -c supervisord.conf
+    # Install mongodb if it's not present
+    # sudo apt-get install mongodb-server
     # Import geonames for the location extractor
-    ./import-geonames.sh
+    ./import_geonames.sh
     # This script does the rest. Rerun it to update when the code changes.
     ./deploy.sh
 
