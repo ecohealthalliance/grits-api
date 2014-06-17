@@ -41,10 +41,26 @@ my_diagnoser = Diagnoser(my_classifier,
     
 app = flask.Flask(__name__)
 
+def get_values():
+    """
+    Return a dict with the request values, even if there is not mimetype.
+    """
+    if len(request.values) > 0:
+        return request.values.to_dict()
+    elif len(request.data) > 0:
+        # data Contains the incoming request data as string if it came with a
+        # mimetype Flask does not handle,
+        # which happens when we get meteor posts from the diagnostic dashboard.
+        return json.loads(request.data)
+    return {}
+
+@app.route('/test', methods = ['POST', 'GET'])
+def test():
+    return str(get_values())
+
 @app.route('/diagnose', methods = ['POST', 'GET'])
 def diagnosis():
-    data = request.values
-    content = data.get('content')
+    content = get_values().get('content')
     return json.dumps(my_diagnoser.diagnose(content), default=my_serializer)
     
 @app.route('/enqueue_girder_diagnosis/<item_id>', methods = ['POST', 'GET'])
