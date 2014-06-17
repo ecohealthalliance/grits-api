@@ -3,6 +3,14 @@ import datetime
 import pattern.search, pattern.en
 import itertools
 
+def parse_number(t):
+    try:
+        return int(t)
+    except ValueError:
+        try:
+            return float(t)
+        except ValueError:
+            return None
 def parse_spelled_number(tokens):
     numbers = {
         'zero':0,
@@ -48,16 +56,12 @@ def parse_spelled_number(tokens):
         t = affix.sub(r'\1', t)
         return t.lower()
     def parse_token(t):
-        try:
-            return int(t)
-        except ValueError:
-            try:
-                return float(t)
-            except ValueError:
-                if t in numbers:
-                    return numbers[t]
-                else:
-                    return t
+        number = parse_number(t)
+        if number is not None: return number
+        if t in numbers:
+            return numbers[t]
+        else:
+            return t
     cleaned_tokens = [clean_token(t) for t in tokens if t not in ['and', 'or']]
     numeric_tokens = map(parse_token, cleaned_tokens)
     if any(filter(lambda t: isinstance(t, basestring), numeric_tokens)) or len(numeric_tokens) == 0:
@@ -84,6 +88,13 @@ def extract_counts(text):
         my_taxonomy = pattern.search.Taxonomy()
         my_taxonomy.append(pattern.search.WordNetClassifier())
     tree = pattern.en.parsetree(text, lemmata=True)
+    # The pattern tree parser doesn't tag some numbers, such as 2, as CD (Cardinal number).
+    # see: https://github.com/clips/pattern/issues/84
+    # This monkey patch tags all the arabic numerals as CDs.
+    for sent in tree.sentences:
+        for word in sent.words:
+            if parse_number(word.string) is not None:
+                word.tag = 'CD'
     def yield_search_results(patterns, **args):
         matches = []
         for p in patterns:
@@ -97,30 +108,48 @@ def extract_counts(text):
                     'text' : m.group(1).string,
                     'textOffsets' : [start_offset, start_offset + len(m.group(1).string)]
                 }, **args)
+    number_pattern = '{CD+ and? CD? CD?}'
+    counts = []
+    counts += list(yield_search_results([
+        number_pattern + ' JJ*? JJ*? PATIENT|CASE|INFECTION',
+        number_pattern + ' *? *? *? *? *? *? *? INFECT|AFFLICT',
+        #Ex: it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28
+        #Ex: The number of cases has exceeded 30
+        'NUMBER OF PATIENT|CASE|INFECTION *? *? *? *? *? *? *? TO ' + number_pattern,
+        'NUMBER OF PATIENT|CASE|INFECTION VP ' + number_pattern
+    ],
+    type='caseCount'))
     
-    for x in yield_search_results([
-            '{CD+ CC? CD?} NP? PATIENT|CASE|INFECTION',
-            #Ex: it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28
-            #Ex: The number of cases has exceeded 30
-            'NUMBER OF PATIENT|CASE|INFECTION *? *? *? *? *? *? *? (VP|TO) {CD+ CC? CD?}'
-        ],
-        type='caseCount'):
-        yield x
+    counts += list(yield_search_results([
+        number_pattern + ' NP? PATIENT|CASE? DIED|DEATHS|FATALITIES|KILLED',
+        'DEATHS :? {CD+}'
+    ],
+    type='deathCount'))
     
-    for x in yield_search_results([
-            '{CD+ CC? CD? CD?} NP? DIED|DEATHS|FATALITIES|KILLED',
-            'DEATHS :? {CD+}'
-        ],
-        type='deathCount'):
-        yield x
+    counts += list(yield_search_results([
+        number_pattern + ' NP? HOSPITALIZED',
+        #Ex: 222 were admitted to hospitals with symptoms of diarrhea
+        number_pattern + ' NP? VP TO? HOSPITAL'
+    ],
+    type='hospitalizationCount'))
     
-    for x in yield_search_results([
-            '{CD+ CC? CD?} NP? HOSPITALIZED',
-            #Ex: 222 were admitted to hospitals with symptoms of diarrhea
-            '{CD+ CC? CD?} NP? VP TO? HOSPITAL'
-        ],
-        type='hospitalizationCount'):
-        yield x
+    # Remove overlapping duplicate counts
+    out_counts = []
+    for count1 in counts:
+        out_count = count1
+        for count2 in counts:
+            if count1.get('value') == count2.get('value') and\
+               count1.get('textOffsets')[0] >= count2.get('textOffsets')[0] and\
+               count1.get('textOffsets')[0] < count2.get('textOffsets')[1]:
+                # Case counts can include hospitalizations and deaths,
+                # since these are more specific use them.
+                if count2.get('type') == 'hospitalizationCount' or\
+                   count2.get('type') == 'deathCount':
+                    out_count = count2
+        # Remove copied counts created during replacement
+        if out_count not in out_counts:
+            out_counts.append(out_count)
+    for count in out_counts: yield count
 
 def extract_dates(text):
     # I tried this package but the results weren't great.
