@@ -108,7 +108,7 @@ def extract_counts(text):
                     'text' : m.group(1).string,
                     'textOffsets' : [start_offset, start_offset + len(m.group(1).string)]
                 }, **args)
-    number_pattern = '{CD+ CC? CD? CD?}'
+    number_pattern = '{CD+ and? CD? CD?}'
     counts = []
     counts += list(yield_search_results([
         number_pattern + ' JJ*? JJ*? PATIENT|CASE|INFECTION',
@@ -146,7 +146,9 @@ def extract_counts(text):
                 if count2.get('type') == 'hospitalizationCount' or\
                    count2.get('type') == 'deathCount':
                     out_count = count2
-        out_counts.append(out_count)
+        # Remove copied counts created during replacement
+        if out_count not in out_counts:
+            out_counts.append(out_count)
     for count in out_counts: yield count
 
 def extract_dates(text):

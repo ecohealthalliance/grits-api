@@ -3,7 +3,6 @@ import unittest
 from diagnosis.feature_extractors import extract_counts
 
 class TestCountExtractor(unittest.TestCase):
-
     def test_verbal_counts(self):
         examples = {
             "it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28" : 28,
@@ -57,3 +56,8 @@ class TestCountExtractor(unittest.TestCase):
         example = "These 2 new cases bring to 4 the number of people stricken in California this year [2012]."
         count_set = set([count['value'] for count in extract_counts(example)])
         self.assertSetEqual(count_set, set([2,4]))
+
+    def test_duplicates(self):
+        example = "Two patients died out of four patients."
+        counts = [c['value'] for c in extract_counts(example)]
+        self.assertListEqual(counts, [2,4])
