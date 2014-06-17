@@ -9,9 +9,9 @@ class TestCountExtractor(unittest.TestCase):
             "it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28" : 28,
             "The number of cases exceeds 30" : 30,
         }
-        for example, count in examples.items():
-            self.assertEqual(extract_counts(example).next()['value'], count)
-            
+        for example, actual_count in examples.items():
+            count_obj = next(extract_counts(example), {})
+            self.assertEqual(count_obj.get('value'), actual_count)
     def test_count_offsets(self):
         examples = {
             "The ministry of health reports seventy five new patients were admitted" : "seventy five"
@@ -25,26 +25,35 @@ class TestCountExtractor(unittest.TestCase):
             "222 were admitted to hospitals with symptoms of diarrhea" : 222,
             "33 were hospitalized" : 33
         }
-        for example, count in examples.items():
-            self.assertEqual(extract_counts(example).next()['value'], count)
+        for example, actual_count in examples.items():
+            count_obj = next(extract_counts(example), {})
+            self.assertEqual(count_obj.get('type'), "hospitalizationCount")
+            self.assertEqual(count_obj.get('value'), actual_count)
     def test_written_numbers(self):
-        examples = {
-            "two hundred and twenty two patients were admitted to hospitals" : 222
-        }
-        for example, count in examples.items():
-            self.assertEqual(extract_counts(example).next()['value'], count)
+        example = "two hundred and twenty two patients were admitted to hospitals"
+        actual_count = 222
+        count_obj = next(extract_counts(example), {})
+        self.assertEqual(count_obj.get('type'), "hospitalizationCount")
+        self.assertEqual(count_obj.get('value'), actual_count)
     def test_death_counts(self):
-        examples = {
-            "Nine patients died last week" : 9,
-            # This is a pattern lib problem, the 2 doesn't get tagged as a CD
-            "Deaths: 2" : 2,
-        }
-        for example, count in examples.items():
-            self.assertEqual(extract_counts(example).next()['value'], count)
+        example = "Nine patients died last week"
+        actual_count = 9
+        count_obj = next(extract_counts(example), {})
+        self.assertEqual(count_obj.get('type'), "deathCount")
+        self.assertEqual(count_obj.get('value'), actual_count)
+    def test_death_counts_pattern_problem(self):
+        example = "Deaths: 2"
+        actual_count = 2
+        count_obj = next(extract_counts(example), {})
+        self.assertEqual(count_obj.get('type'), "deathCount")
+        self.assertEqual(count_obj.get('value'), actual_count)
     def test_misc(self):
-        examples = {
-            "1200 children between the ages of 2-5 are afflicted with a mystery illness" : 1200,
-            "These 2 new cases bring to 4 the number of people stricken in California this year [2012]." : 2,
-        }
-        for example, count in examples.items():
-            self.assertEqual(extract_counts(example).next()['value'], count)
+        example = "1200 children between the ages of 2-5 are afflicted with a mystery illness"
+        actual_count = 1200
+        count_obj = next(extract_counts(example), {})
+        self.assertEqual(count_obj.get('type'), "caseCount")
+        self.assertEqual(count_obj.get('value'), actual_count)
+    def test_misc2(self):
+        example = "These 2 new cases bring to 4 the number of people stricken in California this year [2012]."
+        count_set = set([count['value'] for count in extract_counts(example)])
+        self.assertSetEqual(count_set, set([2,4]))
