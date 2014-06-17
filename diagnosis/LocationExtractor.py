@@ -1,112 +1,11 @@
-import sys, csv
-import unicodecsv
 import numpy as np
+import sklearn.pipeline
 from sklearn.cluster import DBSCAN
 from sklearn.metrics.pairwise import pairwise_distances
 from geopy.distance import great_circle
 import math
 import nltk
-
-def flatten(li):
-    for subli in li:
-        for it in subli:
-            yield it
-
-def parse_number(num, default):
-    try:
-        return int(num)
-    except ValueError:
-        try:
-            return float(num)
-        except ValueError:
-            return default
-            
-def read_geonames(file_path):
-    fieldnames=[
-        'geonameid',
-        'name',
-        'asciiname',
-        #TODO: Use this
-        'alternatenames',
-        'latitude',
-        'longitude',
-        'feature class',
-        'feature code',
-        'country code',
-        'cc2',
-        'admin1 code',
-        'admin2 code',
-        'admin3 code',
-        'admin4 code',
-        'population',
-        'elevation',
-        'dem',
-        'timezone',
-        'modification date',
-    ]
-    omitted_geonames = [
-        'Many',
-        'May',
-        'March',
-        'Center',
-        'As',
-        'See',
-        'Valley',
-        'University',
-    ]
-    with open(file_path, 'rb') as f:
-        reader = unicodecsv.DictReader(f,
-            fieldnames=fieldnames,
-            encoding='utf-8', delimiter='\t', quoting=csv.QUOTE_NONE)
-        geoname_roa = []
-        for d in reader:
-            if d['name'] in omitted_geonames: continue
-            d['population'] = parse_number(d['population'], 0)
-            d['latitude'] = parse_number(d['latitude'], 0)
-            d['longitude'] = parse_number(d['longitude'], 0)
-            d['elevation'] = parse_number(d['elevation'], 0)
-            d.pop('modification date')
-            d.pop('asciiname')
-            d.pop('timezone')
-            d.pop('alternatenames')
-            d.pop('feature class')
-            d.pop('dem')
-            d.pop('cc2')
-            geoname_roa.append(d)
-        return geoname_roa
-
-def read_country_names(file_path):
-    fieldnames=['ISO',
-         'ISO3',
-         'ISO-Numeric',
-         'fips',
-         'Country',
-         'Capital',
-         'Area(in sq km)',
-         'Population',
-         'Continent',
-         'tld',
-         'CurrencyCode',
-         'CurrencyName',
-         'Phone',
-         'Postal Code Format',
-         'Postal Code Regex',
-         'Languages',
-         'geonameid',
-         'neighbours',
-         'EquivalentFipsCode']
-    with open(file_path, 'rb') as f:
-        while f.readline().startswith('#'):
-            pass
-        reader = unicodecsv.DictReader(f,
-            fieldnames=fieldnames,
-            encoding='utf-8', delimiter='\t', quotechar='\"')
-        country_roa = []
-        for d in reader:
-            d['population'] = parse_number(d['Population'], 0)
-            d['name'] = d['Country']
-            country_roa.append(d)
-        return country_roa
+import config
 
 def geodistance_with_population(latLngPopA, latLngPopB):
     """
@@ -127,17 +26,27 @@ def geodistance_with_population(latLngPopA, latLngPopB):
     radiusB = math.sqrt(popB / (120 * math.pi))
     return max(0, great_circle(latLngA, latLngB).miles - radiusA - radiusB)
 
-
-def ngrams(li, maxlen):
+def get_ngrams(tokens, maxlen=4):
     """
-    Returns all the n-grams in li of length less than or equal to maxlen
+    Returns all the n-grams in tokens of length less than or equal to maxlen
     """
     if maxlen > 0:
-        for idx in xrange(len(li) - maxlen + 1):
-            yield li[idx:idx+maxlen]
-        for ngram in ngrams(li, maxlen - 1):
+        for idx in xrange(len(tokens) - maxlen + 1):
+            yield ' '.join(tokens[idx:idx+maxlen])
+        for ngram in get_ngrams(tokens, maxlen - 1):
             yield ngram
 
+def get_ne_chunked_gpes(tokens):
+    gpes = []
+    tagged_text = nltk.pos_tag(tokens)
+    for subtree in nltk.ne_chunk(tagged_text).subtrees():
+        if subtree.node == 'GPE':
+            gpe = ' '.join([t[0] for t in subtree])
+            gpes.append(gpe)
+    # TODO: Get GPE offsets
+    # TODO: Try searching for ngrams around GPEs
+    return gpes
+    
 def compute_centroid(geoname_objects):
     lats = [gn['latitude'] for gn in geoname_objects]
     longs = [gn['longitude'] for gn in geoname_objects]
@@ -147,106 +56,133 @@ def compute_centroid(geoname_objects):
             'longitude' : sum(longs)/len(longs)
         }
     except:
+        print "Couldn't compute centroid"
         print geoname_objects
-class LocationExtractor():
-    def __init__(self):
-        #Loading geonames data may cause errors without this line:
-        csv.field_size_limit(sys.maxsize / 16)
 
-        geoname_roa = read_geonames('geonames/cities1000.txt')
-        
-        country_index = {}
-        for gn in geoname_roa:
-            country_index[gn['country code']] = country_index.get(gn['country code'], []) + [gn]
-        
-        country_lat_longs = {
-            country_code : np.mean([[c['latitude'], c['longitude']] for c in cities], axis=0)
-            for country_code, cities in country_index.items()
-        }
-        
-        country_name_roa = []
-        for r in read_country_names('geonames/countryInfo.txt'):
-            if r['ISO'] in country_lat_longs:
-                r['latitude'], r['longitude'] = country_lat_longs[r['ISO']]
-                country_name_roa.append(r)
-            
-        self.geoname_index = {}
-        for gn in geoname_roa + country_name_roa:
-            self.geoname_index[gn['name']] = self.geoname_index.get(gn['name'], []) + [gn]
+class AnnotatedDict(dict):
+    """
+    This is a convenience class for adding annotations to dictionaries, eg:
+    my_dict = AnnotatedDict({ 'hello' : 'world' })
+    my_dict.notes = "This is a great dictionary!"
+    """
+    pass
+
+class LocationExtractor(sklearn.pipeline.Pipeline):
+    omitted_geonames = set([
+        'many',
+        'may',
+        'march',
+        'center',
+        'as',
+        'see',
+        'valley',
+        'university',
+        'about'
+    ])
+    def __init__(self, geonames_collection=None):
+        # I'm using Mongo to import geonames because it is too big to fit in a
+        # python dictionary array, and the $in operator provides a fast way to
+        # search for all the ngrams in a document.
+        if not geonames_collection:
+            import pymongo
+            db = pymongo.Connection(config.mongo_url)['geonames']
+            geonames_collection = db.allCountries
+        self.geonames_collection = geonames_collection
         
     def transform_one(self, text):
-        ngram_counts = {}
+        name_counts = {}
+        # TODO: How well does this handle trailing apostrophies?
+        # TODO: Filter locations that are substrings other locations.
+        # TODO maybe: Filter locations that based on word frequency probably aren't locations
+        # TODO: Filter out locations that based on Part-of-speach clearly aren't names.
         for sent in nltk.sent_tokenize(text):
             tokens = nltk.word_tokenize(sent)
-            for ngram in ngrams(tokens, 4):
-                # TODO: Filter location that are substrings of NLTK GPEs e.g. York Road?
-                ngram_string = ' '.join([unicode(token) for token in ngram])
-                ngram_counts[ngram_string] = ngram_counts.get(ngram_string, 0) + 1
+            # I started off using get_ngrams here but had to switch to get_ne_chunked_gpes.
+            # Searching for every n-gram in the document can return thousands of geonames.
+            # (The lookup is acutally fast but the clustering is really slow).
+            # NE chunking allows us to filter out many bad geonames.
+            # However, NE chunking is susceptable to false negatives.
+            # Stanford NLP might produce better results.
+            for possible_geoname in get_ne_chunked_gpes(tokens):
+                possible_geoname = possible_geoname.lower()
+                if possible_geoname in self.omitted_geonames: continue
+                # We will miss some valid names because of this,
+                # however it eliminates a lot of bad names like "A" and 10
+                if len(possible_geoname) < 3: continue
+                name_counts[possible_geoname] = name_counts.get(possible_geoname, 0) + 1
+            
+        geoname_cursor = self.geonames_collection.find({
+            'lemmatized_name' : { '$in' : name_counts.keys() }
+        }, {
+            # Omit these fields:
+            'modification date' : 0,
+            'alternatenames': 0,
+        })
         
         found_geonames = []
         max_count = 0
-        for ngram, count in sorted(ngram_counts.items(), key=lambda k:k[1]):
-            matching_geonames = self.geoname_index.get(ngram)
-            if matching_geonames:
-                if count > max_count:
-                    max_count = count
-                # Additional geopoints are created for repeated geonames
-                # to increase their weight when clustering them.
-                found_geonames += matching_geonames * (1 + count / 2)
+        for geoname in geoname_cursor:
+            count = name_counts[geoname['lemmatized_name']]
+            if count > max_count:
+                max_count = count
+            # Duplicate the geonames that appear multiple times
+            # to increase their weight when clustering them.
+            found_geonames += [geoname] * (1 + count / 2)
         
-        if len(found_geonames) > 0:
-            found_geopoints = [(g['latitude'], g['longitude']) for g in found_geonames]
-            distance_matrix = pairwise_distances(np.c_[np.array(found_geopoints),
-                                                 [[gn['population']] for gn in found_geonames]],
-                                                 metric=geodistance_with_population)
-            cluster_labels = DBSCAN(
-                    #500 miles is the maximum distance between two samples
-                    #for them to be considered as in the same neighborhood.
-                    eps=400,
-                    #The number of samples required to form a cluster is
-                    #dependent on how many samples we have for the most
-                    #repeated geoname.
-                    min_samples=1 + max_count / 2,
-                    metric='precomputed'
-                ).fit(distance_matrix).labels_
-            clusters = {k : [] for k in set(cluster_labels)}
-            for geoname, cluster_id in zip(found_geonames, cluster_labels):
-                if cluster_id < 0:
-                    #outlier
-                    continue
-                cluster = clusters[cluster_id]
-                if geoname not in cluster:
-                    cluster.append(geoname)
-            
-            class AnnotatedLocationDict(dict):
-                pass
-                    
-            # Keep track of the most likely locations for each name so we can
-            # filter the others out
-            most_likely_locations = {}
-            for cluster_id, cluster in clusters.items():
-                for location in cluster:
-                    name = location['name']
-                    annotated_location = AnnotatedLocationDict(location)
-                    annotated_location.liklyhood_score = (10 + len(cluster)) * location['population']
-                    annotated_location.cluster_id = cluster_id
-                    if name in most_likely_locations:
-                        if most_likely_locations[name].liklyhood_score >= annotated_location.liklyhood_score:
-                            continue
-                    most_likely_locations[name] = annotated_location
-            clusters = {k:[] for k in clusters.keys()}
-            for annotated_location in most_likely_locations.values():
-                clusters[annotated_location.cluster_id] += [annotated_location]
-            if len(clusters) > 0:
-                min_cluster_size = min(5, max(map(len, clusters.values())))
-                return [
-                    {
-                        'centroid' : compute_centroid(v),
-                        'locations' : v
-                    }
-                    for k,v in clusters.items()
-                    if len(v) >= min_cluster_size
-                ]
-        return []
+        if len(found_geonames) == 0: return []
+        # A clustering algorithm is used with a custom distance metric
+        # to remove outliers and group the locations identified.
+        found_geopoints = [(g['latitude'], g['longitude']) for g in found_geonames]
+        distance_matrix = pairwise_distances(np.c_[np.array(found_geopoints),
+                                             [[gn['population']] for gn in found_geonames]],
+                                             metric=geodistance_with_population)
+        cluster_labels = DBSCAN(
+                # The maximum distance between two samples
+                # for them to be considered as in the same neighborhood.
+                eps=400,
+                # The number of samples required to form a cluster is
+                # dependent on how many samples we have for the most
+                # repeated geoname.
+                min_samples=1 + max_count / 2,
+                metric='precomputed'
+            ).fit(distance_matrix).labels_
+        clusters = {k : [] for k in set(cluster_labels)}
+        for geoname, cluster_id in zip(found_geonames, cluster_labels):
+            if cluster_id < 0:
+                #outlier
+                continue
+            cluster = clusters[cluster_id]
+            if geoname not in cluster:
+                cluster.append(geoname)
+                
+        # Keep track of the most likely locations for each name so we can
+        # filter out other locations with the same name
+        most_likely_locations = {}
+        for cluster_id, cluster in clusters.items():
+            for location in cluster:
+                name = location['name']
+                annotated_location = AnnotatedDict(location)
+                # +10 is used to prevent cluster size from being the dominating factor.
+                annotated_location.liklyhood_score = (10 + len(cluster)) * location['population']
+                annotated_location.cluster_id = cluster_id
+                if name in most_likely_locations:
+                    if most_likely_locations[name].liklyhood_score >= annotated_location.liklyhood_score:
+                        continue
+                most_likely_locations[name] = annotated_location
+        
+        clusters = {k:[] for k in clusters.keys()}
+        for annotated_location in most_likely_locations.values():
+            clusters[annotated_location.cluster_id] += [annotated_location]
+        
+        if len(clusters) == 0: return []
+        min_cluster_size = min(5, max(map(len, clusters.values())))
+        return [
+            {
+                'centroid' : compute_centroid(v),
+                'locations' : v
+            }
+            for k,v in clusters.items()
+            if len(v) >= min_cluster_size
+        ]
     def transform(self, texts):
         return map(self.transform_one, texts)

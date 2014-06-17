@@ -52,7 +52,7 @@ class PatternExtractor():
         return map(self.transform_one, texts)
 
 class LinkedKeywordAdder():
-    def __init__(self, keyword_links, weight=.2):
+    def __init__(self, keyword_links, weight=.4):
         self.weight = weight
         self.keyword_links = keyword_links
     def fit(self, X, y):
