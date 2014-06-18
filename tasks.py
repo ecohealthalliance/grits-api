@@ -67,7 +67,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     logged_resource = {}
     for k, v in resource.items():
         if k == '_id':
-            logged_resource['itemId'] = k['_id']
+            logged_resource['itemId'] = v
         else:
             logged_resource[k] = v
     girder_db['diagnosisLog'].insert(logged_resource)
