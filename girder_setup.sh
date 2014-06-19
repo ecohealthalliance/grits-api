@@ -19,7 +19,7 @@ cd ..
 pip install --requirement requirements.txt
 
 # install other python deps
-pip install requests dateutil
+pip install requests python-dateutil
 
 # install grunt globally (or modify $PATH)
 npm install -g grunt
