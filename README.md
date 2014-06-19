@@ -23,6 +23,8 @@ Install these packages:
     sudo apt-get install git make python-pip python-dev
     sudo apt-get install gfortran libopenblas-dev liblapack-dev
     sudo apt-get install lib32z1-dev zip unzip libxml2-dev libxslt1-dev
+    # libffi is for girder setup, should move to girder script
+    sudo apt-get install libffi-dev
 
 From the directory you cloned this repository into do the following:
 
