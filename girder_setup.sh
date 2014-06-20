@@ -1,7 +1,51 @@
 #!/bin/bash
 
-# go to the deployment directory, for example:
-# cd /opt
+# configuration variables to set:
+
+# GIRDER_INSTALL_PATH
+# the path where girder will be cloned
+# the user running this script should have write permissions
+
+# APACHE_URL
+# the root URL of the apache server, i.e.
+# https://grits.ecohealth.io
+
+# GIRDER_MOUNT_PATH
+# the path where girder is mounted in apache, i.e.
+# /gritsdb
+
+# GIRDER_DEPLOYMENT_MODE
+# 'production' or 'development', default to production:
+: ${GIRDER_DEPLOYMENT_MODE=production}
+
+# GIRDER_SOCKET_HOST
+# host that girder will listen on
+# default to local only
+: ${GIRDER_SOCKET_HOST=127.0.0.1}
+
+# GIRDER_SOCKET_PORT
+# port that girder will listen on
+# default to 9999
+: ${GIRDER_SOCKET_PORT=9999}
+
+# GIRDER_ADMIN_PASSWORD
+# the password to set for the girder admin
+# the user name for this account will be 'grits'
+
+# GIRDER_ADMIN_EMAIL
+# the email address for the girder admin account
+
+# HEALTHMAP_APIKEY
+# the api key for healthmap access
+
+# capture the path to this script
+pushd `dirname $0` &> /dev/null
+script_path=`pwd -P`
+popd &> /dev/null
+
+# go to the deployment directory
+mkdir -p "${GIRDER_INSTALL_PATH}" &> /dev/null  # make the path if necessary
+cd "${GIRDER_INSTALL_PATH}"
 
 # clone girder from git
 git clone https://github.com/girder/girder.git
@@ -15,14 +59,21 @@ git clone https://github.com/ecohealthalliance/gritsSearch.git
 # go up to the main girder directory
 cd ..
 
+# create a new virtualenv for girder deps
+virtualenv girder_env
+. girder_env/bin/activate
+
 # install python dependencies
 pip install --requirement requirements.txt
 
 # install other python deps
 pip install requests python-dateutil
 
-# install grunt globally (or modify $PATH)
-npm install -g grunt
+# install grunt
+npm install grunt-cli
+
+# set a variable to /path/to/grunt
+export grunt="${PWD}/node_modules/.bin/grunt"
 
 # install node dependencies
 npm install
@@ -30,21 +81,20 @@ npm install
 # configure the server:
 cat > girder/conf/girder.local.cfg <<EOF
 [global]
-server.socket_host: "0.0.0.0"
-server.socket_port: 9999
+server.socket_host: "${GIRDER_SOCKET_HOST}"
+server.socket_port: ${GIRDER_SOCKET_PORT}
 tools.proxy.on: True
-tools.proxy.base: "https://grits.ecohealth.io/gritsdb"
+tools.proxy.base: "${APACHE_URL}${GIRDER_MOUNT_PATH}"
 tools.proxy.local: ""
 
 [server]
-# Set to "production" or "development"
-mode: "development"
-api_root: "/gritsdb/api/v1"
-static_root: "/gritsdb/static"
+mode: "${GIRDER_DEPLOYMENT_MODE}"
+api_root: "${GIRDER_MOUNT_PATH}/api/v1"
+static_root: "${GIRDER_MOUNT_PATH}/gritsdb/static"
 EOF
 
 # build the source
-grunt init && grunt
+"${grunt}" init && "${grunt}"
 
 # create a startup script
 # (this could be handled better with an actual init script)
@@ -70,9 +120,9 @@ chmod +x start_girder.sh
 python <<EOF
 import requests
 
-url = 'https://grits.ecohealth.io/gritsdb/api/v1'
+url = '${APACHE_URL}${GIRDER_MOUNT_PATH}/api/v1'
 
-passwd = 'rtKUQynf'  # should be changed
+passwd = '${GIRDER_ADMIN_PASSWORD}'
 
 # do initialization of girder for healthmap import
 # create main grits user
@@ -83,7 +133,7 @@ resp = requests.post(
         'password': passwd,
         'firstName': 'grits',
         'lastName': 'grits',
-        'email': 'grits@not-an-email.com'
+        'email': '${GIRDER_ADMIN_EMAIL}'
     },
     verify=False
 )
@@ -108,31 +158,33 @@ resp = requests.put(
 EOF
 
 # now we have to restart girder to enable the plugin
-kill %1
-./start_girder.sh &
+# it suffices just to touch the config file
+touch girder/conf/girder.local.cfg
 
 # now hit the grits api to initialize the database
-curl https://grits.ecohealth.io/gritsdb/api/v1/resource/grits
+curl "${APACHE_URL}${GIRDER_MOUNT_PATH}/api/v1/resource/grits" &> /dev/null
 
 # At this point everything is ready to start importing the healthmap data.
 # To import the last day, use the script in this repo `healthMapGirder.py`:
 
-# PYTHONPATH=/opt/girder HEALTHMAP_APIKEY=<put api key here> python healthMapGirder.py --day
+# python healthMapGirder.py --day
 
 # for a full two year import:
 
-# PYTHONPATH=/opt/girder HEALTHMAP_APIKEY=<put api key here> python healthMapGirder.py --full
+# python healthMapGirder.py --full
 
 # To run the script automatically every day, you can create a script in /etc/cron.daily.
 # (make sure the script name does not contain any '.' characters, otherwise cron will
 # ignore them.  This is what I did for grits.ecohealth.io:
 
-cat > /etc/cron.daily/hmapImportDay <<EOF
+cat > "${GIRDER_INSTALL_PATH}/girder/hmapImportDay" <<EOF
 #!/bin/bash
 
-cd /home/ubuntu/healthMap
-HEALTHMAP_APIKEY=<...> PYTHONPATH=/opt/girder python healthMapGirder.py --twoday &> /var/log/hmapLastImport.log
+. girder_env/bin/activate"
+export HEALTHMAP_APIKEY="${HEALTHMAP_APIKEY}"
+python healthMapGirder.py --twoday
 EOF
-chmod +x /etc/cron.daily/hmapImportDay
+chmod +x "${GIRDER_INSTALL_PATH}/girder/hmapImportDay"
+echo "0 1 * * * cd \"${GIRDER_INSTALL_PATH}/girder\" && ./hmapImportDay" | crontab -
 
 # This runs a two day import every day just to make sure it gets the full days data.
