@@ -90,7 +90,7 @@ tools.proxy.local: ""
 [server]
 mode: "${GIRDER_DEPLOYMENT_MODE}"
 api_root: "${GIRDER_MOUNT_PATH}/api/v1"
-static_root: "${GIRDER_MOUNT_PATH}/gritsdb/static"
+static_root: "${GIRDER_MOUNT_PATH}/static"
 EOF
 
 # build the source
@@ -102,10 +102,11 @@ cat > start_girder.sh <<EOF
 #!/bin/bash
 
 # girder tries to restart and crashes when a file changes
-# so we put it into a loop and reload when that happens
-while true ; do
-    python -m girder
-done
+# we used to put it into a loop and reload when that happens
+# but it made debugging difficult so it was disabled.
+# TODO: Use supervisord or similar process management to
+# handle autorestarts.
+python -m girder
 EOF
 chmod +x start_girder.sh
 
