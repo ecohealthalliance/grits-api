@@ -11,8 +11,8 @@
 # https://grits.ecohealth.io
 
 # GIRDER_MOUNT_PATH
-# the path where girder is mounted in apache, i.e.
-# /gritsdb
+# the url path where girder is mounted
+: ${GIRDER_MOUNT_PATH=/gritsdb}
 
 # GIRDER_DEPLOYMENT_MODE
 # 'production' or 'development', default to production:
