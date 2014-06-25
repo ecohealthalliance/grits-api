@@ -26,7 +26,7 @@ Install these packages:
     # libffi is for girder setup, should move to girder script
     sudo apt-get install libffi-dev
     
-Set-up girder
+Set-up girder:
 
     # Install the AWS CLI as sudo so it is available in all environments.
     sudo pip install awscli
@@ -34,7 +34,7 @@ Set-up girder
     mkdir ~/.aws
     tee ~/.aws/config <<EOF
     [default]
-    region = us-east1
+    region = us-east-1
     aws_access_key_id = AKIAIJMXFI2GUJB66FXA
     aws_secret_access_key = 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
     EOF
@@ -42,8 +42,15 @@ Set-up girder
     aws s3 cp --recursive s3://girder-data/dump dump
     mongorestore
     APACHE_URL=http://grits.ecohealth.io HEALTHMAP_APIKEY=123ABC GIRDER_ADMIN_PASSWORD=password ./girder_setup.sh
-    # If you want to automatically backup the database use the following command:
-    # echo "0 1 * * * mongodump && aws s3 cp --recursive dump s3://girder-data/dump" | crontab
+    # If you want to automatically backup the database use the following commands:
+    tee ~/dump_girder_to_s3 <<EOF
+    #!/bin/bash
+    mongodump --db girder
+    aws s3 cp --recursive dump s3://girder-data/dump
+    echo "dump completed on `date`"
+    EOF
+    chmod +x dump_girder_to_s3
+    # (crontab -l ; echo "0 1 * * * cd ~ && ./dump_girder_to_s3 > dump_to_s3_log") | crontab
 
 From the directory you cloned this repository into do the following:
 
