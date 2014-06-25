@@ -180,8 +180,8 @@ curl "${APACHE_URL}${GIRDER_MOUNT_PATH}/api/v1/resource/grits" &> /dev/null
 
 cat > "${GIRDER_INSTALL_PATH}/girder/hmapImportDay" <<EOF
 #!/bin/bash
-
-. girder_env/bin/activate"
+cd ..
+. girder_env/bin/activate
 export HEALTHMAP_APIKEY="${HEALTHMAP_APIKEY}"
 python healthMapGirder.py --twoday
 EOF
