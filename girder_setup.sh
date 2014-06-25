@@ -186,6 +186,6 @@ export HEALTHMAP_APIKEY="${HEALTHMAP_APIKEY}"
 python healthMapGirder.py --twoday
 EOF
 chmod +x "${GIRDER_INSTALL_PATH}/girder/hmapImportDay"
-echo "0 1 * * * cd \"${GIRDER_INSTALL_PATH}/girder\" && ./hmapImportDay" | crontab -
+echo "0 1 * * * cd \"${GIRDER_INSTALL_PATH}/girder\" && ./hmapImportDay" | crontab
 
 # This runs a two day import every day just to make sure it gets the full days data.
