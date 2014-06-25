@@ -52,12 +52,25 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     if translation:
         clean_english_content = translation.get('english')
     else:
-        clean_english_content = resource.get('private', {}).get('cleanContent')
+        clean_english_content = resource\
+            .get('private', {})\
+            .get('cleanContent', {})\
+            .get('content')
     if clean_english_content:
         meta['diagnosis'] = my_diagnoser.diagnose(clean_english_content)
     else:
         meta['diagnosis'] = { 'error' : 'No content available to diagnose.' }
     girder_db.item.update({'_id': item_id}, resource)
+    # Log the item so we have a record of the diagnosis and the data it relates
+    # to in case we ever need to refer back to it (e.g. notifying users that
+    # the diagnosis of an article they reviewed changed because of an update):
+    logged_resource = {}
+    for k, v in resource.items():
+        if k == '_id':
+            logged_resource['itemId'] = v
+        else:
+            logged_resource[k] = v
+    girder_db['diagnosisLog'].insert(logged_resource)
     return resource
 
 from corpora_shared.process_resources import extract_clean_content, attach_translations
@@ -91,10 +104,10 @@ def process_girder_resource(item_id=None):
     content = private['scrapedData']['content']
     clean_content = extract_clean_content(content)
     if not clean_content:
-        meta['error'] = "Could not clean content."
+        private['cleanContent'] = { "error" : "Could not clean content." }
         girder_db.item.update({'_id': item_id}, resource)
         return resource
-    private['cleanContent'] = clean_content
+    private['cleanContent'] = { 'content' : clean_content }
     
     if not translation.is_english(clean_content):
         prev_translation = resource.get('private', {}).get('translation')
