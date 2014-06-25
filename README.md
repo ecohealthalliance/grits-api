@@ -25,6 +25,25 @@ Install these packages:
     sudo apt-get install lib32z1-dev zip unzip libxml2-dev libxslt1-dev
     # libffi is for girder setup, should move to girder script
     sudo apt-get install libffi-dev
+    
+Set-up girder
+
+    # Install the AWS CLI as sudo so it is available in all environments.
+    sudo pip install awscli
+    # Configure it with your account details:
+    mkdir ~/.aws
+    tee ~/.aws/config <<EOF
+    [default]
+    region = us-east1
+    aws_access_key_id = AKIAIJMXFI2GUJB66FXA
+    aws_secret_access_key = Iy2K/b6aClpWutZh/JlCoguY8FhNdO+QFVrrl4sF
+    EOF
+    # To download the database dump from S3:
+    aws s3 cp --recursive s3://girder-data/dump dump
+    mongorestore
+    APACHE_URL=http://grits.ecohealth.io HEALTHMAP_APIKEY=123ABC GIRDER_ADMIN_PASSWORD=password ./girder_setup.sh
+    # If you want to automatically backup the database use the following command:
+    # echo "0 1 * * * mongodump && aws s3 cp --recursive dump s3://girder-data/dump" | crontab
 
 From the directory you cloned this repository into do the following:
 
@@ -44,8 +63,6 @@ From the directory you cloned this repository into do the following:
     supervisord -c supervisord.conf
     # Import geonames for the location extractor
     ./import_geonames.sh
-    # Set up Girder. (Remember to set passwd).
-    ./girder_setup.sh
     # This script does the rest. Rerun it to update when the code changes.
     ./deploy.sh
 
