@@ -1,8 +1,13 @@
 #!/bin/bash
-workon grits_api_env
-pip install -r requirements.txt
-python deploy_helper.py
-python train.py
-supervisorctl update
-supervisorctl restart celery celery_batch_workers flask
-deactivate
+grits_api_env/bin/pip install -r requirements.txt
+grits_api_env/bin/python <<EOF
+import nltk
+nltk.download([
+    'maxent_ne_chunker',
+    'maxent_treebank_pos_tagger',
+    'words',
+    'punkt'
+])
+EOF
+grits_api_env/bin/python train.py
+sudo supervisorctl restart celery celery_batch_workers flask
