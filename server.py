@@ -74,7 +74,7 @@ def enqueue_diagnosis(item_id):
             }
         })
         chain(
-            tasks.process_girder_resource.s(item_id=item_id),
+            tasks.process_girder_resource.s(item_id=item_id).set(queue='priority'),
             tasks.diagnose_girder_resource.s(item_id=item_id)
         )()
         return flask.jsonify(

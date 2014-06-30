@@ -27,8 +27,8 @@ def update():
                 }
             })
             chain(
-                tasks.process_girder_resource.s(item_id=str(item_id)).set(queue='batch'),
-                tasks.diagnose_girder_resource.s(item_id=str(item_id)).set(queue='batch')
+                tasks.process_girder_resource.s(item_id=str(item_id)).set(queue='process'),
+                tasks.diagnose_girder_resource.s(item_id=str(item_id)).set(queue='diagnose')
             )()
 
 if __name__ == "__main__":
