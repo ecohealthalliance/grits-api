@@ -44,6 +44,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     Run the diagnostic classifiers/feature extractors
     on the girder item with the given id.
     """
+    item_id = bson.ObjectId(item_id)
     resource = girder_db.item.find_one(item_id)
     meta = resource['meta']
     rm_key(meta, 'diagnosing')
@@ -89,6 +90,7 @@ def process_girder_resource(item_id=None):
     Update the entry with the results, then update it with cleaned and 
     translated versions of the scraped content.
     """
+    item_id = bson.ObjectId(item_id)
     # The version of this function
     version = '0.0.1'
     resource = girder_db.item.find_one(item_id)
