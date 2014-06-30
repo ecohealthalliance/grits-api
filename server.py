@@ -62,8 +62,8 @@ def test():
 def diagnosis():
     content = get_values().get('content')
     return json.dumps(my_diagnoser.diagnose(content), default=my_serializer)
-    
-@app.route('/enqueue_girder_diagnosis/<item_id>', methods = ['POST', 'GET'])
+
+@app.route('/beta/enqueue_girder_diagnosis/<item_id>', methods = ['POST', 'GET'])
 def enqueue_diagnosis(item_id):
     item_id = bson.ObjectId(item_id)
     if girder_db.item.find_one(item_id):
@@ -84,6 +84,58 @@ def enqueue_diagnosis(item_id):
         return flask.jsonify(
              success=False
         )
+
+@app.route('/beta/counts', methods = ['POST', 'GET'])
+def searchCounts():
+    params = get_values()
+    count_types = ["caseCount", "hospitalizationCount", "deathCount"]
+    disease = params.get('disease', '')
+    cursor = girder_db.item.find({
+        '$and' : [{
+                'meta.diagnosis.diseases.name': disease
+            }] + [{
+                'meta.diagnosis.features.type': {
+                    '$in' : count_types
+                }
+            }] + [{
+                'meta.diagnosis.features.type': 'datetime'
+            }] + [{
+                'meta.diagnosis.diagnoserVersion': '0.0.2'
+            }]
+    }, {'meta.diagnosis.features' : 1})
+    result = []
+    def offset_difference(a,b):
+        if a['textOffsets'][0] > b['textOffsets'][0]:
+            return offset_difference(b,a)
+        return b['textOffsets'][0] - a['textOffsets'][1]
+    
+    for item in cursor:
+        counts = []
+        datetimes = []
+        for feature in item['meta']['diagnosis']['features']:
+            if feature['type'] in count_types:
+                counts.append(feature)
+            elif feature['type'] == 'datetime':
+                datetimes.append(feature)
+        
+        # Annotate counts with datetimes based on proximity
+        for count in counts:
+            for dt in datetimes:
+                if isinstance(dt['textOffsets'][0], list):
+                    dt['textOffsets'] = dt['textOffsets'][0]
+                if 'datetime' in count:
+                    if offset_difference(count, dt) >= offset_difference(count['datetime'], dt):
+                        continue
+                if offset_difference(count, dt) < 300:
+                    count['datetime'] = dt
+    
+        result.append({
+            '_id' : item['_id'],
+            'counts' : counts
+        })
+    
+    
+    return json.dumps(result, default=my_serializer)
 
 if __name__ == '__main__':
     import argparse

@@ -149,7 +149,12 @@ def extract_counts(text):
         # Remove copied counts created during replacement
         if out_count not in out_counts:
             out_counts.append(out_count)
-    for count in out_counts: yield count
+    
+    for count in out_counts:
+        # Store text offsets as a list of start/end lists to be consistent
+        # the way text offsets are stored in extracted_keywords.
+        count['textOffsets'] = [count['textOffsets']]
+        yield count
 
 def extract_dates(text):
     # I tried this package but the results weren't great.

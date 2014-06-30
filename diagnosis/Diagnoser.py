@@ -58,8 +58,9 @@ class Diagnoser():
                     for kwd, score in scored_keywords
                     if score > 0 and kwd not in base_keyword_dict]
             }
+        counts = list(feature_extractors.extract_counts(content))
         return {
-            'diagnoserVersion' : '0.0.0',
+            'diagnoserVersion' : '0.0.2',
             'dateOfDiagnosis' : datetime.datetime.now(),
             'keywords_found' : [
                 {
@@ -73,7 +74,7 @@ class Diagnoser():
             ],
             'diseases': [diagnosis(i,p) for i,p in self.best_guess(X)],
             'features': list(feature_extractors.extract_dates(content)) +\
-                list(feature_extractors.extract_counts(content)) + [
+                counts + [
                 {
                     'type' : 'cluster',
                     'centroid' : cluster['centroid'],
