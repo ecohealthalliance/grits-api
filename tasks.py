@@ -9,6 +9,12 @@ from distutils.version import StrictVersion
 import config
 
 celery_tasks = Celery('tasks', broker=config.BROKER_URL)
+celery_tasks.conf.update(
+    CELERY_TASK_SERIALIZER='json',
+    CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
+    CELERY_RESULT_SERIALIZER='json'
+)
+
 db_handle = pymongo.Connection(config.mongo_url)
 girder_db = db_handle['girder']
 
@@ -47,7 +53,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
        StrictVersion(prev_diagnosis.diagnoserVersion) >=\
        StrictVersion(Diagnoser.__version__):
         girder_db.item.update({'_id': item_id}, resource)
-        return resource
+        return# resource
     translation = resource.get('private', {}).get('translation')
     if translation:
         clean_english_content = translation.get('english')
@@ -71,7 +77,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
         else:
             logged_resource[k] = v
     girder_db['diagnosisLog'].insert(logged_resource)
-    return resource
+    return# resource
 
 from corpora_shared.process_resources import extract_clean_content, attach_translations
 from corpora_shared import translation
@@ -99,14 +105,14 @@ def process_girder_resource(item_id=None):
        StrictVersion(scraper.__version__):
         private['scrapedData'] = scraper.scrape(resource['meta']['link'])
     if private['scrapedData'].get('unscrapable'):
-        return resource
+        return# resource
     
     content = private['scrapedData']['content']
     clean_content = extract_clean_content(content)
     if not clean_content:
         private['cleanContent'] = { "error" : "Could not clean content." }
         girder_db.item.update({'_id': item_id}, resource)
-        return resource
+        return# resource
     private['cleanContent'] = { 'content' : clean_content }
     
     if not translation.is_english(clean_content):
@@ -120,4 +126,4 @@ def process_girder_resource(item_id=None):
                     'translationService' : 'stored corpora translation'
                 }
     girder_db.item.update({'_id': item_id}, resource)
-    return resource
+    return# resource
