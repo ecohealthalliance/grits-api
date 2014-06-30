@@ -1,5 +1,6 @@
 import celery
 import json
+import bson
 import pickle
 import diagnosis
 import pymongo
