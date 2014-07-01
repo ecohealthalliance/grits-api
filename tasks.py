@@ -18,6 +18,7 @@ celery_tasks.conf.update(
 
 db_handle = pymongo.Connection(config.mongo_url)
 girder_db = db_handle['girder']
+meteor_dash_db = db_handle['diagnosis']
 
 from diagnosis.Diagnoser import Diagnoser
 with open('classifier.p') as f:
@@ -40,6 +41,58 @@ def rm_key(d, key):
     return d
 
 @celery_tasks.task
+def insert_case_counts(item_id, diagnosis):
+    """
+    Inserts the case counts into a collection in the meteor database.
+    This is an experimental approach to doing this. One alternative is to use
+    the flask API endpoint.
+    
+    A downside to this appraoch is that it will require lots of duplicate
+    data to support all the ways we could filter diagnoses.
+    Another issue is that updates to this code requires regenerating the collection.
+    
+    The advantage is that this code is coupled with the diagnoser
+    we don't have to worry about checking diagnoser version.
+    """
+    # Remove old case counts for article
+    meteor_dash_db['caseCounts'].remove({'itemId' : item_id})
+    
+    def offset_difference(a,b):
+        if a['textOffsets'][0][0] > b['textOffsets'][0][0]:
+            return offset_difference(b,a)
+        return b['textOffsets'][0][0] - a['textOffsets'][0][1]
+        
+    count_types = ["caseCount", "hospitalizationCount", "deathCount"]
+    
+    result = []
+    counts = []
+    datetimes = []
+    for feature in diagnosis.get('features', []):
+        if feature['type'] in count_types:
+            counts.append(feature)
+        elif feature['type'] == 'datetime':
+            datetimes.append(feature)
+    
+    # Annotate counts with datetimes based on proximity
+    for count in counts:
+        for dt in datetimes:
+            if 'datetime' in count:
+                if offset_difference(count, dt) >= offset_difference(count['datetime'], dt):
+                    continue
+            if offset_difference(count, dt) < 300:
+                count['datetime'] = dt
+        
+        count.update({
+            'itemId' : item_id,
+            # Add locations?
+            'diseases' : [d['name'] for d in diagnosis['diseases']]
+        })
+        result.append(count)
+        
+    if len(result) > 0:
+        meteor_dash_db['caseCounts'].insert(result)
+
+@celery_tasks.task
 def diagnose_girder_resource(prev_result=None, item_id=None):
     """
     Run the diagnostic classifiers/feature extractors
@@ -52,11 +105,11 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     
     prev_diagnosis = resource.get('meta').get('diagnosis')
     if prev_diagnosis and\
-       StrictVersion(prev_diagnosis.diagnoserVersion) >=\
+       StrictVersion(prev_diagnosis.get('diagnoserVersion', '0.0.0')) >=\
        StrictVersion(Diagnoser.__version__):
         girder_db.item.update({'_id': item_id}, resource)
-        return# resource
-    translation = resource.get('private', {}).get('translation')
+        return
+    translation = resource['private'].get('translation')
     if translation:
         clean_english_content = translation.get('english')
     else:
@@ -79,7 +132,9 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
         else:
             logged_resource[k] = v
     girder_db['diagnosisLog'].insert(logged_resource)
-    return# resource
+    
+    insert_case_counts(item_id, meta['diagnosis'])
+    return
 
 from corpora_shared.process_resources import extract_clean_content, attach_translations
 from corpora_shared import translation
@@ -108,14 +163,15 @@ def process_girder_resource(item_id=None):
        StrictVersion(scraper.__version__):
         private['scrapedData'] = scraper.scrape(resource['meta']['link'])
     if private['scrapedData'].get('unscrapable'):
-        return# resource
+        girder_db.item.update({'_id': item_id}, resource)
+        return
     
     content = private['scrapedData']['content']
     clean_content = extract_clean_content(content)
     if not clean_content:
         private['cleanContent'] = { "error" : "Could not clean content." }
         girder_db.item.update({'_id': item_id}, resource)
-        return# resource
+        return
     private['cleanContent'] = { 'content' : clean_content }
     
     if not translation.is_english(clean_content):
@@ -129,4 +185,4 @@ def process_girder_resource(item_id=None):
                     'translationService' : 'stored corpora translation'
                 }
     girder_db.item.update({'_id': item_id}, resource)
-    return# resource
+    return

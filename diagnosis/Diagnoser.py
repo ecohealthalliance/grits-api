@@ -9,6 +9,9 @@ from sklearn.pipeline import Pipeline
 import datetime
 
 class Diagnoser():
+    
+    __version__ = '0.0.3'
+    
     def __init__(self, classifier, dict_vectorizer,
                  keyword_links=None,
                  keyword_categories=None, cutoff_ratio=0.65):
@@ -60,7 +63,7 @@ class Diagnoser():
             }
         counts = list(feature_extractors.extract_counts(content))
         return {
-            'diagnoserVersion' : '0.0.2',
+            'diagnoserVersion' : self.__version__,
             'dateOfDiagnosis' : datetime.datetime.now(),
             'keywords_found' : [
                 {
