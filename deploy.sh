@@ -10,4 +10,4 @@ nltk.download([
 ])
 EOF
 grits_api_env/bin/python train.py
-sudo supervisorctl restart celery celery_batch_workers flask
+sudo supervisorctl restart celery_priority celery_process celery_diagnose flask
