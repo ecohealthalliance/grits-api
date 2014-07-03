@@ -7,12 +7,15 @@ from LocationExtractor import LocationExtractor
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import Pipeline
 import datetime
+from annotator.annotator import AnnoDoc
+from annotator.geoname_annotator import GeonameAnnotator
 
 class Diagnoser():
     def __init__(self, classifier, dict_vectorizer,
                  keyword_links=None,
                  keyword_categories=None, cutoff_ratio=0.65):
         self.classifier = classifier
+        self.geoname_annotator = GeonameAnnotator()
         self.keyword_categories = keyword_categories if keyword_categories else {}
         processing_pipeline = []
         if keyword_links:
@@ -33,6 +36,8 @@ class Diagnoser():
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
         feature_dict = self.keyword_processor.transform([base_keyword_dict])
         X = self.dict_vectorizer.transform(feature_dict)[0]
+        anno_doc = AnnoDoc(content)
+        anno_doc.add_tier(self.geoname_annotator)
         def diagnosis(i, p):
             scores = self.classifier.coef_[i] * X
             # Scores are normalized so they can be compared across different
@@ -76,10 +81,11 @@ class Diagnoser():
                 list(feature_extractors.extract_counts(content)) + [
                 {
                     'type' : 'cluster',
-                    'centroid' : cluster['centroid'],
-                    'locations' : cluster['locations'],
+                    'centroid' : {'latitude': span.geoname['latitude'],
+                                  'longitude': span.geoname['longitude']},
+                    'locations' : [span.geoname],
                 }
-                for cluster in self.location_extractor.transform([content])[0]
+                for span in anno_doc.tiers['geonames'].spans
             ]
         }
 
