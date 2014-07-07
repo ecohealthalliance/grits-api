@@ -81,9 +81,9 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     girder_db['diagnosisLog'].insert(logged_resource)
     return# resource
 
-from corpora_shared.process_resources import extract_clean_content, attach_translations
-from corpora_shared import translation
-import corpora_shared.scrape as scraper
+from corpora.process_resources import extract_clean_content, attach_translations
+from corpora import translation
+import corpora.scrape as scraper
 @celery_tasks.task
 def process_girder_resource(item_id=None):
     """
