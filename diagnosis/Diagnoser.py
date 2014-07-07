@@ -38,6 +38,22 @@ class Diagnoser():
         X = self.dict_vectorizer.transform(feature_dict)[0]
         anno_doc = AnnoDoc(content)
         anno_doc.add_tier(self.geoname_annotator)
+        geonames_grouped = {}
+        for span in anno_doc.tiers['geonames'].spans:
+            if not span.geoname['geonameid'] in geonames_grouped:
+                geonames_grouped[span.geoname['geonameid']] = {
+                    'type': 'location',
+                    'name': span.label,
+                    'geoname': span.geoname,
+                    'occurrences': [
+                        {'start': span.start, 'end': span.end, 'text': span.text}
+                    ]
+                }
+            else:
+                geonames_grouped[span.geoname['geonameid']]['occurrences'].append(
+                    {'start': span.start, 'end': span.end, 'text': span.text}
+                )
+
         def diagnosis(i, p):
             scores = self.classifier.coef_[i] * X
             # Scores are normalized so they can be compared across different
@@ -78,15 +94,8 @@ class Diagnoser():
             ],
             'diseases': [diagnosis(i,p) for i,p in self.best_guess(X)],
             'features': list(feature_extractors.extract_dates(content)) +\
-                list(feature_extractors.extract_counts(content)) + [
-                {
-                    'type' : 'cluster',
-                    'centroid' : {'latitude': span.geoname['latitude'],
-                                  'longitude': span.geoname['longitude']},
-                    'locations' : [span.geoname],
-                }
-                for span in anno_doc.tiers['geonames'].spans
-            ]
+                list(feature_extractors.extract_counts(content)) +
+                geonames_grouped.values()
         }
 
 if __name__ == '__main__':
