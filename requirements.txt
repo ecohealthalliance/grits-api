@@ -18,4 +18,3 @@ boto
 python-dateutil
 tzlocal
 celery[mongodb]
-annotator
