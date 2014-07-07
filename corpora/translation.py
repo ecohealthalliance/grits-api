@@ -154,6 +154,16 @@ def fetch_translations(path):
 
 translations = None
 
+def attach_translations(resources):
+    global translations
+    if not translations:
+        translations = fetch_translations(os.path.join(os.path.dirname(__file__), 'translations'))
+    for resource in resources:
+        if resource['_id'] in translations:
+            resource['cleanContent'] = translations[resource['_id']]
+            resource['translated'] = True
+    return resources
+
 def get_translation(id):
     global translations
     if not translations:

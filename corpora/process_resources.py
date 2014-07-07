@@ -4,6 +4,7 @@ import random
 import ctypes
 import concurrent.futures
 import os, json
+import translation
 
 def resource_url(id, set_name="train"):
     if isinstance(id, dict):
@@ -27,32 +28,8 @@ def filter_exceptions(resources):
             exceptions.append(resource)
     return resources_out, exceptions
 
-def translations_to_dict(translation_roa):
-    translations = {}
-    for translation in translation_roa:
-        translations[translation['id']] = translation['translation']
-    return translations
-
-def fetch_translations(path):
-    translations = []
-    for root, dirs, files in os.walk(path):
-        for file_name in files:
-            if not file_name.endswith('.json'): continue 
-            file_path = os.path.join(root, file_name)
-            with open(file_path) as f:
-                translations.extend(json.load(f))
-    assert len(translations) > 0
-    return translations_to_dict(translations)
-    
 def attach_translations(resources):
-    global translations
-    if not translations:
-        translations = fetch_translations(os.path.join(os.path.dirname(__file__), 'translations'))
-    for resource in resources:
-        if resource['_id'] in translations:
-            resource['cleanContent'] = translations[resource['_id']]
-            resource['translated'] = True
-    return resources
+    return translation.attach_translations(resources)
 
 def extract_clean_content(content):
     if not content.startswith('<html>'):
@@ -83,9 +60,10 @@ class PreprocessException(Exception):
 
 def preprocess_resource(resource):
     if resource.get('translated'): return resource
-    cleaned_content = get_clean_content(resource.get('content'))
-    if clean_content:
-        return cleaned_content
+    cleaned_content = extract_clean_content(resource.get('content'))
+    if cleaned_content:
+        resource['cleanContent'] = cleaned_content
+        return resource
     else:
         raise PreprocessException()
     

@@ -2,7 +2,6 @@ import argparse
 import json, yaml
 import os
 import re
-import utils
 import random
 import urllib2
 import concurrent
