@@ -83,6 +83,12 @@ def parse_spelled_number(tokens):
 my_taxonomy = None
 
 def extract_counts(text):
+    """
+    Extract the case/death/hospitalization counts from some text.
+    TODO: This should be use the output of the location and time extraction
+    so to return more detailed count information. E.g. We could infer that
+    a count only applies to a specific location/time.
+    """
     global my_taxonomy
     if not my_taxonomy:
         my_taxonomy = pattern.search.Taxonomy()
@@ -108,6 +114,16 @@ def extract_counts(text):
                     'text' : m.group(1).string,
                     'textOffsets' : [start_offset, start_offset + len(m.group(1).string)]
                 }, **args)
+    def find_nearby_matches(count, matcher):
+        start = count.get('textOffsets')[0]
+        region_start = text[:start].rfind(".")
+        region_start = 0 if region_start < 0 else region_start
+        end = count.get('textOffsets')[1]
+        region_end = text[end:].find(".")
+        region_end = len(text) if region_end < 0 else end + region_end
+        region = text[region_start:region_end]
+        match_list = [region[m.start():m.end()].lower() for m in matcher.finditer(region)]
+        return list(set(match_list))
     number_pattern = '{CD+ and? CD? CD?}'
     counts = []
     counts += list(yield_search_results([
@@ -122,6 +138,8 @@ def extract_counts(text):
     
     counts += list(yield_search_results([
         number_pattern + ' NP? PATIENT|CASE? DIED|DEATHS|FATALITIES|KILLED',
+        #Ex: it has already claimed about 455 lives in Guinea
+        'CLAIM *? ' + number_pattern + ' LIVES',
         'DEATHS :? {CD+}'
     ],
     type='deathCount'))
@@ -149,7 +167,18 @@ def extract_counts(text):
         # Remove copied counts created during replacement
         if out_count not in out_counts:
             out_counts.append(out_count)
-    for count in out_counts: yield count
+    
+    # Find surrounding key words
+    modifier_matcher = re.compile('|'.join(["average", "mean", "median", "annual"]), re.I)
+    cumulative_keyword_matcher = re.compile('|'.join(["total", "sum", "brings to", "in all", "already"]), re.I)
+    for count in out_counts:
+        count['modifiers'] = find_nearby_matches(count, modifier_matcher)
+        cumulative_keywords = find_nearby_matches(count, cumulative_keyword_matcher)
+        print cumulative_keywords
+        count['cumulative'] = len(cumulative_keywords) > 0
+    for count in out_counts:
+        count['textOffsets'] = [count['textOffsets']]
+        yield count
 
 def extract_dates(text):
     # I tried this package but the results weren't great.
