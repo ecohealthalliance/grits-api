@@ -1,3 +1,4 @@
+__version__ = '0.0.0'
 import urllib2, httplib
 import scrape_promed
 import readability
@@ -136,7 +137,7 @@ def scrape_main(url):
             if isinstance(html_or_errordict, dict):
                 return html_or_errordict
         # HTML successfully fetched
-        html = html_or_errordict
+        html = unicode(html_or_errordict, errors='replace')
         # I found out about goose and readability from here:
         # http://stackoverflow.com/questions/14164350/identifying-large-bodies-of-text-via-beautifulsoup-or-other-python-based-extract
         # The poster seems to like goose more, and what's really nice about it
@@ -153,9 +154,7 @@ def scrape_main(url):
             if len(cleaner_content) > 50:
                 return {
                     'sourceUrl' : url,
-                    'content' : cleaner_content,
-                    # AFAICT the title is always included in the content.
-                    'title' : document.short_title()
+                    'content' : cleaner_content
                 }
             else:
                 readability_error = "Readability content too short: " + cleaner_content
@@ -183,6 +182,6 @@ def scrape_main(url):
 def scrape(url):
     scrape_time = datetime.datetime.now()
     result = scrape_main(url)
-    result['retrievedAt'] = scrape_time
-    result['scraperVersion'] = '0.0.0'
+    result['scrapeDate'] = scrape_time
+    result['scraperVersion'] = __version__
     return result
