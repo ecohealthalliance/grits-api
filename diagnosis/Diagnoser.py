@@ -26,7 +26,6 @@ class Diagnoser():
         self.dict_vectorizer = dict_vectorizer
         self.keywords = dict_vectorizer.get_feature_names()
         self.keyword_extractor = KeywordExtractor(self.keywords)
-        self.location_extractor = LocationExtractor()
         self.cutoff_ratio = cutoff_ratio
     def best_guess(self, X):
         probs = self.classifier.predict_proba(X)[0]
