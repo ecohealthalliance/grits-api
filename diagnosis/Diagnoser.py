@@ -9,6 +9,16 @@ from sklearn.pipeline import Pipeline
 import datetime
 from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def time_sofar_gen(start_time):
+    """
+    A generator that returns the time elapsed since the passed in start_time.
+    """
+    while True:
+        yield '[' + str(datetime.datetime.now() - start_time) + ']'
 
 class Diagnoser():
     def __init__(self, classifier, dict_vectorizer,
@@ -32,9 +42,38 @@ class Diagnoser():
         p_max = max(probs)
         return [(i,p) for i,p in enumerate(probs) if p >= p_max * self.cutoff_ratio]
     def diagnose(self, content):
+        time_sofar = time_sofar_gen(datetime.datetime.now())
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
         feature_dict = self.keyword_processor.transform([base_keyword_dict])
         X = self.dict_vectorizer.transform(feature_dict)[0]
+        logger.info(time_sofar.next() + 'Computed feature vector')
+        def diagnosis(i, p):
+            scores = self.classifier.coef_[i] * X
+            # Scores are normalized so they can be compared across different
+            # classifications.
+            norm = np.linalg.norm(scores)
+            if norm > 0:
+               scores /= norm
+            scores *= p
+            scored_keywords = zip(self.keywords, scores)
+            return {
+                'name' : self.classifier.classes_[i],
+                'probability' : p,
+                'keywords' : [{
+                        'name' : kwd,
+                        'score' : float(score),
+                    }
+                    for kwd, score in scored_keywords
+                    if score > 0 and kwd in base_keyword_dict],
+                'inferred_keywords' : [{
+                        'name' : kwd,
+                        'score' : score,
+                    }
+                    for kwd, score in scored_keywords
+                    if score > 0 and kwd not in base_keyword_dict]
+            }
+        diseases = [diagnosis(i,p) for i,p in self.best_guess(X)]
+        logger.info(time_sofar.next() + 'Diagnosed diseases')
         anno_doc = AnnoDoc(content)
         anno_doc.add_tier(self.geoname_annotator)
         geonames_grouped = {}
@@ -52,32 +91,11 @@ class Diagnoser():
                 geonames_grouped[span.geoname['geonameid']]['occurrences'].append(
                     {'start': span.start, 'end': span.end, 'text': span.text}
                 )
-
-        def diagnosis(i, p):
-            scores = self.classifier.coef_[i] * X
-            # Scores are normalized so they can be compared across different
-            # classifications.
-            norm = np.linalg.norm(scores)
-            if norm > 0:
-               scores /= norm
-            scores *= p
-            scored_keywords = zip(self.keywords, scores)
-            return {
-                'name' : self.classifier.classes_[i],
-                'probability' : p,
-                'keywords' : [{
-                        'name' : kwd,
-                        'score' : score,
-                    }
-                    for kwd, score in scored_keywords
-                    if score > 0 and kwd in base_keyword_dict],
-                'inferred_keywords' : [{
-                        'name' : kwd,
-                        'score' : score,
-                    }
-                    for kwd, score in scored_keywords
-                    if score > 0 and kwd not in base_keyword_dict]
-            }
+        logger.info(time_sofar.next() + 'Annotated geonames')
+        extracted_counts = list(feature_extractors.extract_counts(content))
+        logger.info(time_sofar.next() + 'Extracted case counts')
+        extracted_dates = list(feature_extractors.extract_dates(content))
+        logger.info(time_sofar.next() + 'Extracted case dates')
         return {
             'diagnoserVersion' : '0.0.0',
             'dateOfDiagnosis' : datetime.datetime.now(),
@@ -91,9 +109,9 @@ class Diagnoser():
                 }
                 for keyword, count in base_keyword_dict.items()
             ],
-            'diseases': [diagnosis(i,p) for i,p in self.best_guess(X)],
-            'features': list(feature_extractors.extract_dates(content)) +\
-                list(feature_extractors.extract_counts(content)) +
+            'diseases': diseases,
+            'features': extracted_dates +\
+                extracted_counts +\
                 geonames_grouped.values()
         }
 
