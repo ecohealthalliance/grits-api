@@ -51,10 +51,6 @@ def parse_spelled_number(tokens):
     }
     punctuation = re.compile(r'[\.\,\?\(\)\!]')
     affix = re.compile(r'(\d+)(st|nd|rd|th)')
-    def clean_token(t):
-        t = punctuation.sub('', t)
-        t = affix.sub(r'\1', t)
-        return t.lower()
     def parse_token(t):
         number = parse_number(t)
         if number is not None: return number
@@ -62,7 +58,13 @@ def parse_spelled_number(tokens):
             return numbers[t]
         else:
             return t
-    cleaned_tokens = [clean_token(t) for t in tokens if t not in ['and', 'or']]
+    cleaned_tokens = []
+    for raw_token in tokens:
+        for t in raw_token.split('-'):
+            if t in ['and', 'or']: continue
+            t = punctuation.sub('', t)
+            t = affix.sub(r'\1', t)
+            cleaned_tokens.append(t.lower())
     numeric_tokens = map(parse_token, cleaned_tokens)
     if any(filter(lambda t: isinstance(t, basestring), numeric_tokens)) or len(numeric_tokens) == 0:
         print 'Error: Could not parse number: ' + unicode(tokens)
@@ -111,7 +113,10 @@ def extract_counts(text):
     number_pattern = '{CD+ and? CD? CD?}'
     counts = []
     counts += list(yield_search_results([
-        number_pattern + ' JJ*? JJ*? PATIENT|CASE|INFECTION',
+        #VB* is used because some times the parse tree is wrong.
+        #Ex: There have been 12 reported cases in Colorado.
+        #Ex: There was one suspected case of bird flu in the country
+        number_pattern + ' JJ*? JJ*|VB*? PATIENT|CASE|INFECTION',
         number_pattern + ' *? *? *? *? *? *? *? INFECT|AFFLICT',
         #Ex: it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28
         #Ex: The number of cases has exceeded 30
