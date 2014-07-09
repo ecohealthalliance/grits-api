@@ -157,23 +157,24 @@ def extract_dates(text):
     # I also tried HeidelTime, but I don't think it provides enough of an improvement
     # to make up for the added dependencies (Java, GPL). 
     # The nice the about HeidelTime is that it extracts a lot of additional information.
-    # For instance, it can extract intervals and vague time references like "currently" or "recently". 
+    # For instance, it can extract intervals and vague time references like "currently" or "recently".
+    # Time intervals would be useful for associating case counts
+    # with the correct time information.
     def maybe(text_re):
         return r"(" + text_re + r")?"
-    monthnames = "january february march april may june july august september october november december".split(" ")
+    monthnames = "January February March April May June July August September October November December".split(" ")
     monthabrev = [s.lower() for s in "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ")]
     month_re_str = r"(?P<monthname>" + '|'.join(monthnames) + r")"
     month_abrev_re_str = r"(?P<monthabrev>" + '|'.join(monthabrev) + r")"
     day_re_str = r"(?P<day>\d{1,2})(st|nd|rd|th)?"
     year_re_str = r"(?P<year>\d{4})"
     promed_body_date_re = re.compile(r"\b" + day_re_str + r"\s(" + month_re_str + r'|' +
-        month_abrev_re_str + r")\s" + year_re_str + r"\b", re.I | re.M)
-    promed_publication_date_re = re.compile(r"\b(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})\b", re.I)
-    # Amy suggested using a negative look behind to avoid overlapping matching with the other date re.
+        month_abrev_re_str + r")\s" + year_re_str + r"\b", re.M)
+    promed_publication_date_re = re.compile(r"\b(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})\b", re.M)
+    # Amy suggested using a negative look behind to avoid overlapping matches with the other date re.
     # Look behind expressions require a fixed width.
     mdy_date_re = re.compile(r"(?<!(\d|\s)\d\s)\b" + month_re_str +
-        maybe(r'\s' + day_re_str) + maybe(r'\s' + year_re_str) + r"\b", re.I | re.M)
-    #dmy_date_re = re.compile(r"\b" + day_re_str + r'\s' + month_re_str + r'\s' + year_re_str + r"\b", re.I | re.M)
+        maybe(r'\s' + day_re_str) + maybe(r'\s' + year_re_str) + r"\b", re.M)
     date_info_dicts = []
     matches = []
     for match in itertools.chain( promed_body_date_re.finditer(text),
