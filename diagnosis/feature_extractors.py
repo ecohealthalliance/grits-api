@@ -163,18 +163,18 @@ def extract_dates(text):
     def maybe(text_re):
         return r"(" + text_re + r")?"
     monthnames = "January February March April May June July August September October November December".split(" ")
-    monthabrev = [s.lower() for s in "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ")]
-    month_re_str = r"(?P<monthname>" + '|'.join(monthnames) + r")"
+    monthabrev = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ")
+    month_full_re_str = r"(?P<monthname>" + '|'.join(monthnames) + r")"
     month_abrev_re_str = r"(?P<monthabrev>" + '|'.join(monthabrev) + r")"
+    month_re_str = r"(%s|%s)" % (month_full_re_str, month_abrev_re_str)
     day_re_str = r"(?P<day>\d{1,2})(st|nd|rd|th)?"
     year_re_str = r"(?P<year>\d{4})"
-    promed_body_date_re = re.compile(r"\b" + day_re_str + r"\s(" + month_re_str + r'|' +
-        month_abrev_re_str + r")\s" + year_re_str + r"\b", re.M)
+    promed_body_date_re = re.compile(r"\b" + day_re_str + r"\s" + month_re_str + r"\s" + year_re_str + r"\b", re.M)
     promed_publication_date_re = re.compile(r"\b(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})\b", re.M)
     # Amy suggested using a negative look behind to avoid overlapping matches with the other date re.
     # Look behind expressions require a fixed width.
-    mdy_date_re = re.compile(r"(?<!(\d|\s)\d\s)\b" + month_re_str +
-        maybe(r'\s' + day_re_str) + maybe(r'\s' + year_re_str) + r"\b", re.M)
+    mdy_date_re = re.compile(r"(?<!(\d|\s)\d\s)\b" + month_re_str +\
+        maybe(r'\s' + day_re_str + r",?") + maybe(r'\s' + year_re_str) + r"\b", re.M)
     date_info_dicts = []
     matches = []
     for match in itertools.chain( promed_body_date_re.finditer(text),
@@ -184,7 +184,6 @@ def extract_dates(text):
         date_info = {}
         for k, v in match.groupdict().items():
             if v is None: continue
-            v = v.lower()
             if k == 'monthabrev':
                 date_info['month'] = monthabrev.index(v) + 1
             elif k == 'monthname':
