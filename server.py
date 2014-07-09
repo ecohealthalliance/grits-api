@@ -2,6 +2,7 @@ import json
 import pickle
 import flask
 from flask import render_template, request
+import numpy
 
 import config
 
@@ -21,6 +22,8 @@ def my_serializer(obj):
         return obj.isoformat()
     if isinstance(obj, bson.ObjectId):
         return str(obj)
+    if isinstance(obj, numpy.int64):
+        return int(obj)
     else:
         raise TypeError(obj)
 

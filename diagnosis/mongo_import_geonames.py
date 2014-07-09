@@ -11,6 +11,7 @@ import sys, csv
 import unicodecsv
 import pymongo
 import config
+import time
 
 def parse_number(num, default):
     try:
@@ -56,12 +57,12 @@ def read_geonames_csv(file_path):
             d['latitude'] = parse_number(d['latitude'], 0)
             d['longitude'] = parse_number(d['longitude'], 0)
             d['elevation'] = parse_number(d['elevation'], 0)
-            names = [d['name']]
             if len(d['alternatenames']) > 0:
-                names += d['alternatenames'].split(',')
-            for name in set(names):
-                yield dict(d, lemmatized_name=name.lower())
-
+                d['alternatenames'] = d['alternatenames'].split(',')
+            else:
+                d['alternatenames'] = []
+            yield d
+            
 if __name__ == '__main__':
     print "This takes me about a half hour to run on my machine..."
     db = pymongo.Connection(config.mongo_url)['geonames']
@@ -72,9 +73,31 @@ if __name__ == '__main__':
         if i % (total_row_estimate / 10) == 0:
             print i, '/', total_row_estimate, '+ geonames imported'
         collection.insert(geoname)
-    db.allCountries.ensure_index('lemmatized_name')
-    # Test that the collection contains some of the locations we would expect:
-    test_names = ['yosemite', 'new york', 'africa', 'canada']
-    query = db.allCountries.find({ 'lemmatized_name' : { '$in' : test_names } })
-    found_names = set([geoname['lemmatized_name'] for geoname in query])
-    assert set(test_names) - found_names == set()
+    db.allCountries.ensure_index('name')
+    db.allCountries.ensure_index('alternatenames')
+    # Test that the collection contains some of the locations we would expect,
+    # and that it completes in a reasonable amount of time.
+    # TODO: Run the geoname extractor here.
+    start_time = time.time()
+    test_names = ['Riu Valira del Nord', 'Bosque de Soldeu', 'New York', 'Africa', 'Canada', 'Kirkland']
+    query = db.allCountries.find({
+        '$or' : [
+            {
+                'name' : { '$in' : test_names }
+            },
+            {
+                'alternatenames' : { '$in' : test_names }
+            }
+        ]
+    })
+    found_names = set()
+    for geoname in query:
+        found_names.add(geoname['name'])
+        for alt in geoname['alternatenames']:
+            found_names.add(alt)
+    difference = set(test_names) - found_names
+    if difference != set():
+        print "Test failed!"
+        print "Missing names:", difference
+    if time.time() - start_time > 15:
+        print "Warning: query took over 15 seconds."
