@@ -51,10 +51,6 @@ def parse_spelled_number(tokens):
     }
     punctuation = re.compile(r'[\.\,\?\(\)\!]')
     affix = re.compile(r'(\d+)(st|nd|rd|th)')
-    def clean_token(t):
-        t = punctuation.sub('', t)
-        t = affix.sub(r'\1', t)
-        return t.lower()
     def parse_token(t):
         number = parse_number(t)
         if number is not None: return number
@@ -62,7 +58,13 @@ def parse_spelled_number(tokens):
             return numbers[t]
         else:
             return t
-    cleaned_tokens = [clean_token(t) for t in tokens if t not in ['and', 'or']]
+    cleaned_tokens = []
+    for raw_token in tokens:
+        for t in raw_token.split('-'):
+            if t in ['and', 'or']: continue
+            t = punctuation.sub('', t)
+            t = affix.sub(r'\1', t)
+            cleaned_tokens.append(t.lower())
     numeric_tokens = map(parse_token, cleaned_tokens)
     if any(filter(lambda t: isinstance(t, basestring), numeric_tokens)) or len(numeric_tokens) == 0:
         print 'Error: Could not parse number: ' + unicode(tokens)
@@ -111,7 +113,10 @@ def extract_counts(text):
     number_pattern = '{CD+ and? CD? CD?}'
     counts = []
     counts += list(yield_search_results([
-        number_pattern + ' JJ*? JJ*? PATIENT|CASE|INFECTION',
+        #VB* is used because some times the parse tree is wrong.
+        #Ex: There have been 12 reported cases in Colorado.
+        #Ex: There was one suspected case of bird flu in the country
+        number_pattern + ' JJ*? JJ*|VB*? PATIENT|CASE|INFECTION',
         number_pattern + ' *? *? *? *? *? *? *? INFECT|AFFLICT',
         #Ex: it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28
         #Ex: The number of cases has exceeded 30
@@ -157,23 +162,24 @@ def extract_dates(text):
     # I also tried HeidelTime, but I don't think it provides enough of an improvement
     # to make up for the added dependencies (Java, GPL). 
     # The nice the about HeidelTime is that it extracts a lot of additional information.
-    # For instance, it can extract intervals and vague time references like "currently" or "recently". 
+    # For instance, it can extract intervals and vague time references like "currently" or "recently".
+    # Time intervals would be useful for associating case counts
+    # with the correct time information.
     def maybe(text_re):
         return r"(" + text_re + r")?"
-    monthnames = "january february march april may june july august september october november december".split(" ")
-    monthabrev = [s.lower() for s in "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ")]
-    month_re_str = r"(?P<monthname>" + '|'.join(monthnames) + r")"
+    monthnames = "January February March April May June July August September October November December".split(" ")
+    monthabrev = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(" ")
+    month_full_re_str = r"(?P<monthname>" + '|'.join(monthnames) + r")"
     month_abrev_re_str = r"(?P<monthabrev>" + '|'.join(monthabrev) + r")"
+    month_re_str = r"(%s|%s)" % (month_full_re_str, month_abrev_re_str)
     day_re_str = r"(?P<day>\d{1,2})(st|nd|rd|th)?"
     year_re_str = r"(?P<year>\d{4})"
-    promed_body_date_re = re.compile(r"\b" + day_re_str + r"\s(" + month_re_str + r'|' +
-        month_abrev_re_str + r")\s" + year_re_str + r"\b", re.I | re.M)
-    promed_publication_date_re = re.compile(r"\b(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})\b", re.I)
-    # Amy suggested using a negative look behind to avoid overlapping matching with the other date re.
+    promed_body_date_re = re.compile(r"\b" + day_re_str + r"\s" + month_re_str + r"\s" + year_re_str + r"\b", re.M)
+    promed_publication_date_re = re.compile(r"\b(?P<year>\d{4})-(?P<month>\d{2})-(?P<day>\d{2}) (?P<hour>\d{2}):(?P<minute>\d{2}):(?P<second>\d{2})\b", re.M)
+    # Amy suggested using a negative look behind to avoid overlapping matches with the other date re.
     # Look behind expressions require a fixed width.
-    mdy_date_re = re.compile(r"(?<!(\d|\s)\d\s)\b" + month_re_str +
-        maybe(r'\s' + day_re_str) + maybe(r'\s' + year_re_str) + r"\b", re.I | re.M)
-    #dmy_date_re = re.compile(r"\b" + day_re_str + r'\s' + month_re_str + r'\s' + year_re_str + r"\b", re.I | re.M)
+    mdy_date_re = re.compile(r"(?<!(\d|\s)\d\s)\b" + month_re_str +\
+        maybe(r'\s' + day_re_str + r",?") + maybe(r'\s' + year_re_str) + r"\b", re.M)
     date_info_dicts = []
     matches = []
     for match in itertools.chain( promed_body_date_re.finditer(text),
@@ -183,7 +189,6 @@ def extract_dates(text):
         date_info = {}
         for k, v in match.groupdict().items():
             if v is None: continue
-            v = v.lower()
             if k == 'monthabrev':
                 date_info['month'] = monthabrev.index(v) + 1
             elif k == 'monthname':

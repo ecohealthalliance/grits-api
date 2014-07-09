@@ -95,7 +95,7 @@ class Diagnoser():
         extracted_counts = list(feature_extractors.extract_counts(content))
         logger.info(time_sofar.next() + 'Extracted case counts')
         extracted_dates = list(feature_extractors.extract_dates(content))
-        logger.info(time_sofar.next() + 'Extracted case dates')
+        logger.info(time_sofar.next() + 'Extracted dates')
         return {
             'diagnoserVersion' : '0.0.0',
             'dateOfDiagnosis' : datetime.datetime.now(),
