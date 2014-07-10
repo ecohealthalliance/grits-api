@@ -10,7 +10,7 @@ nltk.download([
 ])
 EOF
 cd annie
-sudo python setup.py install
+grits_api_env/bin/python setup.py install
 cd ../
 grits_api_env/bin/python train.py
 sudo supervisorctl restart celery_priority celery_process celery_diagnose flask
