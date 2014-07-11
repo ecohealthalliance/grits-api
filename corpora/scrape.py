@@ -35,6 +35,8 @@ def open_url(opener, url):
                 'exception' : str(res.getcode())
             }
         else:
+            # TODO: Use an encoding detector.
+            # Many Chinese pages are gb2312 encoded.
             html = res.read()
     except (urllib2.HTTPError, urllib2.URLError):
         errDescription = '\n'.join([str(i) for i in sys.exc_info()])
