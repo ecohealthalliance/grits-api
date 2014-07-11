@@ -9,6 +9,7 @@ from sklearn.pipeline import Pipeline
 import datetime
 from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
+from annotator.case_count_annotator import CaseCountAnnotator
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class Diagnoser():
                  keyword_categories=None, cutoff_ratio=0.65):
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
+        self.case_count_annotator = CaseCountAnnotator()
         self.keyword_categories = keyword_categories if keyword_categories else {}
         processing_pipeline = []
         if keyword_links:
@@ -76,6 +78,7 @@ class Diagnoser():
         logger.info(time_sofar.next() + 'Diagnosed diseases')
         anno_doc = AnnoDoc(content)
         anno_doc.add_tier(self.geoname_annotator)
+        anno_doc.add_tier(self.case_count_annotator)
         geonames_grouped = {}
         for span in anno_doc.tiers['geonames'].spans:
             if not span.geoname['geonameid'] in geonames_grouped:
@@ -91,6 +94,15 @@ class Diagnoser():
                 geonames_grouped[span.geoname['geonameid']]['occurrences'].append(
                     {'start': span.start, 'end': span.end, 'text': span.text}
                 )
+        case_counts = []
+        for span in anno_doc.tiers['caseCounts'].spans:
+            case_counts.append({
+                'type': span.type,
+                'value': span.label,
+                'occurrences': {
+                    'start': span.start, 'end': span.end, 'text': span.text
+                }
+            })
         logger.info(time_sofar.next() + 'Annotated geonames')
         extracted_counts = list(feature_extractors.extract_counts(content))
         logger.info(time_sofar.next() + 'Extracted case counts')
@@ -111,7 +123,7 @@ class Diagnoser():
             ],
             'diseases': diseases,
             'features': extracted_dates +\
-                extracted_counts +\
+                case_counts +\
                 geonames_grouped.values()
         }
 
