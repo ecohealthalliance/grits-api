@@ -28,7 +28,7 @@ def get_pickle(filename):
             print "Downloading", filename
             k.get_contents_to_filename(filename)
     except:
-        raise Exception("Could not download fresh pickle: " + filename)
+        print "Could not download fresh pickle: " + filename
     with open(filename) as f:
         result = pickle.load(f)
         print filename, "loaded"
