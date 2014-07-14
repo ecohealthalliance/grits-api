@@ -81,7 +81,6 @@ class Diagnoser():
         anno_doc = AnnoDoc(content)
 
         anno_doc.add_tier(self.geoname_annotator)
-        anno_doc.add_tier(self.case_count_annotator)
         geonames_grouped = {}
         for span in anno_doc.tiers['geonames'].spans:
             if not span.geoname['geonameid'] in geonames_grouped:
@@ -97,20 +96,10 @@ class Diagnoser():
                 geonames_grouped[span.geoname['geonameid']]['occurrences'].append(
                     {'start': span.start, 'end': span.end, 'text': span.text}
                 )
-        case_counts = []
-        for span in anno_doc.tiers['caseCounts'].spans:
-            case_counts.append({
-                'type': span.type,
-                'value': span.label,
-                'occurrences': {
-                    'start': span.start, 'end': span.end, 'text': span.text
-                }
-            })
         logger.info(time_sofar.next() + 'Annotated geonames')
 
         anno_doc.add_tier(self.case_count_annotator)
         case_counts = []
-        print "anno_doc.tiers['caseCounts'].spans", anno_doc.tiers['caseCounts'].spans
         for span in anno_doc.tiers['caseCounts'].spans:
             case_counts.append({
                 'type': span.type,
