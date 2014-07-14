@@ -8,7 +8,7 @@ from celery import Celery
 import datetime
 from distutils.version import StrictVersion
 import config
-from microsofttranslator import Translator
+import microsofttranslator
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -101,7 +101,7 @@ def process_girder_resource(item_id=None):
     """
     item_id = bson.ObjectId(item_id)
     # The version of this function
-    version = '0.0.1'
+    version = '0.0.2'
     resource = girder_db.item.find_one(item_id)
     private = resource['private'] = resource.get('private', {})
     private['processorVersion'] = version
@@ -152,15 +152,18 @@ def process_girder_resource(item_id=None):
                     }
                 else:
                     try:
-                        translation_api = Translator(config.bing_translate_id, config.bing_translate_secret)
+                        translation_api = microsofttranslator.Translator(config.bing_translate_id, config.bing_translate_secret)
+                        translation = translation_api.translate(clean_content, 'en')
+                        if translation.startswith("TranslateApiException:"):
+                            raise microsofttranslator.TranslateApiException(translation.split("TranslateApiException:")[1]) 
                         private['englishTranslation'] = {
-                            'content' : translation_api.translate(clean_content, 'en'),
+                            'content' : translation,
                             'translationDate' : datetime.datetime.now(),
                             'translationService' : 'microsoft'
                         }
                         logger.info('Translated: ' + resource['meta']['link'])
                         consecutive_exceptions = 0
-                    except TranslateApiException as e:
+                    except microsofttranslator.TranslateApiException as e:
                         consecutive_exceptions += 1
                         private['englishTranslation'] = {
                             'error' : 'Exception during translation.'
