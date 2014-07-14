@@ -9,23 +9,26 @@ def get_pickle(filename):
     Download the pickle from the AWS bucket if it's stale,
     save it in the workspace, and return the loaded data.
     """
-    conn = S3Connection(config.aws_access_key, config.aws_secret_key)
-    bucket = conn.get_bucket('classifier-data')
-    k = bucket.get_key(filename)
-    from dateutil import parser
-    from tzlocal import get_localzone
-    tz = get_localzone()
-    if os.path.exists(filename):
-        local_copy_time = datetime.datetime.fromtimestamp(os.path.getctime(filename))
-    else:
-        # This datetime that should always be before the remote copy timestamp.
-        # However, if it is too close to datetime min it can't be
-        # localized in some timezones.
-        local_copy_time = datetime.datetime(1,2,3)
-    remote_copy_time = parser.parse(k.last_modified)
-    if tz.localize(local_copy_time) < remote_copy_time:
-        print "Downloading", filename
-        k.get_contents_to_filename(filename)
+    try:
+        conn = S3Connection(config.aws_access_key, config.aws_secret_key)
+        bucket = conn.get_bucket('classifier-data')
+        k = bucket.get_key(filename)
+        from dateutil import parser
+        from tzlocal import get_localzone
+        tz = get_localzone()
+        if os.path.exists(filename):
+            local_copy_time = datetime.datetime.fromtimestamp(os.path.getctime(filename))
+        else:
+            # This datetime that should always be before the remote copy timestamp.
+            # However, if it is too close to datetime min it can't be
+            # localized in some timezones.
+            local_copy_time = datetime.datetime(1,2,3)
+        remote_copy_time = parser.parse(k.last_modified)
+        if tz.localize(local_copy_time) < remote_copy_time:
+            print "Downloading", filename
+            k.get_contents_to_filename(filename)
+    except:
+        raise Exception("Could not download fresh pickle: " + filename)
     with open(filename) as f:
         result = pickle.load(f)
         print filename, "loaded"

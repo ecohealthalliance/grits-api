@@ -1,1 +1,0 @@
-I've created included this code from the corpora repo to make it easier to deploy the task queue.
