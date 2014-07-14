@@ -9,6 +9,8 @@ from sklearn.pipeline import Pipeline
 import datetime
 from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
+from annotator.case_count_annotator import CaseCountAnnotator
+
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -26,6 +28,7 @@ class Diagnoser():
                  keyword_categories=None, cutoff_ratio=0.65):
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
+        self.case_count_annotator = CaseCountAnnotator()
         self.keyword_categories = keyword_categories if keyword_categories else {}
         processing_pipeline = []
         if keyword_links:
@@ -74,7 +77,9 @@ class Diagnoser():
             }
         diseases = [diagnosis(i,p) for i,p in self.best_guess(X)]
         logger.info(time_sofar.next() + 'Diagnosed diseases')
+
         anno_doc = AnnoDoc(content)
+
         anno_doc.add_tier(self.geoname_annotator)
         geonames_grouped = {}
         for span in anno_doc.tiers['geonames'].spans:
@@ -92,8 +97,20 @@ class Diagnoser():
                     {'start': span.start, 'end': span.end, 'text': span.text}
                 )
         logger.info(time_sofar.next() + 'Annotated geonames')
-        extracted_counts = list(feature_extractors.extract_counts(content))
+
+        anno_doc.add_tier(self.case_count_annotator)
+        case_counts = []
+        for span in anno_doc.tiers['caseCounts'].spans:
+            case_counts.append({
+                'type': span.type,
+                'text': span.text,
+                'value': span.label,
+                'modifiers': span.modifiers,
+                'cumulative': span.cumulative,
+                'textOffsets': [[span.start, span.end]]
+                })
         logger.info(time_sofar.next() + 'Extracted case counts')
+
         extracted_dates = list(feature_extractors.extract_dates(content))
         logger.info(time_sofar.next() + 'Extracted dates')
         return {
@@ -111,7 +128,7 @@ class Diagnoser():
             ],
             'diseases': diseases,
             'features': extracted_dates +\
-                extracted_counts +\
+                case_counts +\
                 geonames_grouped.values()
         }
 
