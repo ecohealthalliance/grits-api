@@ -20,3 +20,4 @@ tzlocal
 celery[mongodb]
 flower
 microsofttranslator
+threadpool

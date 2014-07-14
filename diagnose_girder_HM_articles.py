@@ -16,6 +16,7 @@ def update():
         }).limit(200)
         remaining_resources = resources.count()
         if remaining_resources == 0:
+            print "No remaining resources to process."
             break
         print "Remaining resources to process:", remaining_resources
         for resource in resources:
