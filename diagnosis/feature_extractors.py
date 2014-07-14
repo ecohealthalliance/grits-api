@@ -133,10 +133,10 @@ def extract_counts(text):
         #Ex: There have been 12 reported cases in Colorado.
         #Ex: There was one suspected case of bird flu in the country
         number_pattern + ' JJ*? JJ*|VB*? PATIENT|CASE|INFECTION',
-        number_pattern + ' *? *? *? *? *? *? *? INFECT|AFFLICT',
+        number_pattern + ' *? *? INFECT|AFFLICT',
         #Ex: it brings the number of cases reported in Jeddah since 27 Mar 2014 to 28
         #Ex: The number of cases has exceeded 30
-        'NUMBER OF PATIENT|CASE|INFECTION *? *? *? *? *? *? *? TO ' + number_pattern,
+        'NUMBER OF PATIENT|CASE|INFECTION *? *? TO ' + number_pattern,
         'NUMBER OF PATIENT|CASE|INFECTION VP ' + number_pattern
     ],
     type='caseCount'))
