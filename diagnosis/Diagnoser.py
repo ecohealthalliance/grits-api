@@ -88,13 +88,13 @@ class Diagnoser():
                     'type': 'location',
                     'name': span.label,
                     'geoname': span.geoname,
-                    'occurrences': [
-                        {'start': span.start, 'end': span.end, 'text': span.text}
+                    'textOffsets': [
+                        [span.start, span.end]
                     ]
                 }
             else:
-                geonames_grouped[span.geoname['geonameid']]['occurrences'].append(
-                    {'start': span.start, 'end': span.end, 'text': span.text}
+                geonames_grouped[span.geoname['geonameid']]['textOffsets'].append(
+                    [span.start, span.end]
                 )
         logger.info(time_sofar.next() + 'Annotated geonames')
 
