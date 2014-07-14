@@ -7,7 +7,7 @@ import numpy
 import config
 
 from celery import chain
-import tasks
+# import tasks
 
 import bson
 import pymongo
@@ -36,6 +36,8 @@ with open('keyword_links.p') as f:
     keyword_links = pickle.load(f)
 with open('keyword_sets.p') as f:
     keyword_sets = pickle.load(f)
+
+print "ABOUT TO BUILD my_diagnoser"
 my_diagnoser = Diagnoser(my_classifier,
                          my_dict_vectorizer,
                          keyword_links=keyword_links,
@@ -66,27 +68,27 @@ def diagnosis():
     content = get_values().get('content')
     return json.dumps(my_diagnoser.diagnose(content), default=my_serializer)
     
-@app.route('/enqueue_girder_diagnosis/<item_id>', methods = ['POST', 'GET'])
-def enqueue_diagnosis(item_id):
-    item_id = bson.ObjectId(item_id)
-    if girder_db.item.find_one(item_id):
-        girder_db.item.update({'_id':item_id}, {
-            '$set': {
-                'meta.processing' : True,
-                'meta.diagnosing' : True
-            }
-        })
-        chain(
-            tasks.process_girder_resource.s(item_id=item_id).set(queue='priority'),
-            tasks.diagnose_girder_resource.s(item_id=item_id)
-        )()
-        return flask.jsonify(
-             success=True
-        )
-    else:
-        return flask.jsonify(
-             success=False
-        )
+# @app.route('/enqueue_girder_diagnosis/<item_id>', methods = ['POST', 'GET'])
+# def enqueue_diagnosis(item_id):
+#     item_id = bson.ObjectId(item_id)
+#     if girder_db.item.find_one(item_id):
+#         girder_db.item.update({'_id':item_id}, {
+#             '$set': {
+#                 'meta.processing' : True,
+#                 'meta.diagnosing' : True
+#             }
+#         })
+#         chain(
+#             tasks.process_girder_resource.s(item_id=item_id).set(queue='priority'),
+#             tasks.diagnose_girder_resource.s(item_id=item_id)
+#         )()
+#         return flask.jsonify(
+#              success=True
+#         )
+#     else:
+#         return flask.jsonify(
+#              success=False
+#         )
 
 if __name__ == '__main__':
     import argparse
