@@ -89,7 +89,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     return# resource
 
 from corpora.process_resources import extract_clean_content, attach_translations
-from corpora import translation
+from corpora import translation as translation_lib
 import corpora.scrape as scraper
 consecutive_exceptions = 0
 @celery_tasks.task
@@ -128,14 +128,14 @@ def process_girder_resource(item_id=None):
         return# resource
     private['cleanContent'] = { 'content' : clean_content }
     
-    if not translation.is_english(clean_content):
+    if not translation_lib.is_english(clean_content):
         prev_translation = resource.get('private', {}).get('englishTranslation')
         if not prev_translation or prev_clean_content != clean_content:
             # The stored translation code can be removed eventually
             # We have some tranlations for specific documents saved in json files.
             # Once they are in the database there is no reason to keep those files
             # or this code.
-            stored_translation = translation.get_translation(str(item_id))
+            stored_translation = translation_lib.get_translation(str(item_id))
             if stored_translation:
                 private['englishTranslation'] = {
                     'content' : stored_translation,
