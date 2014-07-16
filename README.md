@@ -12,7 +12,7 @@ Aside from the requirments noted in [requirements.txt](requirements.txt) which m
 
 ## As part of total GRITS deployment
 
-You may elect to install all GRITS components at once (this backend and the front-end [diagnostic-dashboard](https://github.com/ecohealthalliance/diagnostic-dashboard) by following the instructions in the [grits-deploy-scripts](https://github.com/ecohealthalliance/grits-deploy-scripts) project.
+You may elect to install all GRITS components at once (this backend, the front-end [diagnostic-dashboard](https://github.com/ecohealthalliance/diagnostic-dashboard), and the [girder](https://github.com/ecohealthalliance/girder) database) by following the instructions in the [grits-deploy-scripts](https://github.com/ecohealthalliance/grits-deploy-scripts) project.
 
 The provided deploy script [deploy.sh](deploy.sh) will fetch all dependencies, include nltk data and annie, and use `supervisorctl` to launch the API server and celery processes for managing diagnoses. (TODO Nathan please flesh this out a little bit)
 
