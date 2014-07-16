@@ -32,7 +32,7 @@ Install the pip requirements:
 
     $ sudo pip install -r requirements.txt
 
-Get the [annie]([diagnostic-dashboard](https://github.com/ecohealthalliance/annie) project and make sure it's in your pythonpath.
+Get the [annie](https://github.com/ecohealthalliance/annie) project and make sure it's in your pythonpath.
 
 Start the server:
 
