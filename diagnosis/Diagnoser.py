@@ -23,6 +23,9 @@ def time_sofar_gen(start_time):
         yield '[' + str(datetime.datetime.now() - start_time) + ']'
 
 class Diagnoser():
+    
+    __version__ = '0.0.0'
+    
     def __init__(self, classifier, dict_vectorizer,
                  keyword_links=None,
                  keyword_categories=None, cutoff_ratio=0.65):
@@ -114,7 +117,7 @@ class Diagnoser():
         extracted_dates = list(feature_extractors.extract_dates(content))
         logger.info(time_sofar.next() + 'Extracted dates')
         return {
-            'diagnoserVersion' : '0.0.0',
+            'diagnoserVersion' : self.__version__,
             'dateOfDiagnosis' : datetime.datetime.now(),
             'keywords_found' : [
                 {

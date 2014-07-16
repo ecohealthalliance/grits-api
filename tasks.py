@@ -56,10 +56,10 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     
     prev_diagnosis = resource.get('meta').get('diagnosis')
     if prev_diagnosis and\
-       StrictVersion(prev_diagnosis.diagnoserVersion) >=\
+       StrictVersion(prev_diagnosis.get('diagnoserVersion', '0.0.0')) >=\
        StrictVersion(Diagnoser.__version__):
         girder_db.item.update({'_id': item_id}, resource)
-        return# resource
+        return
     english_translation = resource\
         .get('private', {})\
         .get('englishTranslation', {})\
@@ -86,7 +86,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
         else:
             logged_resource[k] = v
     girder_db['diagnosisLog'].insert(logged_resource)
-    return# resource
+    return
 
 from corpora.process_resources import extract_clean_content, attach_translations
 from corpora import translation as translation_lib
@@ -117,7 +117,8 @@ def process_girder_resource(item_id=None):
         logger.info('Scraping:' + resource['meta']['link'])
         private['scrapedData'] = scraper.scrape(resource['meta']['link'])
     if private['scrapedData'].get('unscrapable'):
-        return# resource
+        girder_db.item.update({'_id': item_id}, resource)
+        return
     
     content = private['scrapedData']['content']
     clean_content = extract_clean_content(content)
@@ -125,7 +126,7 @@ def process_girder_resource(item_id=None):
     if not clean_content:
         private['cleanContent'] = { "error" : "Could not clean content." }
         girder_db.item.update({'_id': item_id}, resource)
-        return# resource
+        return
     private['cleanContent'] = { 'content' : clean_content }
     
     if not translation_lib.is_english(clean_content):
@@ -169,4 +170,4 @@ def process_girder_resource(item_id=None):
                             'error' : 'Exception during translation.'
                         }
     girder_db.item.update({'_id': item_id}, resource)
-    return# resource
+    return

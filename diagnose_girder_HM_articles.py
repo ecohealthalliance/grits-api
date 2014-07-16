@@ -9,10 +9,16 @@ def update():
     girder_db = pymongo.Connection('localhost')['girder']
     while True:
         resources = girder_db.item.find({
-            'meta.diagnosis' : {"$exists": False},
+            '$or' : [
+                {
+                    'meta.diagnosis' : { "$exists": False }
+                }, {
+                    'private.processorVersion' : { '$ne' : '0.0.2' },
+                    'meta.diagnosis.diagnoserVersion' : { '$ne' : '0.0.0' },
+                }
+            ],
             'meta.processing' : { '$ne' : True },
-            'meta.diagnosing' : { '$ne' : True },
-            'private.scrapedData.unscrapable' : { '$ne' : True }
+            'meta.diagnosing' : { '$ne' : True }
         }).limit(200)
         remaining_resources = resources.count()
         if remaining_resources == 0:
