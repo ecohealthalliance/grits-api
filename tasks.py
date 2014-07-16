@@ -8,6 +8,10 @@ from celery import Celery
 import datetime
 from distutils.version import StrictVersion
 import config
+from microsofttranslator import Translator
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 celery_tasks = Celery('tasks', broker=config.BROKER_URL)
 celery_tasks.conf.update(
@@ -56,9 +60,12 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
        StrictVersion(Diagnoser.__version__):
         girder_db.item.update({'_id': item_id}, resource)
         return# resource
-    translation = resource.get('private', {}).get('translation')
-    if translation:
-        clean_english_content = translation.get('english')
+    english_translation = resource\
+        .get('private', {})\
+        .get('englishTranslation', {})\
+        .get('content')
+    if english_translation:
+        clean_english_content = english_translation
     else:
         clean_english_content = resource\
             .get('private', {})\
@@ -84,6 +91,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
 from corpora.process_resources import extract_clean_content, attach_translations
 from corpora import translation
 import corpora.scrape as scraper
+consecutive_exceptions = 0
 @celery_tasks.task
 def process_girder_resource(item_id=None):
     """
@@ -106,12 +114,14 @@ def process_girder_resource(item_id=None):
     if not prev_scraped_data or\
        StrictVersion(prev_scraped_data['scraperVersion']) <\
        StrictVersion(scraper.__version__):
+        logger.info('Scraping:' + resource['meta']['link'])
         private['scrapedData'] = scraper.scrape(resource['meta']['link'])
     if private['scrapedData'].get('unscrapable'):
         return# resource
     
     content = private['scrapedData']['content']
     clean_content = extract_clean_content(content)
+    prev_clean_content = private.get('cleanContent', {}).get('content')
     if not clean_content:
         private['cleanContent'] = { "error" : "Could not clean content." }
         girder_db.item.update({'_id': item_id}, resource)
@@ -119,14 +129,41 @@ def process_girder_resource(item_id=None):
     private['cleanContent'] = { 'content' : clean_content }
     
     if not translation.is_english(clean_content):
-        prev_translation = resource.get('private', {}).get('translation')
-        if not prev_translation:
-            clean_content_en = translation.get_translation(str(item_id))
-            if clean_content_en:
-                private['translation'] = {
-                    'english' : clean_content_en,
+        prev_translation = resource.get('private', {}).get('englishTranslation')
+        if not prev_translation or prev_clean_content != clean_content:
+            # The stored translation code can be removed eventually
+            # We have some tranlations for specific documents saved in json files.
+            # Once they are in the database there is no reason to keep those files
+            # or this code.
+            stored_translation = translation.get_translation(str(item_id))
+            if stored_translation:
+                private['englishTranslation'] = {
+                    'content' : stored_translation,
                     'translationDate' : datetime.datetime.now(),
-                    'translationService' : 'stored corpora translation'
+                    'translationService' : 'stored translation'
                 }
+            else:
+                global consecutive_exceptions
+                if consecutive_exceptions > 4:
+                    # Back off when we reach more than 4 consecutive exceptions
+                    # because we probably hit the api limit.
+                    private['englishTranslation'] = {
+                        'error' : 'Too many consecutive exceptions'
+                    }
+                else:
+                    try:
+                        translation_api = Translator(config.bing_translate_id, config.bing_translate_secret)
+                        private['englishTranslation'] = {
+                            'content' : translation_api.translate(clean_content, 'en'),
+                            'translationDate' : datetime.datetime.now(),
+                            'translationService' : 'microsoft'
+                        }
+                        logger.info('Translated: ' + resource['meta']['link'])
+                        consecutive_exceptions = 0
+                    except TranslateApiException as e:
+                        consecutive_exceptions += 1
+                        private['englishTranslation'] = {
+                            'error' : 'Exception during translation.'
+                        }
     girder_db.item.update({'_id': item_id}, resource)
     return# resource

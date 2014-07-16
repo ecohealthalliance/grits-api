@@ -19,3 +19,4 @@ python-dateutil
 tzlocal
 celery[mongodb]
 flower
+microsofttranslator

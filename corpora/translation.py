@@ -12,6 +12,9 @@ from bs4 import BeautifulSoup
 import re
 import os
 import json
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 most_common_english_words = [
 'the','be','to','of','and',
@@ -143,13 +146,15 @@ def translations_to_dict(translation_roa):
 
 def fetch_translations(path):
     translations = []
-    for root, dirs, files in os.walk(path):
-        for file_name in files:
-            if not file_name.endswith('.json'): continue 
-            file_path = os.path.join(root, file_name)
-            with open(file_path) as f:
-                translations.extend(json.load(f))
-    assert len(translations) > 0
+    if os.path.exists(path):
+        for root, dirs, files in os.walk(path):
+            for file_name in files:
+                if not file_name.endswith('.json'): continue 
+                file_path = os.path.join(root, file_name)
+                with open(file_path) as f:
+                    translations.extend(json.load(f))
+    if len(translations) == 0:
+        logger.warn("No translations were fetched!")
     return translations_to_dict(translations)
 
 translations = None
