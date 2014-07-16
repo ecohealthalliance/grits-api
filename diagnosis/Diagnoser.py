@@ -23,9 +23,9 @@ def time_sofar_gen(start_time):
         yield '[' + str(datetime.datetime.now() - start_time) + ']'
 
 class Diagnoser():
-    
-    __version__ = '0.0.0'
-    
+
+    __version__ = '0.0.1'
+
     def __init__(self, classifier, dict_vectorizer,
                  keyword_links=None,
                  keyword_categories=None, cutoff_ratio=0.65):
@@ -123,7 +123,7 @@ class Diagnoser():
                 {
                     'name' : keyword,
                     'count' : count,
-                    'categories' : [cat 
+                    'categories' : [cat
                             for cat, kws in self.keyword_categories.items()
                             if keyword in kws]
                 }
