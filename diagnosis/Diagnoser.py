@@ -114,7 +114,7 @@ class Diagnoser():
         extracted_dates = list(feature_extractors.extract_dates(content))
         logger.info(time_sofar.next() + 'Extracted dates')
         return {
-            'diagnoserVersion' : '0.0.0',
+            'diagnoserVersion' : '0.0.1',
             'dateOfDiagnosis' : datetime.datetime.now(),
             'keywords_found' : [
                 {
