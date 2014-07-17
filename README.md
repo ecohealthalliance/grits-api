@@ -14,7 +14,7 @@ Aside from the requirments noted in [requirements.txt](requirements.txt) which m
 
 You may elect to install all GRITS components at once (this backend, the front-end [diagnostic-dashboard](https://github.com/ecohealthalliance/diagnostic-dashboard), and the [girder](https://github.com/ecohealthalliance/girder) database) by following the instructions in the [grits-deploy-scripts](https://github.com/ecohealthalliance/grits-deploy-scripts) project.
 
-The provided deploy script [deploy.sh](deploy.sh) will fetch all dependencies, include nltk data and annie, and use `supervisorctl` to launch the API server and celery processes for managing diagnoses. (TODO Nathan please flesh this out a little bit)
+The provided deploy script [deploy.sh](deploy.sh) will fetch all dependencies, include nltk data and annie, and use `supervisorctl` to launch the API server and celery processes for managing diagnoses. There are 3 celery task queues, `priority`, `process` and `diagnose`. The process queue is for scraping and extracting articles prior to diagnosis. We recommend running a single threaded worker process on the process queue because it primarily makes http requests, so it spends most of it's time idling. The diagnose queue should have several worker processes as it is very CPU intensive. The priority queue is for both processing and diagnosing articles and should have a dedicated worker process for immediatly diagnosing individual articles. See the supervisor config in the grits-deploy-scripts for examples of how to initialize the various types of workers.
 
 This deploy script relies on config files and other steps performed by [grtis-deploy-scripts](https://github.com/ecohealthalliance/grits-deploy-scripts), so should not be used in isolation.
 
