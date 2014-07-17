@@ -4,8 +4,11 @@ Check for undiagnosed articles in girder and diagnose them.
 import pymongo
 import tasks
 from celery import chain
+from diagnosis.Diagnoser import Diagnoser
 
 def update():
+    print "Current diagnoser version:", Diagnoser.__version__
+    print "Current preprocessor version:", tasks.processor_version
     girder_db = pymongo.Connection('localhost')['girder']
     while True:
         resources = girder_db.item.find({
@@ -13,8 +16,10 @@ def update():
                 {
                     'meta.diagnosis' : { "$exists": False }
                 }, {
-                    'private.processorVersion' : { '$ne' : '0.0.2' },
-                    'meta.diagnosis.diagnoserVersion' : { '$ne' : '0.0.0' },
+                    'private.processorVersion' : { '$ne' : tasks.processor_version }
+                }, {
+                    'meta.diagnosis.error' : { "$exists": False },
+                    'meta.diagnosis.diagnoserVersion' : { '$ne' : Diagnoser.__version__ }
                 }
             ],
             'meta.processing' : { '$ne' : True },

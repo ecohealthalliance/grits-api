@@ -92,6 +92,7 @@ from corpora.process_resources import extract_clean_content, attach_translations
 from corpora import translation as translation_lib
 import corpora.scrape as scraper
 consecutive_exceptions = 0
+processor_version = '0.0.2'
 @celery_tasks.task
 def process_girder_resource(item_id=None):
     """
@@ -100,11 +101,10 @@ def process_girder_resource(item_id=None):
     translated versions of the scraped content.
     """
     item_id = bson.ObjectId(item_id)
-    # The version of this function
-    version = '0.0.2'
+    global processor_version
     resource = girder_db.item.find_one(item_id)
     private = resource['private'] = resource.get('private', {})
-    private['processorVersion'] = version
+    private['processorVersion'] = processor_version
     meta = resource['meta']
     rm_key(meta, 'processing')
     # Unset the diagnosis because the content might have changed.
@@ -171,3 +171,4 @@ def process_girder_resource(item_id=None):
                         }
     girder_db.item.update({'_id': item_id}, resource)
     return
+
