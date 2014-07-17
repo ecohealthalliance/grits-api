@@ -12,7 +12,7 @@
       "operations": [
         {
           "method": "POST",
-          "summary": "Submit a document to be anaylzed",
+          "summary": "Submit a document to be analyzed",
           "notes": "",
           "type": "Analysis",
           "nickname": "diagnose",
@@ -20,7 +20,7 @@
           "parameters": [
              {
               "name": "content",
-              "description": "the document to be abalyzed",
+              "description": "the document to be analyzed",
               "required": true,
               "type": "string",
               "paramType": "form"
