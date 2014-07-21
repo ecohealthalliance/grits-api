@@ -10,14 +10,39 @@ from distutils.version import StrictVersion
 import config
 import microsofttranslator
 import logging
+import datetime
+def make_json_compat(obj):
+    """
+    Coerce the types in an object to values that can be jsonified.
+    """
+    base_types = [str, unicode, basestring, bool, int, long, float, type(None)]
+    if type(obj) in base_types:
+        return obj
+    elif isinstance(obj, list):
+        return map(make_json_compat, obj)
+    elif isinstance(obj, dict):
+        return { k : make_json_compat(v) for k,v in obj.items() }
+    elif isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    elif isinstance(obj, bson.ObjectId):
+        return str(obj)
+    else:
+        raise TypeError(type(obj))
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 celery_tasks = Celery('tasks', broker=config.BROKER_URL)
+
 celery_tasks.conf.update(
     CELERY_TASK_SERIALIZER='json',
     CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
-    CELERY_RESULT_SERIALIZER='json'
+    CELERY_RESULT_SERIALIZER='json',
+    CELERY_RESULT_BACKEND = config.BROKER_URL,
+    CELERY_MONGODB_BACKEND_SETTINGS = {
+        'database': 'tasks',
+        'taskmeta_collection': 'taskmeta',
+    }
 )
 
 db_handle = pymongo.Connection(config.mongo_url)
@@ -59,7 +84,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
        StrictVersion(prev_diagnosis.get('diagnoserVersion', '0.0.0')) >=\
        StrictVersion(Diagnoser.__version__):
         girder_db.item.update({'_id': item_id}, resource)
-        return
+        return make_json_compat(resource)
     english_translation = resource\
         .get('private', {})\
         .get('englishTranslation', {})\
@@ -86,7 +111,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
         else:
             logged_resource[k] = v
     girder_db['diagnosisLog'].insert(logged_resource)
-    return
+    return make_json_compat(resource)
 
 from corpora.process_resources import extract_clean_content, attach_translations
 from corpora import translation as translation_lib
@@ -118,7 +143,7 @@ def process_girder_resource(item_id=None):
         private['scrapedData'] = scraper.scrape(resource['meta']['link'])
     if private['scrapedData'].get('unscrapable'):
         girder_db.item.update({'_id': item_id}, resource)
-        return
+        return make_json_compat(resource)
     
     content = private['scrapedData']['content']
     clean_content = extract_clean_content(content)
@@ -126,7 +151,7 @@ def process_girder_resource(item_id=None):
     if not clean_content:
         private['cleanContent'] = { "error" : "Could not clean content." }
         girder_db.item.update({'_id': item_id}, resource)
-        return
+        return make_json_compat(resource)
     private['cleanContent'] = { 'content' : clean_content }
     
     if not translation_lib.is_english(clean_content):
@@ -170,5 +195,38 @@ def process_girder_resource(item_id=None):
                             'error' : 'Exception during translation.'
                         }
     girder_db.item.update({'_id': item_id}, resource)
-    return
+    return make_json_compat(resource)
 
+@celery_tasks.task
+def scrape(url):
+    """
+    Scrape the meta.link of the girder item with the given id.
+    Update the entry with the results, then update it with cleaned and 
+    translated versions of the scraped content.
+    """
+    return make_json_compat(scraper.scrape(url))
+
+@celery_tasks.task
+def process_text(text_obj):
+    if text_obj.get('unscrapable'):
+        return text_obj
+    content = text_obj['content']
+    clean_content = extract_clean_content(content)
+    if not clean_content:
+        text_obj['cleanContent'] = { 'error' : "Could not clean content." }
+    else:
+        text_obj['cleanContent'] = { 'content' : clean_content }
+    # TODO: Add translation
+    return text_obj
+
+@celery_tasks.task
+def diagnose(text_obj):
+    english_translation = text_obj.get('englishTranslation', {}).get('content')
+    if english_translation:
+        clean_english_content = english_translation
+    else:
+        clean_english_content = text_obj.get('cleanContent', {}).get('content')
+    if clean_english_content:
+        return make_json_compat(my_diagnoser.diagnose(clean_english_content))
+    else:
+        return { 'error' : 'No content available to diagnose.' }

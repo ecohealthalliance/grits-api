@@ -63,42 +63,31 @@ def test():
 
 @app.route('/diagnose', methods = ['POST', 'GET'])
 def diagnosis():
-    content = get_values().get('content')
-    return json.dumps(my_diagnoser.diagnose(content), default=my_serializer)
+    values = get_values()
+    if 'content' in values:
+        result = chain(
+            tasks.process_text.s(dict(content=values.get('content'))).set(queue='priority'),
+            tasks.diagnose.s().set(queue='priority')
+        )()
+    elif 'url' in values:
+        result = chain(
+            tasks.scrape.s(values.get('url')).set(queue='priority'),
+            tasks.process_text.s().set(queue='priority'),
+            tasks.diagnose.s().set(queue='priority')
+        )()
+    else:
+        return json.dumps({
+            'error' : "Please provide a url or content to diagnose."
+        })
+    return json.dumps(result.get())
 
 @app.route('/public_diagnose', methods = ['POST', 'GET'])
 def public_diagnosis():
-    content = get_values().get('content')
     api_key = get_values().get('api_key')
     if api_key == 'grits28754':
-        return Response(json.dumps(my_diagnoser.diagnose(content), default=my_serializer),
-                        mimetype='application/json')
+        return diagnosis()
     else:
         abort(401)
-
-
-@app.route('/enqueue_girder_diagnosis/<item_id>', methods = ['POST', 'GET'])
-def enqueue_diagnosis(item_id):
-    item_id = bson.ObjectId(item_id)
-    if girder_db.item.find_one(item_id):
-        girder_db.item.update({'_id':item_id}, {
-            '$set': {
-                'meta.processing' : True,
-                'meta.diagnosing' : True
-            }
-        })
-        chain(
-            tasks.process_girder_resource.s(item_id=item_id).set(queue='priority'),
-            tasks.diagnose_girder_resource.s(item_id=item_id)
-        )()
-        return flask.jsonify(
-             success=True
-        )
-    else:
-        return flask.jsonify(
-             success=False
-        )
-
 
 if __name__ == '__main__':
     import argparse
