@@ -17,8 +17,15 @@ import tornado.web
 class DiagnoseHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def get(self):
-        content = self.get_argument('content', None)
-        url = self.get_argument('url', None)
+        # Try to parse the json bodies submitted by the diagnositc dash:
+        try:
+            params = json.loads(self.request.body)
+        except ValueError as e:
+            params = {}
+        
+        content = self.get_argument('content', params.get('content'))
+        url = self.get_argument('url', params.get('url'))
+        
         if content:
             task = chain(
                 tasks.process_text.s(dict(content=content)).set(queue='priority'),
@@ -37,6 +44,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             self.set_header("Content-Type", "application/json")  
             self.finish()
             return
+        
         def check_celery_task():
             if task.ready():
                 self.write(task.get())
