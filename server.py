@@ -1,8 +1,4 @@
 import json
-import pickle
-import flask
-from flask import render_template, request, abort, jsonify, Response
-import numpy
 
 import config
 
@@ -14,84 +10,76 @@ import pymongo
 girder_db = pymongo.Connection(config.mongo_url)['girder']
 
 import datetime
-def my_serializer(obj):
-    """
-    Serializes dates, ObjectIds and potentially other useful things
-    """
-    if isinstance(obj, datetime.datetime):
-        return obj.isoformat()
-    if isinstance(obj, bson.ObjectId):
-        return str(obj)
-    if isinstance(obj, numpy.int64):
-        return int(obj)
-    else:
-        raise TypeError(obj)
 
-from diagnosis.Diagnoser import Diagnoser
-with open('classifier.p') as f:
-    my_classifier = pickle.load(f)
-with open('dict_vectorizer.p') as f:
-    my_dict_vectorizer = pickle.load(f)
-with open('keyword_links.p') as f:
-    keyword_links = pickle.load(f)
-with open('keyword_sets.p') as f:
-    keyword_sets = pickle.load(f)
-my_diagnoser = Diagnoser(my_classifier,
-                         my_dict_vectorizer,
-                         keyword_links=keyword_links,
-                         keyword_categories=keyword_sets,
-                         cutoff_ratio=.7)
+import tornado.ioloop
+import tornado.web
 
-app = flask.Flask(__name__, static_url_path='')
+class DiagnoseHandler(tornado.web.RequestHandler):
+    @tornado.web.asynchronous
+    def get(self):
+        content = self.get_argument('content', None)
+        url = self.get_argument('url', None)
+        if content:
+            task = chain(
+                tasks.process_text.s(dict(content=content)).set(queue='priority'),
+                tasks.diagnose.s().set(queue='priority')
+            )()
+        elif url:
+            task = chain(
+                tasks.scrape.s(url).set(queue='priority'),
+                tasks.process_text.s().set(queue='priority'),
+                tasks.diagnose.s().set(queue='priority')
+            )()
+        else:
+            self.write({
+                'error' : "Please provide a url or content to diagnose."
+            })
+            self.set_header("Content-Type", "application/json")  
+            self.finish()
+            return
+        def check_celery_task():
+            if task.ready():
+                self.write(task.get())
+                self.set_header("Content-Type", "application/json")  
+                self.finish()
+            else:   
+                tornado.ioloop.IOLoop.instance().add_timeout(datetime.timedelta(0,6), check_celery_task)
 
-def get_values():
-    """
-    Return a dict with the request values, even if there is not mimetype.
-    """
-    if len(request.values) > 0:
-        return request.values.to_dict()
-    elif len(request.data) > 0:
-        # data Contains the incoming request data as string if it came with a
-        # mimetype Flask does not handle,
-        # which happens when we get meteor posts from the diagnostic dashboard.
-        return json.loads(request.data)
-    return {}
+        check_celery_task()
 
-@app.route('/test', methods = ['POST', 'GET'])
-def test():
-    return str(get_values())
+    @tornado.web.asynchronous
+    def post(self):
+        return self.get()
 
-@app.route('/diagnose', methods = ['POST', 'GET'])
-def diagnosis():
-    values = get_values()
-    if 'content' in values:
-        result = chain(
-            tasks.process_text.s(dict(content=values.get('content'))).set(queue='priority'),
-            tasks.diagnose.s().set(queue='priority')
-        )()
-    elif 'url' in values:
-        result = chain(
-            tasks.scrape.s(values.get('url')).set(queue='priority'),
-            tasks.process_text.s().set(queue='priority'),
-            tasks.diagnose.s().set(queue='priority')
-        )()
-    else:
-        return json.dumps({
-            'error' : "Please provide a url or content to diagnose."
-        })
-    return json.dumps(result.get())
+class PublicDiagnoseHandler(DiagnoseHandler):
+    @tornado.web.asynchronous
+    def get(self):
+        api_key = self.get_argument("api_key")
+        if api_key == 'grits28754':
+            return super(PublicDiagnoseHandler, self).get()
+        else:
+            self.send_error(401)
+    @tornado.web.asynchronous
+    def post(self):
+        return self.get()
 
-@app.route('/public_diagnose', methods = ['POST', 'GET'])
-def public_diagnosis():
-    api_key = get_values().get('api_key')
-    if api_key == 'grits28754':
-        return diagnosis()
-    else:
-        abort(401)
+class TestHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write(self.get_argument("url"))
+        self.finish()
+    def post(self):
+        return self.get()
 
-if __name__ == '__main__':
+application = tornado.web.Application([
+    (r"/test", TestHandler),
+    (r"/diagnose", DiagnoseHandler),
+    (r"/public_diagnose", PublicDiagnoseHandler)
+])
+
+if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('-debug', action='store_true')
+    #parser.add_argument('-debug', action='store_true')
     args = parser.parse_args()
-    app.run(host='0.0.0.0', debug=args.debug)
+    application.listen(5000)
+    tornado.ioloop.IOLoop.instance().start()
