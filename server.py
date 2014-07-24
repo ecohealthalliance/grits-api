@@ -28,8 +28,9 @@ class DiagnoseHandler(tornado.web.RequestHandler):
         
         if content:
             task = chain(
-                tasks.process_text.s(dict(content=content)).set(queue='priority'),
-                tasks.diagnose.s().set(queue='priority')
+                tasks.diagnose.s({
+                    'cleanContent' : dict(content=content)
+                }).set(queue='priority')
             )()
         elif url:
             task = chain(
