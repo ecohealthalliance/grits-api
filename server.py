@@ -17,7 +17,7 @@ import tornado.web
 class DiagnoseHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
     def get(self):
-        # Try to parse the json bodies submitted by the diagnositc dash:
+        # Try to parse the json bodies submitted by the diagnostic dash:
         try:
             params = json.loads(self.request.body)
         except ValueError as e:
