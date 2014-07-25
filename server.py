@@ -14,6 +14,9 @@ import datetime
 import tornado.ioloop
 import tornado.web
 
+import urlparse
+import re
+
 class DiagnoseHandler(tornado.web.RequestHandler):
     public = False
     @tornado.web.asynchronous
@@ -34,6 +37,23 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 }).set(queue='priority')
             )()
         elif url:
+            hostname = ""
+            try:
+                hostname = urlparse.urlparse(url).hostname or ""
+            except:
+                pass
+            # Only allow hostnames that end with .word
+            # This is to avoid the security vulnerability Russ pointed out where
+            # we could end up scrapping localhost or IP addresses that should
+            # not be publicly accessible.
+            if not re.match(r".+\.\D+", hostname):
+                self.write({
+                    'error' : "Invalid URL"
+                })
+                self.set_header("Content-Type", "application/json")  
+                self.finish()
+                return
+            
             task = celery.chain(
                 tasks.scrape.s(url).set(queue='priority'),
                 tasks.process_text.s().set(queue='priority'),
