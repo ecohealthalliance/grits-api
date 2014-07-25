@@ -2,7 +2,7 @@ import json
 
 import config
 
-from celery import chain
+import celery
 import tasks
 
 import bson
@@ -15,6 +15,7 @@ import tornado.ioloop
 import tornado.web
 
 class DiagnoseHandler(tornado.web.RequestHandler):
+    public = False
     @tornado.web.asynchronous
     def get(self):
         # Try to parse the json bodies submitted by the diagnostic dash:
@@ -27,13 +28,13 @@ class DiagnoseHandler(tornado.web.RequestHandler):
         url = self.get_argument('url', params.get('url'))
         
         if content:
-            task = chain(
+            task = celery.chain(
                 tasks.diagnose.s({
                     'cleanContent' : dict(content=content)
                 }).set(queue='priority')
             )()
         elif url:
-            task = chain(
+            task = celery.chain(
                 tasks.scrape.s(url).set(queue='priority'),
                 tasks.process_text.s().set(queue='priority'),
                 tasks.diagnose.s().set(queue='priority')
@@ -46,13 +47,35 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             self.finish()
             return
         
+        # Create a result set so we can check all the tasks in the chain for
+        # failure status.
+        results = []
+        r = task
+        while r.parent:
+            results.append(r.parent)
+            r = r.parent
+        res_set = celery.result.ResultSet(results)
+        
         def check_celery_task():
-            if task.ready():
-                self.write(task.get())
+            if res_set.ready() or res_set.failed():
+                try:
+                    resp = task.get()
+                except Exception as e:
+                    self.write({
+                        'error' : unicode(e)
+                    })
+                    self.set_header("Content-Type", "application/json")  
+                    self.finish()
+                    return
+                if not self.public and task.parent:
+                    resp['scrapedData'] = task.parent.get()
+                self.write(resp)
                 self.set_header("Content-Type", "application/json")  
                 self.finish()
-            else:   
-                tornado.ioloop.IOLoop.instance().add_timeout(datetime.timedelta(0,6), check_celery_task)
+            else:
+                tornado.ioloop.IOLoop.instance().add_timeout(
+                    datetime.timedelta(0,1), check_celery_task
+                )
 
         check_celery_task()
 
@@ -61,6 +84,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
         return self.get()
 
 class PublicDiagnoseHandler(DiagnoseHandler):
+    public = True
     @tornado.web.asynchronous
     def get(self):
         api_key = self.get_argument("api_key")
