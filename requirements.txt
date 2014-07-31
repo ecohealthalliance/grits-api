@@ -9,7 +9,7 @@ pattern
 numpy
 scipy
 scikit-learn
-flask
+tornado
 unicodecsv
 geopy
 futures

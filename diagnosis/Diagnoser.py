@@ -61,19 +61,21 @@ class Diagnoser():
             if norm > 0:
                scores /= norm
             scores *= p
+            # These might be numpy types. I coerce them to native python
+            # types so we can easily serialize the output as json.
             scored_keywords = zip(self.keywords, scores)
             return {
-                'name' : self.classifier.classes_[i],
-                'probability' : p,
+                'name' : unicode(self.classifier.classes_[i]),
+                'probability' : float(p),
                 'keywords' : [{
-                        'name' : kwd,
+                        'name' : unicode(kwd),
                         'score' : float(score),
                     }
                     for kwd, score in scored_keywords
                     if score > 0 and kwd in base_keyword_dict],
                 'inferred_keywords' : [{
-                        'name' : kwd,
-                        'score' : score,
+                        'name' : unicode(kwd),
+                        'score' : float(score),
                     }
                     for kwd, score in scored_keywords
                     if score > 0 and kwd not in base_keyword_dict]
@@ -121,8 +123,8 @@ class Diagnoser():
             'dateOfDiagnosis' : datetime.datetime.now(),
             'keywords_found' : [
                 {
-                    'name' : keyword,
-                    'count' : count,
+                    'name' : unicode(keyword),
+                    'count' : int(count),
                     'categories' : [cat
                             for cat, kws in self.keyword_categories.items()
                             if keyword in kws]
