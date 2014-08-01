@@ -3,6 +3,7 @@
 Mine keywords and their relationships from a set of ontologies so they can be
 used by the classifier's feature extractor.
 """
+import requests
 import json
 import re
 import pickle
@@ -296,32 +297,13 @@ def portfolio_manager_tags():
     tag_blacklist = set(['can', 'don', 'dish', 'ad', 'mass', 'yellow'])
     
     print "Portfolio Manager Keyword Counts:"
+    # We get most of these categories from our spreadsheet now.
+    # The symptom and disease categories should be reviewed to see
+    # if they add anything now and where it comes from.
+    # We should try to keep all the content curated by EHA in one location.
     for cat, keywords in pm_keywords.items():
         print cat, ':', len(keywords)
     print ""
-
-    pm_keywords['vector'].update({
-        'rodent-borne' : set(['animal borne', 'animal-borne', 'animalborne']),
-        'rodent borne' : set(['animal borne', 'animal-borne', 'animalborne']),
-        'rodentborne'  : set(['animal borne', 'animal-borne', 'animalborne']),
-        'animal-borne' : set(['animal borne', 'animalborne']),
-        'animal borne' : set(['animal-borne', 'animalborne']),
-        'animalborne' : set(['animal-borne', 'animal borne']),
-    })
-
-    pm_keywords['mode of transmission'].update({
-        'droppings' : set(),
-        'urine' : set(),
-        'saliva' : set(),
-    })
-    
-    pm_keywords['symptom'].update({
-        'loss of memory' : set()
-    })
-
-    pm_keywords['mode of transmission'].update(
-        traverse_hyponyms(synsets('inhale'))
-    )
     
     pm_keywords['symptom'] -= tag_blacklist
     pm_keywords['disease'] -= tag_blacklist
@@ -546,8 +528,21 @@ def mine_usgs_ontology():
     )
     return usgs_keywords
 
+def dashatize(text):
+    """
+    If the text contains a dash, return the possible
+    variations with/without the dash.
+    """
+    if '-' in text:
+        return [
+            text,
+            re.sub(r"-", '', text),
+            re.sub(r"-", ' ', text)
+        ]
+    else:
+        return [text]
+
 def eha_keywords():
-    import requests, json
     # Download EHA curated keywords from the spreadsheet:
     # https://docs.google.com/a/ecohealth.io/spreadsheets/d/1Ncl7mXzX8d1mJRuqouLPCXHb4ltMqjb0sJJ2C8rD80I/edit#gid=0
     request = requests.get(
@@ -559,8 +554,10 @@ def eha_keywords():
     keywords = {}
     for entry in spreadsheet_data['feed']['entry']:
         kw_type = entry['gsx$type']['$t']
-        keywords[kw_type] = keywords.get(kw_type, [])
-        keywords[kw_type].append(entry['gsx$name']['$t'])
+        keywords[kw_type] = keywords.get(kw_type, {})
+        kw_variations = set(dashatize(entry['gsx$name']['$t']))
+        for kw in kw_variations:
+            keywords[kw_type][kw] = kw_variations - set([kw])
     return keywords
 
 def create_ontologies_pickle():
@@ -571,7 +568,7 @@ def create_ontologies_pickle():
         'doid' : mine_disease_ontology(),
         'symp' : mine_symptom_ontology(),
         'usgs' : mine_usgs_ontology(),
-        #'eha' : eha_keywords()
+        'eha' : eha_keywords()
     }, layers=1)
     
     print "Total keywords:", len(set(flatten(squash_dict(keywords).values())))

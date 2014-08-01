@@ -54,10 +54,16 @@ def get_keyword_sets(*names):
 
 keyword_sets = get_keyword_sets(
     'pm/symptom',
-    'pm/mode of transmission',
-    'pm/environmental factors',
-    'pm/driver',
-    'pm/vector',
+    'eha/mode of transmission',
+    'eha/environmental factors',
+    'eha/vector',
+    'eha/occupation',
+    'eha/control measures',
+    'eha/description of infected',
+    'eha/disease category',
+    'eha/host use',
+    'eha/symptom',
+    'eha/zoonotic type',
     'biocaster/symptoms',
     'wordnet/season',
     'wordnet/climate',
@@ -134,7 +140,8 @@ disease_to_parent = {
     # This is problematic for a number of reasons.
     # Should viruses that cause diseases be labels?
     # And Gastroenteritis is in our symptom keyword set.
-    # Dividing keywords between symptoms, pathogens and diseases seems to be a difficult problem in general.
+    # Dividing keywords between symptoms, 
+    # pathogens and diseases seems to be a difficult problem in general.
     'Rotavirus' : 'Gastroenteritis',
     'Sapovirus' : 'Gastroenteritis', 
     'Norovirus' : 'Gastroenteritis',
@@ -143,7 +150,8 @@ disease_to_parent = {
 
 label_overrides = {
     '532c9a73f99fe75cf538331c' : 'Fungal Meningitis',
-    # Foot and Mouth disease rarely affects humans. This sounds like it should be HFM
+    # Foot and Mouth disease rarely affects humans.
+    # This sounds like it should be HFM
     '53303a44f99fe75cf5390a56' : 'Hand, Foot and Mouth Disease',
     '532c9b63f99fe75cf5383521' : 'Gastroenteritis',
     '532cc391f99fe75cf5389989' : 'Tuberculosis'
@@ -169,7 +177,10 @@ labels_to_omit = [
     'Cold',
 ]
 
-def get_features_and_classifications(feature_dicts, my_dict_vectorizer, resources):
+def get_features_and_classifications(
+    feature_dicts,
+    my_dict_vectorizer,
+    resources):
     # features = [
     #     [article1_kewword1_count, article1_keyword2_...],
     #     [article2_kewword1_count, article2_keyword2_...],
@@ -199,9 +210,14 @@ def get_features_and_classifications(feature_dicts, my_dict_vectorizer, resource
     return np.array(features), np.array(classifications), resources_used
 
 from sklearn.feature_extraction import DictVectorizer
-train_feature_dicts = extract_features.transform([r['cleanContent'] for r in training_set])
-validation_feature_dicts = extract_features.transform([r['cleanContent'] for r in validation_set])
-#If we get sparse rows working with the classifier this might yeild some performance improvments.
+train_feature_dicts = extract_features.transform([
+    r['cleanContent'] for r in training_set
+])
+validation_feature_dicts = extract_features.transform([
+    r['cleanContent'] for r in validation_set
+])
+#If we get sparse rows working with the classifier this might yeild some
+#performance improvments.
 my_dict_vectorizer = DictVectorizer(sparse=False).fit(train_feature_dicts)
 print 'found keywords:', len(my_dict_vectorizer.vocabulary_)
 print "Many keywords in the validation set do not appear in the training set:"
@@ -233,7 +249,10 @@ def flatten(li):
     for subli in li:
         for it in subli:
             yield it
-not_in_train = [y for y in flatten(labels_validation) if (y not in flatten(labels_train))]
+not_in_train = [
+    y for y in flatten(labels_validation)
+    if (y not in flatten(labels_train))
+]
 print len(not_in_train),'/',len(labels_validation)
 print not_in_train
 
@@ -298,11 +317,21 @@ predictions = training_predictions = [
     for X in feature_mat_validation
 ]
 prfs = sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions)
+# I've noticed that the macro f-score is not the harmonic mean of the percision
+# and recall. Perhaps this could be a result of the macro f-score being computed 
+# as an average of f-scores.
+# Furthermore, the macro f-scrore can be smaller than the precision and
+# recall which seems like it shouldn't be possible.
 print "Validation set:\nprecision: %s recall: %s f-score: %s" %\
-    sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions, average='macro')[0:3]
+    sklearn.metrics.precision_recall_fscore_support(
+        labels_validation,
+        predictions,
+        average='macro')[0:3]
 print "micro average:"
 print "precision: %s recall: %s f-score: %s" %\
-    sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions, average='micro')[0:3]
+    sklearn.metrics.precision_recall_fscore_support(labels_validation,
+    predictions,
+    average='micro')[0:3]
 
 print "Which classes are we performing poorly on?"
 
