@@ -12,6 +12,7 @@ import nltk
 from nltk import wordnet
 synsets = wordnet.wordnet.synsets
 import rdflib
+import urlparse
 
 # Generic helpers:
 def squash_dict(d, delimiter='/', crunch=False, layers=-1):
@@ -97,6 +98,10 @@ def exclude_keywords(keyword_map, excluded):
     }
 
 def get_subject_to_label_dict(ontology):
+    """
+    Returns a dict that maps subjects in the ontology to label strings that
+    could refer to them.
+    """
     # Bidirectional symptom links could cause problems, so I'm avoiding them for now.
     qres = ontology.query("""
     SELECT ?subject ?label
@@ -113,7 +118,6 @@ def get_subject_to_label_dict(ontology):
         label = unicode(label)
         if subject not in subject_to_labels:
             subject_to_labels[subject] = set()
-        if '(' in label or ',' in label: continue
         subject_to_labels[subject].add(label)
     return subject_to_labels
 
@@ -145,7 +149,6 @@ def get_subject_to_ancestor_dict(subject_to_parents):
         )))
     return { s : get_ancestors(s) for s in subject_to_parents.keys() }
 
-
 def get_linked_keywords(ontology, root):
     """
     Get all the keywords (e.g. labels and synonyms) in an OBO ontology,
@@ -153,13 +156,22 @@ def get_linked_keywords(ontology, root):
     ancestoral entities.
     """
     subject_to_labels = get_subject_to_label_dict(ontology)
+    #Remove the parethesized words from labels as they usually are not valueable
+    #for keyword extraction. In the disease ontology they are things like
+    #(disorder)
+    for subject, labels in subject_to_labels.items():
+        subject_to_labels[subject] = set([
+            re.sub(r"\s?\(.*\)", "", label)
+            for label in labels
+        ])
     subject_to_parents = get_subject_to_parents_dict(ontology, root)
     #Filter out subjects without parents
-    #And add fake labels for subjects that have parents
-    split_uri = re.compile(r'#|/').split
-    subject_to_labels = {k : subject_to_labels.get(k, set([split_uri(k)[-1]]))
-                         for k in subject_to_parents.keys()}
+    subject_to_labels = {
+        k : subject_to_labels.get(k, set())
+        for k in subject_to_parents.keys()
+    }
     subject_to_ancestors = get_subject_to_ancestor_dict(subject_to_parents)
+    # Remove the root because we don't have a label for it.
     for subject, ancestors in subject_to_ancestors.items():
         if root not in ancestors and subject != root:
             print subject, ancestors
@@ -174,12 +186,46 @@ def get_linked_keywords(ontology, root):
         ), 1))
         for lab in labels:
             if lab in keywords:
-                # print "Label already in keywords: ", lab
+                print "Label already in keywords: ", lab
                 keywords[lab] |= all_ancestors | labels
             else:
                 keywords[lab] = all_ancestors | labels
     return keywords
 
+def download_google_sheet(sheet_url, default_type=None):
+    """
+    Utility for downloading  EHA curated keywords from the given spreadsheet.
+    """
+    parsed_url = urlparse.urlparse(sheet_url)
+    key = urlparse.parse_qs(parsed_url.query).get('key', [None])[0]
+    if not key:
+        prev = None
+        for component in parsed_url.path.split('/'):
+            if prev == 'd':
+                key = component
+                break
+            else:
+                prev = component
+    request = requests.get(
+        'https://spreadsheets.google.com/feeds/list/' + key +
+        '/od6/public/values?alt=json-in-script&callback=jsonp'
+    )
+    spreadsheet_data = json.loads(
+        request.text[request.text.find('jsonp(') + 6:-2]
+    )
+    keywords = {}
+    for entry in spreadsheet_data['feed']['entry']:
+        kw_type = entry.get('gsx$type', {}).get('$t', default_type)
+        keywords[kw_type] = keywords.get(kw_type, {})
+        synonym_text = entry.get('gsx$synonyms', {}).get('$t')
+        synonyms = [
+            syn.strip() for syn in synonym_text.split(',')
+        ] if synonym_text else []
+        synonyms = filter(lambda k: len(k) > 0, synonyms)
+        row_keywords = [entry['gsx$keyword']['$t']] + synonyms
+        for keyword in row_keywords:
+            keywords[kw_type][keyword] = set(row_keywords) - set([keyword])
+    return keywords
 
 def wordnet_pathogens():
     # WordNet : Pathogens
@@ -357,7 +403,7 @@ def mine_disease_ontology():
     SELECT DISTINCT ?def
     WHERE {
         BIND (<http://purl.obolibrary.org/obo/IAO_0000115> AS ?defined_as)
-        BIND (<http://purl.obolibrary.org/obo/DOID_0050117> AS ?disease)
+        BIND (<http://purl.obolibrary.org/obo/DOID_4> AS ?disease)
         ?subject rdfs:subClassOf* ?disease .
         ?subject ?defined_as ?def .
     }
@@ -543,21 +589,18 @@ def dashatize(text):
         return [text]
 
 def eha_keywords():
-    # Download EHA curated keywords from the spreadsheet:
-    # https://docs.google.com/a/ecohealth.io/spreadsheets/d/1Ncl7mXzX8d1mJRuqouLPCXHb4ltMqjb0sJJ2C8rD80I/edit#gid=0
-    request = requests.get(
-        'https://spreadsheets.google.com/feeds/list/1Ncl7mXzX8d1mJRuqouLPCXHb4ltMqjb0sJJ2C8rD80I/od6/public/values?alt=json-in-script&callback=jsonp'
-    )
-    spreadsheet_data = json.loads(
-        request.text[request.text.find('jsonp(') + 6:-2]
-    )
     keywords = {}
-    for entry in spreadsheet_data['feed']['entry']:
-        kw_type = entry['gsx$type']['$t']
-        keywords[kw_type] = keywords.get(kw_type, {})
-        kw_variations = set(dashatize(entry['gsx$name']['$t']))
-        for kw in kw_variations:
-            keywords[kw_type][kw] = kw_variations - set([kw])
+    keywords.update(download_google_sheet(
+        'https://docs.google.com/a/ecohealth.io/spreadsheets/d/1Ncl7mXzX8d1mJRuqouLPCXHb4ltMqjb0sJJ2C8rD80I/edit#gid=0'
+    ))
+    keywords.update(download_google_sheet(
+        'https://docs.google.com/a/ecohealth.io/spreadsheet/ccc?key=0AuwHL_SlxPmAdDRyYnRDNzFRbnlOSHM2NlZtVFNRVGc#gid=0',
+        default_type='disease'
+    ))
+    keywords.update(download_google_sheet(
+        'https://docs.google.com/a/ecohealth.io/spreadsheet/ccc?key=0AuwHL_SlxPmAdEFQUUxMUjRnVDZvQUR6UFZFdC1FelE#gid=0',
+        default_type='symptom'
+    ))
     return keywords
 
 def create_ontologies_pickle():

@@ -40,6 +40,7 @@ ontologies = get_pickle('ontologies.p')
 
 # Process the ontologies
 def get_keyword_sets(*names):
+    blocklist = set(['can', 'don', 'dish', 'ad', 'mass', 'yellow'])
     keyword_sets = {}
     for name in names:
         obj = ontologies[name]
@@ -48,12 +49,15 @@ def get_keyword_sets(*names):
             kws = obj.keys()
         else:
             kws = obj
-        keyword_sets[name] = set([unicode(kw.lower().strip()) for kw in kws
-                                  if kw.upper() != kw])
+        keyword_sets[name] = set([
+            unicode(kw.lower().strip())
+            for kw in kws
+            if kw.upper() != kw
+        ]) - blocklist
     return keyword_sets
 
 keyword_sets = get_keyword_sets(
-    'pm/symptom',
+    'eha/symptom',
     'eha/mode of transmission',
     'eha/environmental factors',
     'eha/vector',
@@ -78,7 +82,7 @@ keyword_sets = get_keyword_sets(
     'wordnet/mod/painful',
     'wordnet/mod/large',
     'doid/diseases',
-    'pm/disease'
+    'eha/disease'
 )
 keywords_to_extract = set().union(*keyword_sets.values())
 
