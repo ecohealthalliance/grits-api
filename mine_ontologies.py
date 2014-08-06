@@ -156,14 +156,23 @@ def get_linked_keywords(ontology, root):
     ancestoral entities.
     """
     subject_to_labels = get_subject_to_label_dict(ontology)
-    #Remove the parethesized words from labels as they usually are not valueable
-    #for keyword extraction. In the disease ontology they are things like
-    #(disorder)
+    # Clean the labels
     for subject, labels in subject_to_labels.items():
-        subject_to_labels[subject] = set([
-            re.sub(r"\s?\(.*\)", "", label)
-            for label in labels
-        ])
+        clean_labels = []
+        for label in labels:
+            # This regex removes some of the less useulf parenthetical notes 
+            # from the disease ontology labels. Some labels include
+            # parenthetical sections that we could parse into features. E.g.
+            # (Thrombocytopenia: [primary] or [idopathic purpuric] or
+            # [idiopathic] or [purpuric]) or (Evan's syndrome)
+            # I'm passing those through as raw strings even though
+            # they won't be useful keywords right now.
+            c_label = re.sub(
+                r"\s\((disorder|(morphologic abnormality)|finding)?\)",
+                "", label
+            )
+            clean_labels.append(c_label)
+        subject_to_labels[subject] = set(clean_labels)
     subject_to_parents = get_subject_to_parents_dict(ontology, root)
     #Filter out subjects without parents
     subject_to_labels = {
@@ -366,13 +375,16 @@ def mine_disease_ontology():
     # like "primary bacterial infectious disease".
     # Every disease is a class which seems strange to me,
     # I think it is more natural to think of them as instances of classes.
-    # A number of subjects that appear to be diseases have no subClassOf predicate.
+    # Some subjects that appear to be diseases have no subClassOf predicate.
     # They do however have inSubset predicates.
     # The ones I spot checked have depricated predicates set to true,
     # so I think we can ignore them.
     # A few subjects have multiple subClassOf predicates.
     disease_ontology = rdflib.Graph()
-    disease_ontology.parse("http://purl.obolibrary.org/obo/doid.owl", format="xml")
+    disease_ontology.parse(
+        "http://purl.obolibrary.org/obo/doid.owl",
+        format="xml"
+    )
     # Many diseases have predicates like has_symptom listed as plain text in
     # their definition, this code extracts them.
     def create_re_for_predicate(predicate):
