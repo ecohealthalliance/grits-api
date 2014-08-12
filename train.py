@@ -4,6 +4,25 @@ import datetime
 import os
 import pickle
 import config
+
+def group_by(group_fun, collection):
+    out = {}
+    if isinstance(group_fun, basestring):
+        prop = group_fun
+        group_fun = lambda k: k[prop]
+    for item in collection:
+        group_key = group_fun(item)
+        out[group_key] = out.get(group_key, []) + [item]
+    return out
+    
+def flatten(li, depth=-1):
+    for subli in li:
+        if isinstance(subli, (list, set)) and depth != 0:
+            for it in flatten(subli, depth - 1):
+                yield it
+        else:
+            yield subli
+
 def get_pickle(filename):
     """
     Download the pickle from the AWS bucket if it's stale,
@@ -84,6 +103,21 @@ keyword_array = import_keywords(
     'doid/diseases',
     'eha/disease'
 )
+lowercase_keyword_index = group_by(
+    lambda k: k['keyword'].lower(),
+    keyword_array
+)
+
+class LowerKeyDict(dict):
+    def __getitem__(self, key):
+        return self.store[key.lower()]
+
+keyword_links = LowerKeyDict({
+    kw : set(flatten([item['linked_keywords'] for item in items], 1))
+    for kw, items in group_by('keyword', keyword_array).items()
+})
+
+
 # Keyword Extraction
 import diagnosis
 from diagnosis.KeywordExtractor import *
@@ -92,28 +126,9 @@ import re
 import sklearn
 from sklearn.pipeline import Pipeline
 
-def group_by(prop, collection):
-    out = {}
-    for item in collection:
-        out[item[prop]] = out.get(item[prop], []) + [item]
-    return out
-    
-def flatten(li, depth=-1):
-    for subli in li:
-        if isinstance(subli, (list, set)) and depth != 0:
-            for it in flatten(subli, depth - 1):
-                yield it
-        else:
-            yield subli
-
-keyword_links = {
-    kw : set(flatten([item['linked_keywords'] for item in items], 1))
-    for kw, items in group_by('keyword', keyword_array).items()
-}
-
 extract_features = Pipeline([
     ('kwext', KeywordExtractor(keyword_array)),
-    #('link', LinkedKeywordAdder(keyword_links)),
+    ('link', LinkedKeywordAdder(keyword_links)),
     ('limit', LimitCounts(1)),
 ])
 
@@ -315,7 +330,7 @@ from diagnosis.Diagnoser import Diagnoser
 my_diagnoser = Diagnoser(
     my_classifier,
     my_dict_vectorizer,
-    #keyword_links=keyword_links,
+    keyword_links=keyword_links,
     keyword_categories={
         kw['keyword'] : kw['category']
         for kw in keyword_array
