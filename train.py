@@ -70,8 +70,17 @@ def import_keywords(*names):
             out_keywords.append({
                 'keyword' : kw,
                 'category': name,
-                'linked_keywords': obj[kw] if isinstance(obj, dict) else []
+                'linked_keywords': [
+                    '[linked] ' + lkw.lower()
+                    for lkw in obj[kw]
+                ] if isinstance(obj, dict) else [],
+                'case_sensitive' : (
+                    ' ' not in kw and
+                    len(kw) <= 6 and
+                    kw.upper() == kw
+                )
             })
+        
     return out_keywords
 
 keyword_array = import_keywords(

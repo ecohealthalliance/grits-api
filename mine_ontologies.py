@@ -203,7 +203,7 @@ def get_linked_keywords(ontology, root):
 
 def download_google_sheet(sheet_url, default_type=None):
     """
-    Utility for downloading  EHA curated keywords from the given spreadsheet.
+    Utility for downloading EHA curated keywords from the given spreadsheet.
     """
     parsed_url = urlparse.urlparse(sheet_url)
     key = urlparse.parse_qs(parsed_url.query).get('key', [None])[0]

@@ -24,11 +24,7 @@ class KeywordExtractor():
         not_case_sensitive = set()
         for kw_obj in keyword_array:
             keyword = kw_obj['keyword']
-            if (
-                ' ' not in keyword and
-                len(keyword) <= 6 and
-                keyword.upper() == keyword
-            ):
+            if kw_obj['case_sensitive']:
                 case_sensitive.add(keyword)
             else:
                 not_case_sensitive.add(keyword.lower())
@@ -125,7 +121,7 @@ class PatternExtractor():
         return map(self.transform_one, texts)
 
 class LinkedKeywordAdder():
-    def __init__(self, keyword_links, weight=.4):
+    def __init__(self, keyword_links, weight=1):
         self.weight = weight
         self.keyword_links = keyword_links
     def fit(self, X, y):
