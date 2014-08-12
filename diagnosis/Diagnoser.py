@@ -26,9 +26,14 @@ class Diagnoser():
 
     __version__ = '0.0.1'
 
-    def __init__(self, classifier, dict_vectorizer,
-                 keyword_links=None,
-                 keyword_categories=None, cutoff_ratio=0.65):
+    def __init__(
+        self, classifier, dict_vectorizer,
+        keyword_links=None,
+        keyword_categories=None,
+        cutoff_ratio=0.65,
+        # This will replace kw_links and kw_categories
+        keyword_array=None
+    ):
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.case_count_annotator = CaseCountAnnotator()
@@ -37,11 +42,12 @@ class Diagnoser():
         if keyword_links:
             self.keyword_links = keyword_links
             processing_pipeline.append(('link', LinkedKeywordAdder(keyword_links)))
+        #processing_pipeline.append(('reduce', SynonymReducer(keyword_array)))
         processing_pipeline.append(('limit', LimitCounts(1)))
         self.keyword_processor = Pipeline(processing_pipeline)
         self.dict_vectorizer = dict_vectorizer
         self.keywords = dict_vectorizer.get_feature_names()
-        self.keyword_extractor = KeywordExtractor(self.keywords)
+        self.keyword_extractor = KeywordExtractor(keyword_array)
         self.cutoff_ratio = cutoff_ratio
     def best_guess(self, X):
         probs = self.classifier.predict_proba(X)[0]

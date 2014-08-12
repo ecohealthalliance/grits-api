@@ -115,7 +115,7 @@ def get_subject_to_label_dict(ontology):
     subject_to_labels = {}
     for subject, label in qres:
         subject = unicode(subject)
-        label = unicode(label)
+        label = unicode(label).strip()
         if subject not in subject_to_labels:
             subject_to_labels[subject] = set()
         subject_to_labels[subject].add(label)
@@ -224,14 +224,14 @@ def download_google_sheet(sheet_url, default_type=None):
     )
     keywords = {}
     for entry in spreadsheet_data['feed']['entry']:
-        kw_type = entry.get('gsx$type', {}).get('$t', default_type)
+        kw_type = entry.get('gsx$type', {}).get('$t', default_type).strip()
         keywords[kw_type] = keywords.get(kw_type, {})
         synonym_text = entry.get('gsx$synonyms', {}).get('$t')
         synonyms = [
             syn.strip() for syn in synonym_text.split(',')
         ] if synonym_text else []
         synonyms = filter(lambda k: len(k) > 0, synonyms)
-        row_keywords = [entry['gsx$keyword']['$t']] + synonyms
+        row_keywords = [entry['gsx$keyword']['$t'].strip()] + synonyms
         for keyword in row_keywords:
             keywords[kw_type][keyword] = set(row_keywords) - set([keyword])
     return keywords
@@ -433,7 +433,7 @@ def mine_disease_ontology():
     
     for disease_predicates in flatten(grouped_disease_predicates, 1):
         for predicate, value in disease_predicates.items():
-            predicate_value_sets[predicate].add(value)
+            predicate_value_sets[predicate].add(value.strip())
     doid_keywords = { k : list(v) for k,v in predicate_value_sets.items() }
     doid_keywords['diseases'] = get_linked_keywords(
         disease_ontology,

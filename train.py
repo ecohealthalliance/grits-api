@@ -39,24 +39,23 @@ validation_set = get_pickle('validation.p')
 ontologies = get_pickle('ontologies.p')
 
 # Process the ontologies
-def get_keyword_sets(*names):
+def import_keywords(*names):
     blocklist = set(['can', 'don', 'dish', 'ad', 'mass', 'yellow'])
-    keyword_sets = {}
+    out_keywords = []
     for name in names:
         obj = ontologies[name]
-        kws = None
-        if isinstance(obj, dict):
-            kws = obj.keys()
-        else:
-            kws = obj
-        keyword_sets[name] = set([
-            unicode(kw.lower().strip())
-            for kw in kws
-            if kw.upper() != kw
-        ]) - blocklist
-    return keyword_sets
+        for kw in obj:
+            assert kw not in blocklist
+            if kw.strip() != kw:
+                raise Exception("Untrimmed keyword: " + name + ' ' + kw)
+            out_keywords.append({
+                'keyword' : kw,
+                'category': name,
+                'linked_keywords': obj[kw] if isinstance(obj, dict) else []
+            })
+    return out_keywords
 
-keyword_sets = get_keyword_sets(
+keyword_array = import_keywords(
     'eha/symptom',
     'eha/mode of transmission',
     'eha/environmental factors',
@@ -74,6 +73,7 @@ keyword_sets = get_keyword_sets(
     'wordnet/pathogens',
     'wordnet/hosts',
     'biocaster/pathogens',
+    'biocaster/diseases',
     'symp/symptoms',
     'doid/has_symptom',
     'doid/transmitted_by',
@@ -84,8 +84,6 @@ keyword_sets = get_keyword_sets(
     'doid/diseases',
     'eha/disease'
 )
-keywords_to_extract = set().union(*keyword_sets.values())
-
 # Keyword Extraction
 import diagnosis
 from diagnosis.KeywordExtractor import *
@@ -94,19 +92,28 @@ import re
 import sklearn
 from sklearn.pipeline import Pipeline
 
-keyword_links = {k : set() for k in keywords_to_extract}
-for category in keyword_sets.keys():
-    keyword_set = ontologies[category]
-    if isinstance(keyword_set, dict):
-        for kwd, cur_links in keyword_set.items():
-            kwd = unicode(kwd.lower().strip())
-            if kwd not in keywords_to_extract: continue
-            cur_links = set([unicode(l.lower().strip()) for l in cur_links])
-            keyword_links[kwd] |= cur_links
+def group_by(prop, collection):
+    out = {}
+    for item in collection:
+        out[item[prop]] = out.get(item[prop], []) + [item]
+    return out
+    
+def flatten(li, depth=-1):
+    for subli in li:
+        if isinstance(subli, (list, set)) and depth != 0:
+            for it in flatten(subli, depth - 1):
+                yield it
+        else:
+            yield subli
+
+keyword_links = {
+    kw : set(flatten([item['linked_keywords'] for item in items], 1))
+    for kw, items in group_by('keyword', keyword_array).items()
+}
 
 extract_features = Pipeline([
-    ('kwext', KeywordExtractor(keywords_to_extract)),
-    ('link', LinkedKeywordAdder(keyword_links)),
+    ('kwext', KeywordExtractor(keyword_array)),
+    #('link', LinkedKeywordAdder(keyword_links)),
     ('limit', LimitCounts(1)),
 ])
 
@@ -196,7 +203,10 @@ def get_features_and_classifications(
     features = []
     classifications = []
     resources_used = []
-    for feature_vector, r in zip(my_dict_vectorizer.transform(feature_dicts), resources):
+    for feature_vector, r in zip(
+        my_dict_vectorizer.transform(feature_dicts),
+        resources
+    ):
         if feature_vector.sum() == 0:
             #Skip all zero features
             continue
@@ -249,13 +259,10 @@ for feature_a, resource_a in zip(feature_mat_train, resources_train):
         unique_features.append(feature_a)
         
 print "Labels in the validation set that we are sure to miss because we have no training data for them:"
-def flatten(li):
-    for subli in li:
-        for it in subli:
-            yield it
+
 not_in_train = [
-    y for y in flatten(labels_validation)
-    if (y not in flatten(labels_train))
+    y for y in flatten(labels_validation, 1)
+    if (y not in flatten(labels_train, 1))
 ]
 print len(not_in_train),'/',len(labels_validation)
 print not_in_train
@@ -281,32 +288,41 @@ my_classifier = OneVsRestClassifier(LogisticRegression(
 
 my_classifier.fit(feature_mat_train, labels_train)
 
-# Pickle everything that will be needed for classification
-with open('classifier.p', 'wb') as f:
-    pickle.dump(my_classifier, f)
-with open('dict_vectorizer.p', 'wb') as f:
-    pickle.dump(my_dict_vectorizer, f)
-with open('keyword_links.p', 'wb') as f:
-    pickle.dump(keyword_links, f)
-with open('keyword_sets.p', 'wb') as f:
-    pickle.dump(keyword_sets, f)
+# # Pickle everything that will be needed for classification
+# with open('classifier.p', 'wb') as f:
+#     pickle.dump(my_classifier, f)
+# with open('dict_vectorizer.p', 'wb') as f:
+#     pickle.dump(my_dict_vectorizer, f)
+# with open('keyword_links.p', 'wb') as f:
+#     pickle.dump(keyword_links, f)
+# with open('keyword_sets.p', 'wb') as f:
+#     pickle.dump(keyword_sets, f)
 
-# Classification
+# # Classification
+
+
+# with open('classifier.p') as f:
+#     my_classifier = pickle.load(f)
+# with open('dict_vectorizer.p') as f:
+#     my_dict_vectorizer = pickle.load(f)
+# with open('keyword_links.p') as f:
+#     keyword_links = pickle.load(f)
+# with open('keyword_sets.p') as f:
+#     keyword_sets = pickle.load(f)
 
 from diagnosis.Diagnoser import Diagnoser
-with open('classifier.p') as f:
-    my_classifier = pickle.load(f)
-with open('dict_vectorizer.p') as f:
-    my_dict_vectorizer = pickle.load(f)
-with open('keyword_links.p') as f:
-    keyword_links = pickle.load(f)
-with open('keyword_sets.p') as f:
-    keyword_sets = pickle.load(f)
-my_diagnoser = Diagnoser(my_classifier,
-                         my_dict_vectorizer,
-                         keyword_links=keyword_links,
-                         keyword_categories=keyword_sets,
-                         cutoff_ratio=.7)
+    
+my_diagnoser = Diagnoser(
+    my_classifier,
+    my_dict_vectorizer,
+    #keyword_links=keyword_links,
+    keyword_categories={
+        kw['keyword'] : kw['category']
+        for kw in keyword_array
+    },
+    keyword_array=keyword_array,
+    cutoff_ratio=.7
+)
 
 print "macro average:"
 training_predictions = [
@@ -337,10 +353,10 @@ print "precision: %s recall: %s f-score: %s" %\
     predictions,
     average='micro')[0:3]
 
-print "Which classes are we performing poorly on?"
-
-labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
-prfs = sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions, labels=labels)
-for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
-    print cl
-    print "precision:",p,"recall",r,"F-score:",f,"support:",s
+# print "Which classes are we performing poorly on?"
+# 
+# labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
+# prfs = sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions, labels=labels)
+# for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
+#     print cl
+#     print "precision:",p,"recall",r,"F-score:",f,"support:",s
