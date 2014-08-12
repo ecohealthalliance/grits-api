@@ -59,6 +59,9 @@ ontologies = get_pickle('ontologies.p')
 
 # Process the ontologies
 def import_keywords(*names):
+    import re
+    def parse_keyword(kw):
+        return re.sub(r"(\(.*?\))|(\[.*?\])", "", kw).strip().lower()
     blocklist = set(['can', 'don', 'dish', 'ad', 'mass', 'yellow'])
     out_keywords = []
     for name in names:
@@ -67,13 +70,14 @@ def import_keywords(*names):
             assert kw not in blocklist
             if kw.strip() != kw:
                 raise Exception("Untrimmed keyword: " + name + ' ' + kw)
+            linked_keywords = obj[kw] if isinstance(obj, dict) else []
             out_keywords.append({
                 'keyword' : kw,
                 'category': name,
                 'linked_keywords': [
-                    '[linked] ' + lkw.lower()
-                    for lkw in obj[kw]
-                ] if isinstance(obj, dict) else [],
+                    '[linked] ' + parse_keyword(lkw)
+                    for lkw in set(linked_keywords) | set([kw])
+                ],
                 'case_sensitive' : (
                     ' ' not in kw and
                     len(kw) <= 6 and
