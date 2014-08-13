@@ -38,6 +38,53 @@ Start the server:
 
 	$ python server.py
 
+## Full setup with virtualenv
+
+These instructions will get `grits-api` working under a Python virtualenv.
+
+First, choose a `WORKSPACE` for your Git checkouts.
+
+    export WORKSPACE=~
+
+Checkout grits-api and copy the default configuration.
+
+    cd $WORKSPACE
+    git clone git@github.com:ecohealthalliance/grits-api.git
+    cd grits-api
+    cp config.sample.py config.py
+
+If you do not have `virtualenv`, first install it globally.
+
+    sudo pip install virtualenv
+
+Now create and enter the virtual environment. All `pip` and `python` commands from here should be run from within the environment. Leave the environment with the `deactivate` command.
+
+    virtualenv venv
+    source venv/bin/activate
+
+Install `grits-api` dependencies and `nose`.
+
+    pip install -r requirements.txt
+    pip install nose
+
+Checkout and install `annie`.
+
+    cd $WORKSPACE
+    git clone git@github.com:ecohealthalliance/annie.git
+    cd annie
+    pip install -r requirements.txt
+    python setup.py install
+
+Import Geonames data into Mongo and prepare the training data.
+
+    cd $WORKSPACE/grits-api
+    ./import_geonames.sh
+    python train.py
+    
+Start the server.
+
+    python server.py
+
 # Testing
 
 To run the tests:
