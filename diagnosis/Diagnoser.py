@@ -64,10 +64,11 @@ class Diagnoser():
             if parent:
                 parent_prob = probs[self.classifier.classes_.tolist().index(parent)]
                 if parent_prob >= p_max * self.cutoff_ratio:
-                    if p >= parent_prob * self.cutoff_ratio:
+                    if p >= p_max * self.cutoff_ratio * parent_prob:
                         result.append((i,p))
-                elif p >= p_max * self.cutoff_ratio:
-                    result.append((i,p))
+                else:
+                    pass #because the probability of a sub label should be
+                    # capped at the probability of the parent.
             else:
                 if p >= p_max * self.cutoff_ratio:
                     result.append((i,p))
@@ -136,7 +137,7 @@ class Diagnoser():
                 'modifiers': span.modifiers,
                 'cumulative': span.cumulative,
                 'textOffsets': [[span.start, span.end]]
-                })
+            })
         logger.info(time_sofar.next() + 'Extracted case counts')
 
         extracted_dates = list(feature_extractors.extract_dates(content))

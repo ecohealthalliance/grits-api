@@ -4,6 +4,16 @@ import datetime
 import os
 import pickle
 import config
+import diagnosis
+from diagnosis.KeywordExtractor import *
+from diagnosis.Diagnoser import Diagnoser
+import numpy as np
+import re
+import sklearn
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction import DictVectorizer
+from sklearn.multiclass import OneVsRestClassifier
+from sklearn.linear_model import LogisticRegression
 
 def group_by(group_fun, collection):
     out = {}
@@ -17,7 +27,7 @@ def group_by(group_fun, collection):
     
 def flatten(li, depth=-1):
     for subli in li:
-        if isinstance(subli, (list, set)) and depth != 0:
+        if isinstance(subli, (list, set, tuple)) and depth != 0:
             for it in flatten(subli, depth - 1):
                 yield it
         else:
@@ -36,7 +46,9 @@ def get_pickle(filename):
         from tzlocal import get_localzone
         tz = get_localzone()
         if os.path.exists(filename):
-            local_copy_time = datetime.datetime.fromtimestamp(os.path.getctime(filename))
+            local_copy_time = datetime.datetime.fromtimestamp(
+                os.path.getctime(filename)
+            )
         else:
             # This datetime that should always be before the remote copy timestamp.
             # However, if it is too close to datetime min it can't be
@@ -53,19 +65,14 @@ def get_pickle(filename):
         print filename, "loaded"
         return result
 
-training_set = get_pickle('training.p')
-validation_set = get_pickle('validation.p')
-ontologies = get_pickle('ontologies.p')
-
-# Process the ontologies
-def import_keywords(*names):
+def import_keywords(*names, **kwargs):
     import re
     def parse_keyword(kw):
         return re.sub(r"(\(.*?\))|(\[.*?\])", "", kw).strip().lower()
     blocklist = set(['can', 'don', 'dish', 'ad', 'mass', 'yellow'])
     out_keywords = []
     for name in names:
-        obj = ontologies[name]
+        obj = kwargs['source'][name]
         for kw in obj:
             assert kw not in blocklist
             if kw.strip() != kw:
@@ -87,64 +94,6 @@ def import_keywords(*names):
         
     return out_keywords
 
-keyword_array = import_keywords(
-    'eha/symptom',
-    'eha/mode of transmission',
-    'eha/environmental factors',
-    'eha/vector',
-    'eha/occupation',
-    'eha/control measures',
-    'eha/description of infected',
-    'eha/disease category',
-    'eha/host use',
-    'eha/symptom',
-    'eha/zoonotic type',
-    'biocaster/symptoms',
-    'wordnet/season',
-    'wordnet/climate',
-    'wordnet/pathogens',
-    'wordnet/hosts',
-    'biocaster/pathogens',
-    'biocaster/diseases',
-    'symp/symptoms',
-    'doid/has_symptom',
-    'doid/transmitted_by',
-    'doid/located_in',
-    'wordnet/mod/severe',
-    'wordnet/mod/painful',
-    'wordnet/mod/large',
-    'doid/diseases',
-    'eha/disease'
-)
-lowercase_keyword_index = group_by(
-    lambda k: k['keyword'].lower(),
-    keyword_array
-)
-
-class LowerKeyDict(dict):
-    def __getitem__(self, key):
-        return self.store[key.lower()]
-
-keyword_links = LowerKeyDict({
-    kw : set(flatten([item['linked_keywords'] for item in items], 1))
-    for kw, items in group_by('keyword', keyword_array).items()
-})
-
-
-# Keyword Extraction
-import diagnosis
-from diagnosis.KeywordExtractor import *
-import numpy as np
-import re
-import sklearn
-from sklearn.pipeline import Pipeline
-
-extract_features = Pipeline([
-    ('kwext', KeywordExtractor(keyword_array)),
-    ('link', LinkedKeywordAdder(keyword_links)),
-    ('limit', LimitCounts(1)),
-])
-
 import yaml, os
 curdir = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(curdir, "diseaseToParent.yaml")) as f:
@@ -162,6 +111,11 @@ label_overrides = {
 labels_to_omit = [
     'Not Yet Classified',
     'Undiagnosed',
+    # Maybe Other Human/Animal/Plant Disease labels could be turned into categories?
+    # The problem is we don't know which are negative examples of them.
+    'Other Human Disease',
+    'Other Animal Disease',
+    'Other Plant Disease',
     #Pathogen labels:
     'Food-related toxin',
     'Free Living Amoeba',
@@ -176,13 +130,15 @@ labels_to_omit = [
     'Conflict',
     'Animal Die-off',
     'Poisoning',
+    'Paralytic Shellfish Poisoning',
     'Cold',
 ]
 
 def get_features_and_classifications(
     feature_dicts,
     my_dict_vectorizer,
-    resources):
+    resources
+):
     # features = [
     #     [article1_kewword1_count, article1_keyword2_...],
     #     [article2_kewword1_count, article2_keyword2_...],
@@ -214,145 +170,237 @@ def get_features_and_classifications(
         resources_used.append(r)
     return np.array(features), np.array(classifications), resources_used
 
-from sklearn.feature_extraction import DictVectorizer
-train_feature_dicts = extract_features.transform([
-    r['cleanContent'] for r in training_set
-])
-validation_feature_dicts = extract_features.transform([
-    r['cleanContent'] for r in validation_set
-])
-#If we get sparse rows working with the classifier this might yeild some
-#performance improvments.
-my_dict_vectorizer = DictVectorizer(sparse=False).fit(train_feature_dicts)
-print 'found keywords:', len(my_dict_vectorizer.vocabulary_)
-print "Many keywords in the validation set do not appear in the training set:"
-print  set(DictVectorizer(sparse=False).fit(validation_feature_dicts).vocabulary_) - set(my_dict_vectorizer.vocabulary_)
 
-#Training
-
-feature_mat_train, labels_train, resources_train = get_features_and_classifications(train_feature_dicts, my_dict_vectorizer, training_set)
-feature_mat_validation, labels_validation, resources_validation = get_features_and_classifications(validation_feature_dicts, my_dict_vectorizer, validation_set)
-
-print "articles we could extract keywords from:"
-print len(resources_validation), '/', len(validation_set)
-
-#Check for duplicate features:
-
-unique_features = {}
-for feature_a, resource_a in zip(feature_mat_train, resources_train):
-    for feature_b, resource_b in unique_features.items():
-        if not all(feature_a == feature_b):
-            print "Duplicate found:"
-            print resource_url(resource_a['_id'])
-            print resource_url(resource_b['_id'])
-            print feature_a
-            break
-        unique_features.append(feature_a)
-        
-print """
-Articles in the validation set that we are sure to miss"
-because we have no training data for their labels:
-"""
-
-not_in_train = [
-    y for y in flatten(labels_validation, 1)
-    if (y not in flatten(labels_train, 1))
-]
-print len(not_in_train),'/',len(labels_validation)
-print not_in_train
-
-# Cache things here so we can resume training right away
-
-from sklearn.multiclass import OneVsRestClassifier
-from sklearn.linear_model import LogisticRegression
-
-my_classifier = OneVsRestClassifier(LogisticRegression(
-    # When fit intercept is False the classifier predicts nothing when there are no features.
-    # On one hand, predictions based off of nothing could seem puzzling to users.
-    # One the other hand, we can guess the article is most likely to be dengue or another common
-    # disease and still occassionally be right, and having a intercept offset could allow us
-    # to create a model that is a tighter fit.
-    # fit_intercept=False
-    # l1 penalty will produce sparser coefficients.
-    # it seems to perform worse, but the classifications will be easier to inspect,
-    # and we might be able to avoid some weak classifications based on weak correlations that turn out to be false.
-    # penalty='l1',
-    # Using class weighting we might be able to avoid overpredicting the more common labels.
-    # However, auto weighting has only hurt our f-scores so far.
-    # class_weight='auto',
-), n_jobs=-1)
-
-my_classifier.fit(feature_mat_train, labels_train)
-
-# # Pickle everything that will be needed for classification
-# with open('classifier.p', 'wb') as f:
-#     pickle.dump(my_classifier, f)
-# with open('dict_vectorizer.p', 'wb') as f:
-#     pickle.dump(my_dict_vectorizer, f)
-# with open('keyword_links.p', 'wb') as f:
-#     pickle.dump(keyword_links, f)
-# with open('keyword_sets.p', 'wb') as f:
-#     pickle.dump(keyword_sets, f)
-
-# # Classification
-
-
-# with open('classifier.p') as f:
-#     my_classifier = pickle.load(f)
-# with open('dict_vectorizer.p') as f:
-#     my_dict_vectorizer = pickle.load(f)
-# with open('keyword_links.p') as f:
-#     keyword_links = pickle.load(f)
-# with open('keyword_sets.p') as f:
-#     keyword_sets = pickle.load(f)
-
-from diagnosis.Diagnoser import Diagnoser
+def train():
+    training_set = get_pickle('training.p')
+    validation_set = get_pickle('validation.p')
+    ontologies = get_pickle('ontologies.p')
     
-my_diagnoser = Diagnoser(
-    my_classifier,
-    my_dict_vectorizer,
-    keyword_links=keyword_links,
-    keyword_categories={
-        kw['keyword'] : kw['category']
-        for kw in keyword_array
-    },
-    keyword_array=keyword_array,
-    cutoff_ratio=.7
-)
+    keyword_array = import_keywords(
+        'eha/symptom',
+        'eha/mode of transmission',
+        'eha/environmental factors',
+        'eha/vector',
+        'eha/occupation',
+        'eha/control measures',
+        'eha/description of infected',
+        'eha/disease category',
+        'eha/host use',
+        'eha/symptom',
+        'eha/zoonotic type',
+        'biocaster/symptoms',
+        'wordnet/season',
+        'wordnet/climate',
+        'wordnet/pathogens',
+        'wordnet/hosts',
+        'biocaster/pathogens',
+        'biocaster/diseases',
+        'symp/symptoms',
+        'doid/has_symptom',
+        'doid/transmitted_by',
+        'doid/located_in',
+        'wordnet/mod/severe',
+        'wordnet/mod/painful',
+        'wordnet/mod/large',
+        'doid/diseases',
+        'eha/disease',
+        source=ontologies
+    )
+    lowercase_keyword_index = group_by(
+        lambda k: k['keyword'].lower(),
+        keyword_array
+    )
+    
+    class LowerKeyDict(dict):
+        def __getitem__(self, key):
+            return self.store[key.lower()]
+    
+    keyword_links = LowerKeyDict({
+        kw : set(flatten([item['linked_keywords'] for item in items], 1))
+        for kw, items in group_by('keyword', keyword_array).items()
+    })
 
-print "macro average:"
-training_predictions = [
-    tuple([my_diagnoser.classifier.classes_[i] for i, p in my_diagnoser.best_guess(X)])
-    for X in feature_mat_train
-]
-print "Training set:\nprecision: %s recall: %s f-score: %s" %\
-    sklearn.metrics.precision_recall_fscore_support(labels_train, training_predictions, average='macro')[0:3]
+    # Keyword Extraction
+    extract_features = Pipeline([
+        ('kwext', KeywordExtractor(keyword_array)),
+        ('link', LinkedKeywordAdder(keyword_links)),
+        ('limit', LimitCounts(1)),
+    ])
+    train_feature_dicts = extract_features.transform([
+        r['cleanContent'] for r in training_set
+    ])
+    validation_feature_dicts = extract_features.transform([
+        r['cleanContent'] for r in validation_set
+    ])
+    #If we get sparse rows working with the classifier this might yeild some
+    #performance improvments.
+    my_dict_vectorizer = DictVectorizer(sparse=False).fit(train_feature_dicts)
+    print 'Found keywords:', len(my_dict_vectorizer.vocabulary_)
+    print "Keywords in the validation set that aren't in the training set:"
+    print  (
+        set(DictVectorizer(sparse=False).fit(
+            validation_feature_dicts).vocabulary_
+        ) -
+        set(my_dict_vectorizer.vocabulary_)
+    )
 
-predictions = training_predictions = [
-    tuple([my_diagnoser.classifier.classes_[i] for i, p in my_diagnoser.best_guess(X)])
-    for X in feature_mat_validation
-]
-prfs = sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions)
-# I've noticed that the macro f-score is not the harmonic mean of the percision
-# and recall. Perhaps this could be a result of the macro f-score being computed 
-# as an average of f-scores.
-# Furthermore, the macro f-scrore can be smaller than the precision and
-# recall which seems like it shouldn't be possible.
-print "Validation set:\nprecision: %s recall: %s f-score: %s" %\
-    sklearn.metrics.precision_recall_fscore_support(
+    (
+        feature_mat_train,
+        labels_train,
+        resources_train
+    ) = get_features_and_classifications(
+        train_feature_dicts,
+        my_dict_vectorizer,
+        training_set
+    )
+    
+    (
+        feature_mat_validation,
+        labels_validation,
+        resources_validation
+    ) = get_features_and_classifications(
+        validation_feature_dicts,
+        my_dict_vectorizer,
+        validation_set
+    )
+    
+    print "articles we could extract keywords from:"
+    print len(resources_validation), '/', len(validation_set)
+
+    #Check for duplicate features:
+    unique_features = {}
+    for feature_a, resource_a in zip(feature_mat_train, resources_train):
+        for feature_b, resource_b in unique_features.items():
+            if not all(feature_a == feature_b):
+                print "Duplicate found:"
+                print resource_url(resource_a['_id'])
+                print resource_url(resource_b['_id'])
+                print feature_a
+                break
+            unique_features.append(feature_a)
+        
+    print """
+    Articles in the validation set that we are sure to miss"
+    because we have no training data for their labels:
+    """
+    
+    not_in_train = [
+        y for y in flatten(labels_validation, 1)
+        if (y not in flatten(labels_train, 1))
+    ]
+    print len(not_in_train),'/',len(labels_validation)
+    print not_in_train
+
+    my_classifier = OneVsRestClassifier(LogisticRegression(
+        # When fit intercept is False the classifier predicts nothing when
+        # all the features are zero.
+        # On one hand, we can guess the article is most likely to be dengue or
+        # another common disease and still occassionally be right,
+        # and having a intercept offset could allow us
+        # to create a model that is a tighter fit.
+        # On one hand, predictions based off of nothing might puzzle users.
+        # fit_intercept=False,
+        # l1 penalty will produce sparser coefficients.
+        # it seems to perform worse,
+        # but the classifications will be easier to inspect,
+        # and we might be able to avoid some overfitting based on weak
+        # correlations that turn out to be false.
+        # penalty='l1',
+        # Using class weighting we might be able to avoid overpredicting
+        # the more common labels.
+        # However, auto weighting has only hurt our mico f-scores so far.
+        # class_weight='auto',
+    ), n_jobs=-1)
+    
+    my_classifier.fit(feature_mat_train, labels_train)
+    
+    # # Pickle everything that will be needed for classification
+    # with open('classifier.p', 'wb') as f:
+    #     pickle.dump(my_classifier, f)
+    # with open('dict_vectorizer.p', 'wb') as f:
+    #     pickle.dump(my_dict_vectorizer, f)
+    # with open('keyword_links.p', 'wb') as f:
+    #     pickle.dump(keyword_links, f)
+    # with open('keyword_sets.p', 'wb') as f:
+    #     pickle.dump(keyword_sets, f)
+    
+    # # Classification
+    
+    
+    # with open('classifier.p') as f:
+    #     my_classifier = pickle.load(f)
+    # with open('dict_vectorizer.p') as f:
+    #     my_dict_vectorizer = pickle.load(f)
+    # with open('keyword_links.p') as f:
+    #     keyword_links = pickle.load(f)
+    # with open('keyword_sets.p') as f:
+    #     keyword_sets = pickle.load(f)
+    
+    my_diagnoser = Diagnoser(
+        my_classifier,
+        my_dict_vectorizer,
+        keyword_links=keyword_links,
+        keyword_categories={
+            kw['keyword'] : kw['category']
+            for kw in keyword_array
+        },
+        keyword_array=keyword_array,
+        cutoff_ratio=.7
+    )
+    
+    print "macro average:"
+    training_predictions = [
+        tuple([
+            my_diagnoser.classifier.classes_[i]
+            for i, p in my_diagnoser.best_guess(X)
+        ])
+        for X in feature_mat_train
+    ]
+    print "Training set:\nprecision: %s recall: %s f-score: %s" %\
+        sklearn.metrics.precision_recall_fscore_support(
+            labels_train,
+            training_predictions,
+            average='macro'
+        )[0:3]
+    
+    predictions = training_predictions = [
+        tuple([
+            my_diagnoser.classifier.classes_[i]
+            for i, p in my_diagnoser.best_guess(X)
+        ])
+        for X in feature_mat_validation
+    ]
+    prfs = sklearn.metrics.precision_recall_fscore_support(
+        labels_validation,
+        predictions
+    )
+    # I've noticed that the macro f-score is not the harmonic mean of the percision
+    # and recall. Perhaps this could be a result of the macro f-score being computed 
+    # as an average of f-scores.
+    # Furthermore, the macro f-scrore can be smaller than the precision and
+    # recall which seems like it shouldn't be possible.
+    print "Validation set:\nprecision: %s recall: %s f-score: %s" %\
+        sklearn.metrics.precision_recall_fscore_support(
+            labels_validation,
+            predictions,
+            average='macro')[0:3]
+    print "micro average:"
+    print "precision: %s recall: %s f-score: %s" %\
+        sklearn.metrics.precision_recall_fscore_support(labels_validation,
+        predictions,
+        average='micro')[0:3]
+    
+    print "Which classes are we performing poorly on?"
+    
+    labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
+    prfs = sklearn.metrics.precision_recall_fscore_support(
         labels_validation,
         predictions,
-        average='macro')[0:3]
-print "micro average:"
-print "precision: %s recall: %s f-score: %s" %\
-    sklearn.metrics.precision_recall_fscore_support(labels_validation,
-    predictions,
-    average='micro')[0:3]
+        labels=labels
+    )
+    for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
+        print cl
+        print "precision:",p,"recall",r,"F-score:",f,"support:",s
 
-print "Which classes are we performing poorly on?"
-
-labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
-prfs = sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions, labels=labels)
-for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
-    print cl
-    print "precision:",p,"recall",r,"F-score:",f,"support:",s
+if __name__ == '__main__':
+    train()
