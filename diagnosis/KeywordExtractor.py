@@ -55,18 +55,18 @@ class KeywordExtractor():
             self.case_insensitive_vectorizer,
             texts
         )
-        out_dict_updates = self.transform_with_vectorizer(
-            self.case_sensitive_vectorizer,
-            texts
-        )
-        for d, upd in zip(out_dicts, out_dict_updates):
-            d.update(upd)
+        # out_dict_updates = self.transform_with_vectorizer(
+        #     self.case_sensitive_vectorizer,
+        #     texts
+        # )
+        # for d, upd in zip(out_dicts, out_dict_updates):
+        #     d.update(upd)
         return out_dicts
 
 class KeywordExtractorUnion():
     """
     I wanted to combine the vectors rather than the dicts but I kept
-    getting errors when scipy's hstack on large vectors.
+    getting errors when using scipy's hstack on large vectors.
     """
     def __init__(self, keywords, case_sensitive_keywords):
         assert len(keywords) > 0 and len(case_sensitive_keywords) > 0
@@ -137,8 +137,12 @@ class LinkedKeywordAdder():
         return map(self.transform_one, keyword_count_dicts)
 
 class SynonymReducer():
+    """
+    Reduces multiple words to a single feature.
+    Possibly helpful because having lots of syns for a word would cause it to
+    affect the score more.
+    """
     def __init__(self, keyword_array):
-        
         self.kw_to_syn_group = kw_to_syn_group
     def fit(self, X, y):
         pass
