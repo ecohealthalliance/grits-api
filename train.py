@@ -176,7 +176,10 @@ def train():
     validation_set = get_pickle('validation.p')
     ontologies = get_pickle('ontologies.p')
     
+    ontologies['hm/disease'] = set([r['meta']['disease'] for r in training_set])
+    
     keyword_array = import_keywords(
+        'hm/disease',
         'eha/symptom',
         'eha/mode of transmission',
         'eha/environmental factors',
