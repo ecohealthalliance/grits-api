@@ -145,47 +145,10 @@ extract_features = Pipeline([
     ('limit', LimitCounts(1)),
 ])
 
-disease_to_parent = {
-    'HFM-CoxsackieA' : 'Hand, Foot and Mouth Disease',
-    'HFM-Enterovirus71' : 'Hand, Foot and Mouth Disease',
-    'Algae' : 'Environmental',
-    'Avian Influenza' : 'Influenza',
-    'Avian Influenza H7N9' : 'Avian Influenza',
-    'Canine Influenza' : 'Influenza',
-    'Equine Influenza' : 'Influenza',
-    'Cold' : 'Influenza',
-    # How do we distinguish these without using the disease name?
-    'Swine Flu H1N1' : 'Influenza',
-    'Swine Flu H3N2' : 'Influenza',
-    'Valley Fever' : 'Fever',
-    'African Swine Fever' : 'Fever',
-    'Classical Swine Fever' : 'Fever',
-    'Crimean-Congo Hemorrhagic Fever' : 'Fever',
-    'Yellow Fever' : 'Fever',
-    'Rift Valley Fever' : 'Fever',
-    'Rocky Mountain Spotted Fever' : 'Fever',
-    'Dengue' : 'Fever',
-    'Classical Swine Fever' : 'Fever',
-    'Hepatitis A' : 'Hepatitis',
-    'Hepatitis B' : 'Hepatitis',
-    'Hepatitis C' : 'Hepatitis',
-    'Hepatitis E' : 'Hepatitis',
-    'Meningitis - Strep/Pneumoccocal' : 'Meningitis',
-    'Meningitis - Neisseria' : 'Meningitis',
-    'Fungal Meningitis' : 'Meningitis',
-    'Viral Meningitis' : 'Meningitis',
-    'Japanese Encephalitis' : 'Encephalitis',
-    'La Crosse Encephalitis' : 'Encephalitis',
-    # This is problematic for a number of reasons.
-    # Should viruses that cause diseases be labels?
-    # And Gastroenteritis is in our symptom keyword set.
-    # Dividing keywords between symptoms, 
-    # pathogens and diseases seems to be a difficult problem in general.
-    'Rotavirus' : 'Gastroenteritis',
-    'Sapovirus' : 'Gastroenteritis', 
-    'Norovirus' : 'Gastroenteritis',
-    'Lyme Disease' : 'Tick-borne disease',
-}
+import yaml, os
+curdir = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(curdir, "diseaseToParent.yaml")) as f:
+    disease_to_parent = yaml.load(f)
 
 label_overrides = {
     '532c9a73f99fe75cf538331c' : 'Fungal Meningitis',
@@ -270,7 +233,7 @@ print  set(DictVectorizer(sparse=False).fit(validation_feature_dicts).vocabulary
 feature_mat_train, labels_train, resources_train = get_features_and_classifications(train_feature_dicts, my_dict_vectorizer, training_set)
 feature_mat_validation, labels_validation, resources_validation = get_features_and_classifications(validation_feature_dicts, my_dict_vectorizer, validation_set)
 
-print "artlces we could extract keywords from:"
+print "articles we could extract keywords from:"
 print len(resources_validation), '/', len(validation_set)
 
 #Check for duplicate features:
@@ -286,7 +249,10 @@ for feature_a, resource_a in zip(feature_mat_train, resources_train):
             break
         unique_features.append(feature_a)
         
-print "Labels in the validation set that we are sure to miss because we have no training data for them:"
+print """
+Articles in the validation set that we are sure to miss"
+because we have no training data for their labels:
+"""
 
 not_in_train = [
     y for y in flatten(labels_validation, 1)
@@ -294,6 +260,8 @@ not_in_train = [
 ]
 print len(not_in_train),'/',len(labels_validation)
 print not_in_train
+
+# Cache things here so we can resume training right away
 
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression

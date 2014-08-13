@@ -22,6 +22,11 @@ def time_sofar_gen(start_time):
     while True:
         yield '[' + str(datetime.datetime.now() - start_time) + ']'
 
+import yaml, os
+curdir = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(curdir, "../diseaseToParent.yaml")) as f:
+    disease_to_parent = yaml.load(f)
+
 class Diagnoser():
 
     __version__ = '0.0.1'
@@ -52,7 +57,19 @@ class Diagnoser():
     def best_guess(self, X):
         probs = self.classifier.predict_proba(X)[0]
         p_max = max(probs)
-        return [(i,p) for i,p in enumerate(probs) if p >= p_max * self.cutoff_ratio]
+        result = []
+        for i,p in enumerate(probs):
+            cutoff_ratio = self.cutoff_ratio
+            parent = disease_to_parent.get(self.classifier.classes_[i])
+            if parent:
+                parent_prob = probs[self.classifier.classes_.tolist().index(parent)]
+                if parent_prob >= p_max * self.cutoff_ratio:
+                    if p >= parent_prob * self.cutoff_ratio * .5:
+                        result.append((i,p))
+            else:
+                if p >= p_max * self.cutoff_ratio:
+                    result.append((i,p))
+        return result
     def diagnose(self, content):
         time_sofar = time_sofar_gen(datetime.datetime.now())
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
