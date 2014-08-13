@@ -349,10 +349,10 @@ print "precision: %s recall: %s f-score: %s" %\
     predictions,
     average='micro')[0:3]
 
-# print "Which classes are we performing poorly on?"
-# 
-# labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
-# prfs = sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions, labels=labels)
-# for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
-#     print cl
-#     print "precision:",p,"recall",r,"F-score:",f,"support:",s
+print "Which classes are we performing poorly on?"
+
+labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
+prfs = sklearn.metrics.precision_recall_fscore_support(labels_validation, predictions, labels=labels)
+for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
+    print cl
+    print "precision:",p,"recall",r,"F-score:",f,"support:",s

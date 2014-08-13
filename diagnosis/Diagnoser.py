@@ -64,8 +64,10 @@ class Diagnoser():
             if parent:
                 parent_prob = probs[self.classifier.classes_.tolist().index(parent)]
                 if parent_prob >= p_max * self.cutoff_ratio:
-                    if p >= parent_prob * self.cutoff_ratio * .5:
+                    if p >= parent_prob * self.cutoff_ratio:
                         result.append((i,p))
+                elif p >= p_max * self.cutoff_ratio:
+                    result.append((i,p))
             else:
                 if p >= p_max * self.cutoff_ratio:
                     result.append((i,p))
