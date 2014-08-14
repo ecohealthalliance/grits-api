@@ -1,6 +1,7 @@
 nltk
 lxml
 pymongo
+pyyaml
 beautifulsoup
 goose-extractor
 readability-lxml
