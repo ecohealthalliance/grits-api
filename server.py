@@ -32,15 +32,14 @@ with open('classifier.p') as f:
     my_classifier = pickle.load(f)
 with open('dict_vectorizer.p') as f:
     my_dict_vectorizer = pickle.load(f)
-with open('keyword_links.p') as f:
-    keyword_links = pickle.load(f)
-with open('keyword_sets.p') as f:
-    keyword_sets = pickle.load(f)
-my_diagnoser = Diagnoser(my_classifier,
-                         my_dict_vectorizer,
-                         keyword_links=keyword_links,
-                         keyword_categories=keyword_sets,
-                         cutoff_ratio=.7)
+with open('keyword_array.p') as f:
+    keyword_array = pickle.load(f)
+my_diagnoser = Diagnoser(
+    my_classifier,
+    my_dict_vectorizer,
+    keyword_array=keyword_array,
+    cutoff_ratio=.7
+)
 
 app = flask.Flask(__name__, static_url_path='')
 
@@ -71,8 +70,13 @@ def public_diagnosis():
     content = get_values().get('content')
     api_key = get_values().get('api_key')
     if api_key == 'grits28754':
-        return Response(json.dumps(my_diagnoser.diagnose(content), default=my_serializer),
-                        mimetype='application/json')
+        return Response(
+            json.dumps(
+                my_diagnoser.diagnose(content),
+                default=my_serializer
+            ),
+            mimetype='application/json'
+        )
     else:
         abort(401)
 

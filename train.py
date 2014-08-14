@@ -15,24 +15,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
-
-def group_by(group_fun, collection):
-    out = {}
-    if isinstance(group_fun, basestring):
-        prop = group_fun
-        group_fun = lambda k: k[prop]
-    for item in collection:
-        group_key = group_fun(item)
-        out[group_key] = out.get(group_key, []) + [item]
-    return out
-    
-def flatten(li, depth=-1):
-    for subli in li:
-        if isinstance(subli, (list, set, tuple)) and depth != 0:
-            for it in flatten(subli, depth - 1):
-                yield it
-        else:
-            yield subli
+from diagnosis.utils import group_by, flatten
 
 def get_pickle(filename):
     """
@@ -136,14 +119,9 @@ def get_features_and_classifications(
     resources,
     disease_to_parent_map
 ):
-    # features = [
-    #     [article1_kewword1_count, article1_keyword2_...],
-    #     [article2_kewword1_count, article2_keyword2_...],
-    #     ...
-    # ]
-    # classifications = [
-    #     article1_disease, ...
-    # ]
+    """
+    Vectorize feature_dicts, filter some out, and add parent labels.
+    """
     features = []
     classifications = []
     resources_used = []
@@ -211,19 +189,10 @@ def train():
         keyword_array
     )
     
-    class LowerKeyDict(dict):
-        def __getitem__(self, key):
-            return self.store[key.lower()]
-    
-    keyword_links = LowerKeyDict({
-        kw : set(flatten([item['linked_keywords'] for item in items], 1))
-        for kw, items in group_by('keyword', keyword_array).items()
-    })
-
     # Keyword Extraction
     extract_features = Pipeline([
         ('kwext', KeywordExtractor(keyword_array)),
-        ('link', LinkedKeywordAdder(keyword_links)),
+        ('link', LinkedKeywordAdder(keyword_array)),
         ('limit', LimitCounts(1)),
     ])
     train_feature_dicts = extract_features.transform([
@@ -316,36 +285,24 @@ def train():
     
     my_classifier.fit(feature_mat_train, labels_train)
     
-    # # Pickle everything that will be needed for classification
-    # with open('classifier.p', 'wb') as f:
-    #     pickle.dump(my_classifier, f)
-    # with open('dict_vectorizer.p', 'wb') as f:
-    #     pickle.dump(my_dict_vectorizer, f)
-    # with open('keyword_links.p', 'wb') as f:
-    #     pickle.dump(keyword_links, f)
-    # with open('keyword_sets.p', 'wb') as f:
-    #     pickle.dump(keyword_sets, f)
-    
-    # # Classification
-    
-    
-    # with open('classifier.p') as f:
-    #     my_classifier = pickle.load(f)
-    # with open('dict_vectorizer.p') as f:
-    #     my_dict_vectorizer = pickle.load(f)
-    # with open('keyword_links.p') as f:
-    #     keyword_links = pickle.load(f)
-    # with open('keyword_sets.p') as f:
-    #     keyword_sets = pickle.load(f)
+    # Pickle everything that will be needed for classification:
+    with open('classifier.p', 'wb') as f:
+        pickle.dump(my_classifier, f)
+    with open('dict_vectorizer.p', 'wb') as f:
+        pickle.dump(my_dict_vectorizer, f)
+    with open('keyword_array.p', 'wb') as f:
+        pickle.dump(keyword_array, f)
+    # Reload variables from pickles to test them:
+    with open('classifier.p') as f:
+        my_classifier = pickle.load(f)
+    with open('dict_vectorizer.p') as f:
+        my_dict_vectorizer = pickle.load(f)
+    with open('keyword_array.p') as f:
+        keyword_array = pickle.load(f)
     
     my_diagnoser = Diagnoser(
         my_classifier,
         my_dict_vectorizer,
-        keyword_links=keyword_links,
-        keyword_categories={
-            kw['keyword'] : kw['category']
-            for kw in keyword_array
-        },
         keyword_array=keyword_array,
         cutoff_ratio=.7
     )
@@ -358,14 +315,12 @@ def train():
         ])
         for X in feature_mat_train
     ]
-    # print "Training set:\nprecision: %s recall: %s f-score: %s" %\
-    #     sklearn.metrics.precision_recall_fscore_support(
-    #         labels_train,
-    #         training_predictions,
-    #         average='macro'
-    #     )[0:3]
-    print labels_train[:10]
-    print training_predictions[:10]
+    print "Training set:\nprecision: %s recall: %s f-score: %s" %\
+        sklearn.metrics.precision_recall_fscore_support(
+            map(tuple, labels_train),
+            training_predictions,
+            average='macro'
+        )[0:3]
     
     predictions = training_predictions = [
         tuple([

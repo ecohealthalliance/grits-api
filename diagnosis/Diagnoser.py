@@ -33,21 +33,19 @@ class Diagnoser():
 
     def __init__(
         self, classifier, dict_vectorizer,
-        keyword_links=None,
-        keyword_categories=None,
         cutoff_ratio=0.65,
-        # This will replace kw_links and kw_categories
         keyword_array=None
     ):
+        keyword_categories = {
+            kw['keyword'] : kw['category']
+            for kw in keyword_array
+        }
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.case_count_annotator = CaseCountAnnotator()
         self.keyword_categories = keyword_categories if keyword_categories else {}
         processing_pipeline = []
-        if keyword_links:
-            self.keyword_links = keyword_links
-            processing_pipeline.append(('link', LinkedKeywordAdder(keyword_links)))
-        #processing_pipeline.append(('reduce', SynonymReducer(keyword_array)))
+        processing_pipeline.append(('link', LinkedKeywordAdder(keyword_array)))
         processing_pipeline.append(('limit', LimitCounts(1)))
         self.keyword_processor = Pipeline(processing_pipeline)
         self.dict_vectorizer = dict_vectorizer
