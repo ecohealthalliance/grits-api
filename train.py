@@ -7,6 +7,7 @@ import config
 import diagnosis
 from diagnosis.KeywordExtractor import *
 from diagnosis.Diagnoser import Diagnoser
+from diagnosis.Diagnoser import disease_to_parent
 import numpy as np
 import re
 import sklearn
@@ -94,11 +95,6 @@ def import_keywords(*names, **kwargs):
         
     return out_keywords
 
-import yaml, os
-curdir = os.path.dirname(os.path.abspath(__file__))
-with open(os.path.join(curdir, "diseaseToParent.yaml")) as f:
-    disease_to_parent = yaml.load(f)
-
 label_overrides = {
     '532c9a73f99fe75cf538331c' : 'Fungal Meningitis',
     # Foot and Mouth disease rarely affects humans.
@@ -137,7 +133,8 @@ labels_to_omit = [
 def get_features_and_classifications(
     feature_dicts,
     my_dict_vectorizer,
-    resources
+    resources,
+    disease_to_parent_map
 ):
     # features = [
     #     [article1_kewword1_count, article1_keyword2_...],
@@ -163,8 +160,8 @@ def get_features_and_classifications(
             diseases = [label_overrides[r['_id']]]
         else:
             diseases = [r['meta']['disease']]
-        while diseases[-1] in disease_to_parent:
-            diseases.append(disease_to_parent[diseases[-1]])
+        while diseases[-1] in disease_to_parent_map:
+            diseases.append(disease_to_parent_map[diseases[-1]])
         features.append(feature_vector)
         classifications.append(diseases)
         resources_used.append(r)
@@ -254,7 +251,8 @@ def train():
     ) = get_features_and_classifications(
         train_feature_dicts,
         my_dict_vectorizer,
-        training_set
+        training_set,
+        {}
     )
     
     (
@@ -264,7 +262,8 @@ def train():
     ) = get_features_and_classifications(
         validation_feature_dicts,
         my_dict_vectorizer,
-        validation_set
+        validation_set,
+        disease_to_parent
     )
     
     print "articles we could extract keywords from:"
@@ -359,12 +358,14 @@ def train():
         ])
         for X in feature_mat_train
     ]
-    print "Training set:\nprecision: %s recall: %s f-score: %s" %\
-        sklearn.metrics.precision_recall_fscore_support(
-            labels_train,
-            training_predictions,
-            average='macro'
-        )[0:3]
+    # print "Training set:\nprecision: %s recall: %s f-score: %s" %\
+    #     sklearn.metrics.precision_recall_fscore_support(
+    #         labels_train,
+    #         training_predictions,
+    #         average='macro'
+    #     )[0:3]
+    print labels_train[:10]
+    print training_predictions[:10]
     
     predictions = training_predictions = [
         tuple([

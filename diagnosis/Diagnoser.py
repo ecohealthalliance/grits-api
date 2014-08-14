@@ -57,22 +57,21 @@ class Diagnoser():
     def best_guess(self, X):
         probs = self.classifier.predict_proba(X)[0]
         p_max = max(probs)
-        result = []
+        result = set()
         for i,p in enumerate(probs):
             cutoff_ratio = self.cutoff_ratio
             parent = disease_to_parent.get(self.classifier.classes_[i])
+            parents = []
             if parent:
-                parent_prob = probs[self.classifier.classes_.tolist().index(parent)]
-                if parent_prob >= p_max * self.cutoff_ratio:
-                    if p >= p_max * self.cutoff_ratio * parent_prob:
-                        result.append((i,p))
-                else:
-                    pass #because the probability of a sub label should be
-                    # capped at the probability of the parent.
-            else:
-                if p >= p_max * self.cutoff_ratio:
-                    result.append((i,p))
-        return result
+                parents.append(parent)
+                while parents[-1] in disease_to_parent:
+                    parents.append(disease_to_parent[parents[-1]])
+            if p >= p_max * self.cutoff_ratio:
+                result.add((i,p))
+                for i2, label in enumerate(self.classifier.classes_.tolist()):
+                    if label in parents:
+                        result.add((i2,label))
+        return list(result)
     def diagnose(self, content):
         time_sofar = time_sofar_gen(datetime.datetime.now())
         base_keyword_dict = self.keyword_extractor.transform([content])[0]

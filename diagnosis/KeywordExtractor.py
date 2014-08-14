@@ -162,6 +162,12 @@ class LimitCounts():
         return map(self.transform_one, keyword_count_dicts)
 
 class ProcessProperty():
+    """
+    Utility function for applying pipeline operations to dicts.
+    E.g.:
+    ProcessProperty(KeywordExtractor(), 'text', 'keyword_counts')
+    transforms { "text" : "..." } to { "text" : "...", "keyword_counts" : {} }
+    """
     def __init__(self, stage, inprop, outprop):
         self.stage = stage
         self.inprop = inprop
