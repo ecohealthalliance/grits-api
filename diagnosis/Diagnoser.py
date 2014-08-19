@@ -23,32 +23,55 @@ def time_sofar_gen(start_time):
     while True:
         yield '[' + str(datetime.datetime.now() - start_time) + ']'
 
+import yaml, os
+curdir = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(curdir, "../diseaseToParent.yaml")) as f:
+    disease_to_parent = yaml.load(f)
+
 class Diagnoser():
 
     __version__ = '0.0.1'
 
-    def __init__(self, classifier, dict_vectorizer,
-                 keyword_links=None,
-                 keyword_categories=None, cutoff_ratio=0.65):
+    def __init__(
+        self, classifier, dict_vectorizer,
+        cutoff_ratio=0.65,
+        keyword_array=None
+    ):
+        keyword_categories = {
+            kw['keyword'] : kw['category']
+            for kw in keyword_array
+        }
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.case_count_annotator = CaseCountAnnotator()
         self.patient_info_annotator = PatientInfoAnnotator()
         self.keyword_categories = keyword_categories if keyword_categories else {}
         processing_pipeline = []
-        if keyword_links:
-            self.keyword_links = keyword_links
-            processing_pipeline.append(('link', LinkedKeywordAdder(keyword_links)))
+        processing_pipeline.append(('link', LinkedKeywordAdder(keyword_array)))
         processing_pipeline.append(('limit', LimitCounts(1)))
         self.keyword_processor = Pipeline(processing_pipeline)
         self.dict_vectorizer = dict_vectorizer
         self.keywords = dict_vectorizer.get_feature_names()
-        self.keyword_extractor = KeywordExtractor(self.keywords)
+        self.keyword_extractor = KeywordExtractor(keyword_array)
         self.cutoff_ratio = cutoff_ratio
     def best_guess(self, X):
         probs = self.classifier.predict_proba(X)[0]
         p_max = max(probs)
-        return [(i,p) for i,p in enumerate(probs) if p >= p_max * self.cutoff_ratio]
+        result = set()
+        for i,p in enumerate(probs):
+            cutoff_ratio = self.cutoff_ratio
+            parent = disease_to_parent.get(self.classifier.classes_[i])
+            parents = []
+            if parent:
+                parents.append(parent)
+                while parents[-1] in disease_to_parent:
+                    parents.append(disease_to_parent[parents[-1]])
+            if p >= p_max * self.cutoff_ratio:
+                result.add((i,p))
+                for i2, label in enumerate(self.classifier.classes_.tolist()):
+                    if label in parents:
+                        result.add((i2,label))
+        return list(result)
     def diagnose(self, content):
         time_sofar = time_sofar_gen(datetime.datetime.now())
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
@@ -117,7 +140,7 @@ class Diagnoser():
                 'modifiers': span.modifiers,
                 'cumulative': span.cumulative,
                 'textOffsets': [[span.start, span.end]]
-                })
+            })
         logger.info(time_sofar.next() + 'Extracted case counts')
 
         extracted_dates = list(feature_extractors.extract_dates(content))
