@@ -9,6 +9,7 @@ from sklearn.pipeline import Pipeline
 import datetime
 from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
+from annotator.case_count_annotator import CaseCountAnnotator
 from annotator.patient_info_annotator import PatientInfoAnnotator
 
 import logging
@@ -31,6 +32,7 @@ class Diagnoser():
                  keyword_categories=None, cutoff_ratio=0.65):
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
+        self.case_count_annotator = CaseCountAnnotator()
         self.patient_info_annotator = PatientInfoAnnotator()
         self.keyword_categories = keyword_categories if keyword_categories else {}
         processing_pipeline = []
@@ -103,6 +105,19 @@ class Diagnoser():
                 )
         logger.info(time_sofar.next() + 'Annotated geonames')
 
+        anno_doc.add_tier(self.case_count_annotator)
+        case_counts = []
+        for span in anno_doc.tiers['caseCounts'].spans:
+            case_counts.append({
+                'type': span.type,
+                'text': span.text,
+                'value': span.label,
+                'modifiers': span.modifiers,
+                'cumulative': span.cumulative,
+                'textOffsets': [[span.start, span.end]]
+                })
+        logger.info(time_sofar.next() + 'Extracted case counts')
+
         extracted_dates = list(feature_extractors.extract_dates(content))
         logger.info(time_sofar.next() + 'Extracted dates')
 
@@ -110,9 +125,9 @@ class Diagnoser():
             # TODO: Use keywords
             'occupation' : ['farmer'],
         })
-        patient_info_list = []
+        keypoints = []
         for span in anno_doc.tiers['patientInfo'].spans:
-            patient_info_list.append(
+            keypoints.append(
                 dict(
                     span.metadata,
                     type='patientInfo',
@@ -135,9 +150,10 @@ class Diagnoser():
                 for keyword, count in base_keyword_dict.items()
             ],
             'diseases': diseases,
+            'keypoints' : keypoints,
             'features': (
                 extracted_dates +
-                patient_info_list +
+                case_counts +
                 geonames_grouped.values()
             )
         }
