@@ -30,7 +30,7 @@ with open(os.path.join(curdir, "../diseaseToParent.yaml")) as f:
 
 class Diagnoser():
 
-    __version__ = '0.0.1'
+    __version__ = '0.1.1'
 
     def __init__(
         self, classifier, dict_vectorizer,
