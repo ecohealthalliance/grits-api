@@ -108,7 +108,7 @@ class PublicDiagnoseHandler(DiagnoseHandler):
     @tornado.web.asynchronous
     def get(self):
         api_key = self.get_argument("api_key")
-        if api_key == 'grits28754':
+        if api_key == config.api_key:
             return super(PublicDiagnoseHandler, self).get()
         else:
             self.send_error(401)
