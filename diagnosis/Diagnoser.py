@@ -70,7 +70,7 @@ class Diagnoser():
                 result.add((i,p))
                 for i2, label in enumerate(self.classifier.classes_.tolist()):
                     if label in parents:
-                        result.add((i2,label))
+                        result.add((i2,max(p, probs[i2])))
         return list(result)
     def diagnose(self, content):
         time_sofar = time_sofar_gen(datetime.datetime.now())

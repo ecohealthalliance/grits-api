@@ -132,7 +132,13 @@ application = tornado.web.Application([
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
-    #parser.add_argument('-debug', action='store_true')
+    parser.add_argument('-debug', action='store_true')
     args = parser.parse_args()
+    if args.debug:
+        # Run tasks in the current process so we don't have to run a worker
+        # when debugging.
+        tasks.celery_tasks.conf.update(
+            CELERY_ALWAYS_EAGER = True,
+        )
     application.listen(5000)
     tornado.ioloop.IOLoop.instance().start()
