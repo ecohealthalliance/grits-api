@@ -37,15 +37,11 @@ class Diagnoser():
         cutoff_ratio=0.65,
         keyword_array=None
     ):
-        keyword_categories = {
-            kw['keyword'] : kw['category']
-            for kw in keyword_array
-        }
+        self.keyword_array = keyword_array
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.case_count_annotator = CaseCountAnnotator()
         self.patient_info_annotator = PatientInfoAnnotator()
-        self.keyword_categories = keyword_categories if keyword_categories else {}
         processing_pipeline = []
         processing_pipeline.append(('link', LinkedKeywordAdder(keyword_array)))
         processing_pipeline.append(('limit', LimitCounts(1)))
@@ -168,9 +164,11 @@ class Diagnoser():
                 {
                     'name' : unicode(keyword),
                     'count' : int(count),
-                    'categories' : [cat
-                            for cat, kws in self.keyword_categories.items()
-                            if keyword in kws]
+                    'categories' : [
+                        kw['category']
+                        for kw in self.keyword_array
+                        if kw['keyword'].lower() == keyword.lower()
+                    ]
                 }
                 for keyword, count in base_keyword_dict.items()
             ],
