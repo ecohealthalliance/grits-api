@@ -10,6 +10,7 @@ import datetime
 from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
 from annotator.case_count_annotator import CaseCountAnnotator
+from annotator.jvm_nlp_annotator import JVMNLPAnnotator
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +33,7 @@ class Diagnoser():
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.case_count_annotator = CaseCountAnnotator()
+        self.jvm_nlp_annotator = JVMNLPAnnotator(['times'])
         self.keyword_categories = keyword_categories if keyword_categories else {}
         processing_pipeline = []
         if keyword_links:
@@ -114,7 +116,25 @@ class Diagnoser():
                 })
         logger.info(time_sofar.next() + 'Extracted case counts')
 
-        extracted_dates = list(feature_extractors.extract_dates(content))
+        anno_doc.add_tier(self.jvm_nlp_annotator)
+        times_grouped = {}
+        for span in anno_doc.tiers['times'].spans:
+            # TODO -- how should we handle DURATION and other exotice date types?
+            if span.type == 'DATE':
+                if not span.label in times_grouped:
+                    times_grouped[span.label] = {
+                        'type': 'datetime',
+                        'name': span.label,
+                        'textOffsets': [
+                            [span.start, span.end]
+                        ]
+                    }
+                else:
+                    times_grouped[span.label]['textOffsets'].append(
+                        [span.start, span.end]
+                    )
+        logger.info(time_sofar.next() + 'Annotated times')
+
         logger.info(time_sofar.next() + 'Extracted dates')
         return {
             'diagnoserVersion' : self.__version__,
@@ -130,7 +150,7 @@ class Diagnoser():
                 for keyword, count in base_keyword_dict.items()
             ],
             'diseases': diseases,
-            'features': extracted_dates +\
+            'features': times_grouped.values() +\
                 case_counts +\
                 geonames_grouped.values()
         }
