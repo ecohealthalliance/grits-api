@@ -125,6 +125,7 @@ class Diagnoser():
                     times_grouped[span.label] = {
                         'type': 'datetime',
                         'name': span.label,
+                        'value': span.label,
                         'textOffsets': [
                             [span.start, span.end]
                         ]
