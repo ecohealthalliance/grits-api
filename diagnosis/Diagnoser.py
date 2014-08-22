@@ -140,28 +140,34 @@ class Diagnoser():
                 'textOffsets': [[span.start, span.end]]
             })
         logger.info(time_sofar.next() + 'Extracted case counts')
-
-        anno_doc.add_tier(self.jvm_nlp_annotator)
-        times_grouped = {}
-        for span in anno_doc.tiers['times'].spans:
-            # TODO -- how should we handle DURATION and other exotice date types?
-            if span.type == 'DATE':
-                if not span.label in times_grouped:
-                    times_grouped[span.label] = {
-                        'type': 'datetime',
-                        'name': span.label,
-                        'value': span.label,
-                        'textOffsets': [
+        try:
+            anno_doc.add_tier(self.jvm_nlp_annotator)
+            times_grouped = {}
+            for span in anno_doc.tiers['times'].spans:
+                # TODO -- how should we handle DURATION and other exotice date types?
+                if span.type == 'DATE':
+                    if not span.label in times_grouped:
+                        times_grouped[span.label] = {
+                            'type': 'datetime',
+                            'name': span.label,
+                            'value': span.label,
+                            'textOffsets': [
+                                [span.start, span.end]
+                            ]
+                        }
+                    else:
+                        times_grouped[span.label]['textOffsets'].append(
                             [span.start, span.end]
-                        ]
-                    }
-                else:
-                    times_grouped[span.label]['textOffsets'].append(
-                        [span.start, span.end]
-                    )
-        logger.info(time_sofar.next() + 'Annotated times')
-
-        logger.info(time_sofar.next() + 'Extracted dates')
+                        )
+            logger.info(time_sofar.next() + 'Annotated times')
+        except Exception as e:
+            times_grouped = {}
+            logger.error(
+                time_sofar.next() +
+                'Could not annotate times, ' +
+                'the JVM time extraction server might not be running.' +
+                '\nException:\n' + str(e)
+            )
 
         anno_doc.add_tier(self.patient_info_annotator, keyword_categories={
             # TODO: Use keywords
