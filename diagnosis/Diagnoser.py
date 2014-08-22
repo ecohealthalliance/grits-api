@@ -11,6 +11,7 @@ from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
 from annotator.case_count_annotator import CaseCountAnnotator
 from annotator.patient_info_annotator import PatientInfoAnnotator
+from annotator.jvm_nlp_annotator import JVMNLPAnnotator
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -42,6 +43,7 @@ class Diagnoser():
         self.geoname_annotator = GeonameAnnotator()
         self.case_count_annotator = CaseCountAnnotator()
         self.patient_info_annotator = PatientInfoAnnotator()
+        self.jvm_nlp_annotator = JVMNLPAnnotator(['times'])
         processing_pipeline = []
         processing_pipeline.append(('link', LinkedKeywordAdder(keyword_array)))
         processing_pipeline.append(('limit', LimitCounts(1)))
@@ -139,7 +141,26 @@ class Diagnoser():
             })
         logger.info(time_sofar.next() + 'Extracted case counts')
 
-        extracted_dates = list(feature_extractors.extract_dates(content))
+        anno_doc.add_tier(self.jvm_nlp_annotator)
+        times_grouped = {}
+        for span in anno_doc.tiers['times'].spans:
+            # TODO -- how should we handle DURATION and other exotice date types?
+            if span.type == 'DATE':
+                if not span.label in times_grouped:
+                    times_grouped[span.label] = {
+                        'type': 'datetime',
+                        'name': span.label,
+                        'value': span.label,
+                        'textOffsets': [
+                            [span.start, span.end]
+                        ]
+                    }
+                else:
+                    times_grouped[span.label]['textOffsets'].append(
+                        [span.start, span.end]
+                    )
+        logger.info(time_sofar.next() + 'Annotated times')
+
         logger.info(time_sofar.next() + 'Extracted dates')
 
         anno_doc.add_tier(self.patient_info_annotator, keyword_categories={
@@ -175,8 +196,8 @@ class Diagnoser():
             'diseases': diseases,
             'keypoints' : keypoints,
             'features': (
-                extracted_dates +
                 case_counts +
+                times_grouped.values() + 
                 geonames_grouped.values()
             )
         }
