@@ -172,6 +172,9 @@ class Diagnoser():
         anno_doc.add_tier(self.patient_info_annotator, keyword_categories={
             # TODO: Use keywords
             'occupation' : ['farmer'],
+            'location' : [
+                span.text for span in anno_doc.tiers['geonames'].spans
+            ]
         })
         keypoints = []
         for span in anno_doc.tiers['patientInfo'].spans:
