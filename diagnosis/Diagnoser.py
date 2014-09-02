@@ -1,5 +1,6 @@
 import argparse
 import pickle
+from collections import defaultdict
 import numpy as np
 from KeywordExtractor import *
 import feature_extractors
@@ -82,8 +83,9 @@ class Diagnoser():
         logger.info(time_sofar.next() + 'Diagnosed diseases')
 
         anno_doc = AnnoDoc(content)
-
+        logger.info(time_sofar.next() + 'AnnoDoc created')
         anno_doc.add_tier(self.geoname_annotator)
+        logger.info(time_sofar.next() + 'Geonames annotated')
         geonames_grouped = {}
         for span in anno_doc.tiers['geonames'].spans:
             if not span.geoname['geonameid'] in geonames_grouped:
@@ -99,6 +101,16 @@ class Diagnoser():
                 geonames_grouped[span.geoname['geonameid']]['textOffsets'].append(
                     [span.start, span.end]
                 )
+        geonames_by_country = defaultdict(list)
+        for geoname_id, geoname in geonames_grouped.iteritems():
+            country = geoname['geoname']['country']
+            geonames_by_country[].append(geoname)
+        for country, geonames in geonames_by_country.iteritems():
+            geonames.sort( key = lambda geoname: geoname['geoname']['name'] )
+        geonames_sorted = geonames_by_country.items()
+        geonames_sorted.sort()
+        geonames_objs = [ { 'country': geonames[0]['geoname']['country'], 'geonames': geonames } for name, geonames in geonames_sorted]
+
         logger.info(time_sofar.next() + 'Annotated geonames')
 
         anno_doc.add_tier(self.case_count_annotator)
@@ -130,10 +142,10 @@ class Diagnoser():
                 for keyword, count in base_keyword_dict.items()
             ],
             'diseases': diseases,
-            'features': extracted_dates +\
-                case_counts +\
-                geonames_grouped.values()
+            'geonames': geonames_objs,
+            'features': extracted_dates + case_counts
         }
+
 
 if __name__ == '__main__':
     import Diagnoser
