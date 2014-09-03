@@ -21,7 +21,18 @@ def parse_number(num, default):
             return float(num)
         except ValueError:
             return default
-        
+
+def get_country_code_map():
+    db = pymongo.Connection(config.mongo_url)['geonames']
+    collection = db['countryInfo']
+
+    country_code_map = {}
+
+    for result in collection.find():
+        country_code_map[result['ISO']] = result['Country']
+
+    return country_code_map
+
 def read_geonames_csv(file_path):
     geonames_fields=[
         'geonameid',
@@ -44,6 +55,9 @@ def read_geonames_csv(file_path):
         'timezone',
         'modification date',
     ]
+
+    country_code_map = get_country_code_map()
+
     #Loading geonames data may cause errors without this line:
     csv.field_size_limit(2**32)
     with open(file_path, 'rb') as f:
@@ -61,8 +75,9 @@ def read_geonames_csv(file_path):
                 d['alternatenames'] = d['alternatenames'].split(',')
             else:
                 d['alternatenames'] = []
+            d['country'] = country_code_map[d['country code']]
             yield d
-            
+
 if __name__ == '__main__':
     print "This takes me about a half hour to run on my machine..."
     db = pymongo.Connection(config.mongo_url)['geonames']
