@@ -104,7 +104,7 @@ class Diagnoser():
         geonames_by_country = defaultdict(list)
         for geoname_id, geoname in geonames_grouped.iteritems():
             country = geoname['geoname']['country']
-            geonames_by_country[].append(geoname)
+            geonames_by_country[country].append(geoname)
         for country, geonames in geonames_by_country.iteritems():
             geonames.sort( key = lambda geoname: geoname['geoname']['name'] )
         geonames_sorted = geonames_by_country.items()
