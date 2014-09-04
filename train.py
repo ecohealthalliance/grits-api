@@ -166,6 +166,7 @@ def train():
         'eha/host use',
         'eha/symptom',
         'eha/zoonotic type',
+        'eha/risk',
         'biocaster/symptoms',
         'wordnet/season',
         'wordnet/climate',
@@ -251,7 +252,7 @@ def train():
             unique_features.append(feature_a)
         
     print """
-    Articles in the validation set that we are sure to miss"
+    Articles in the validation set that we are sure to miss
     because we have no training data for their labels:
     """
     
