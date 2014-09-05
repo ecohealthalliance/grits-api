@@ -187,18 +187,18 @@ def get_linked_keywords(ontology, root):
             print subject_to_parents
             raise Exception("Root is not in ancestors")
         ancestors.remove(root)
-    keywords = {}
+    keywords = []
     for subject, labels in subject_to_labels.items():
         all_ancestors = set(flatten(map(
             subject_to_labels.get,
             subject_to_ancestors[subject]
         ), 1))
-        for lab in labels:
-            if lab in keywords:
-                print "Label already in keywords: ", lab
-                keywords[lab] |= all_ancestors | labels
-            else:
-                keywords[lab] = all_ancestors | labels
+        keywords.append({
+            'keyword' : labels[0],
+            'ancestors': all_ancestors,
+            'synonyms': labels
+        })
+        # TODO: Check for duplicate keywords this introduces
     return keywords
 
 def download_google_sheet(sheet_url, default_type=None):
@@ -222,18 +222,20 @@ def download_google_sheet(sheet_url, default_type=None):
     spreadsheet_data = json.loads(
         request.text[request.text.find('jsonp(') + 6:-2]
     )
-    keywords = {}
+    keywords = []
     for entry in spreadsheet_data['feed']['entry']:
         kw_type = entry.get('gsx$type', {}).get('$t', default_type).strip()
-        keywords[kw_type] = keywords.get(kw_type, {})
         synonym_text = entry.get('gsx$synonyms', {}).get('$t')
         synonyms = [
             syn.strip() for syn in synonym_text.split(',')
         ] if synonym_text else []
         synonyms = filter(lambda k: len(k) > 0, synonyms)
-        row_keywords = [entry['gsx$keyword']['$t'].strip()] + synonyms
-        for keyword in row_keywords:
-            keywords[kw_type][keyword] = set(row_keywords) - set([keyword])
+        keyword = entry['gsx$keyword']['$t'].strip()
+        keywords.append({
+            'keyword' : keyword,
+            'category': kw_type,
+            'synonyms' : set([keyword] + synonyms),
+        })
     return keywords
 
 def wordnet_pathogens():
@@ -293,7 +295,7 @@ def wordnet_hostnames():
     return hostnames
                       
 def all_wordnet_keywords():
-    keywords = {
+    keywords_by_category = {
         'pathogens' : wordnet_pathogens(),
         'hosts' : wordnet_hostnames(),
         # Some potential extensions for extracting season features:
@@ -308,7 +310,7 @@ def all_wordnet_keywords():
             synsets("weather")[:1]
         )
     }
-    keywords.update(squash_dict({ 'mod' : {
+    keywords_by_category.update(squash_dict({ 'mod' : {
         "large" : (
             traverse_hyponyms(synsets("massive") +
             synsets("large"))
@@ -320,6 +322,14 @@ def all_wordnet_keywords():
         ),
         "painful" : traverse_hyponyms(synsets("painful"))
     }}, layers=1))
+    keywords = []
+    for category, keyword_to_synset in keywords_by_category.items():
+        for keyword, synset in keyword_to_synset.items():
+            keywords.append({
+                'keyword' : keyword,
+                #TODO: Add lemmata as synonyms.
+                'category' : 'wordnet/' + category,
+            })
     return keywords
 
 def portfolio_manager_tags():
@@ -426,20 +436,21 @@ def mine_disease_ontology():
         for r in qres
     ]
     
-    predicate_value_sets = {
-        predicate : set()
-        for predicate in predicates
-    }
-    
+    doid_keywords = []
+
     for disease_predicates in flatten(grouped_disease_predicates, 1):
         for predicate, value in disease_predicates.items():
-            predicate_value_sets[predicate].add(value.strip())
-    doid_keywords = { k : list(v) for k,v in predicate_value_sets.items() }
-    doid_keywords['diseases'] = get_linked_keywords(
+            doid_keywords.append({
+                'keyword': value,
+                'category': predicate,
+            })
+    for keyword_object in get_linked_keywords(
         disease_ontology,
         "http://purl.obolibrary.org/obo/DOID_4"
-    )
-    print len(doid_keywords['diseases']), "diseases extracted from doid"
+    ):
+        keyword_object['category'] = 'doid/diseases'
+        doid_keywords.append(keyword_object)
+    print len(doid_keywords), "keywords extracted from doid"
     return doid_keywords
 
 # [Symptom Ontology](http://purl.obolibrary.org/obo/ido.owl)
@@ -449,12 +460,14 @@ def mine_symptom_ontology():
         "http://purl.obolibrary.org/obo/symp.owl",
         format="xml"
     )
-    symp_keywords = {}
-    symp_keywords['symptoms'] = get_linked_keywords(
+    symp_keywords = []
+    for keyword_object in get_linked_keywords(
         symptom_ontology,
         "http://purl.obolibrary.org/obo/SYMP_0000462"
-    )
-    print "Symptoms in the symptom ontology:", len(symp_keywords['symptoms'])
+    ):
+        keyword_object['category'] = 'doid/symptoms'
+        symp_keywords.append(keyword_object)
+    print "Symptoms in the symptom ontology:", len(symp_keywords)
     return symp_keywords
 
 # [The Infectious Disease Ontology](http://www.ontobee.org/browser/index.php?o=IDO)
@@ -465,12 +478,6 @@ def mine_symptom_ontology():
 
 # [Biocaster ontology](https://code.google.com/p/biocaster-ontology/downloads/detail?name=BioCaster2010-30-Aug-904.owl&can=2&q=)
 def mine_biocaster_ontology():
-    g = rdflib.Graph()
-    g.parse(
-        "https://biocaster-ontology.googlecode.com/files/BioCaster2010-30-Aug-904.owl",
-        format="xml"
-    )
-    
     # The ontology is composed of subject-relationship-object triples.
     # For example: `("Python", "is a", "programming language")`
     # I think one of the particularly interesting things about biocaster is that
@@ -480,12 +487,17 @@ def mine_biocaster_ontology():
     # http://biocaster.nii.ac.jp/biocaster#FeverSymptomHuman_4447
     # http://biocaster.nii.ac.jp/biocaster#indicates
     # http://biocaster.nii.ac.jp/biocaster#DISEASE_491
-    
-    
+
+    g = rdflib.Graph()
+    g.parse(
+        "https://biocaster-ontology.googlecode.com/files/BioCaster2010-30-Aug-904.owl",
+        format="xml"
+    )
+
     # Symptoms
     
     qres = g.query("""
-    SELECT DISTINCT ?label
+    SELECT DISTINCT ?instance ?label
     WHERE {
         ?subject rdfs:subClassOf* biocaster:SYMPTOM .
         ?instance a ?subject .
@@ -497,12 +509,23 @@ def mine_biocaster_ontology():
         'biocaster': rdflib.URIRef("http://biocaster.nii.ac.jp/biocaster#"),
         'rdfsn': rdflib.URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
     })
-    biocaster_symptom_syns = [row[0] for row in qres]
+    biocaster_symptom_syns = []
+    instances = {}
+    for instance, label in qres:
+        label = unicode(label).strip()
+        instances[instance] = instances.get(instance, set()) | set([label])
+    
+    for instance, synonyms in instances.items():
+        biocaster_symptom_syns.append({
+            'keyword' : synonyms[0],
+            'synonyms' : set(synonyms),
+            'category' : 'biocaster/symptom',
+        })
     
     # Diseases
     
     qres = g.query("""
-    SELECT DISTINCT ?label
+    SELECT DISTINCT ?subject ?label
     WHERE {
         ?subject rdfs:subClassOf* biocaster:DISEASE .
         ?instance a ?subject .
@@ -514,12 +537,23 @@ def mine_biocaster_ontology():
         'biocaster': rdflib.URIRef("http://biocaster.nii.ac.jp/biocaster#"),
         'rdfsn': rdflib.URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
     })
-    biocaster_disease_syns = [row[0] for row in qres]
+    biocaster_disease_syns = []
+    instances = {}
+    for instance, label in qres:
+        label = unicode(label).strip()
+        instances[instance] = instances.get(instance, set()) | set([label])
+    
+    for instance, synonyms in instances.items():
+        biocaster_disease_syns.append({
+            'keyword' : synonyms[0],
+            'synonyms' : set(synonyms),
+            'category' : 'biocaster/diseases',
+        })
     
     # Pathogens
     
     qres = g.query("""
-    SELECT DISTINCT ?label
+    SELECT DISTINCT ?subject ?label
     WHERE {
         { ?subject rdfs:subClassOf* biocaster:BACTERIUM } UNION
         { ?subject rdfs:subClassOf* biocaster:VIRUS } UNION
@@ -534,22 +568,24 @@ def mine_biocaster_ontology():
         'biocaster': rdflib.URIRef("http://biocaster.nii.ac.jp/biocaster#"),
         'rdfsn': rdflib.URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
     })
-    biocaster_pathogen_syns = [row[0] for row in qres]
+    biocaster_pathogen_syns = []
+    instances = {}
+    for instance, label in qres:
+        label = unicode(label).strip()
+        instances[instance] = instances.get(instance, set()) | set([label])
     
-    return {
-        'symptoms':set([
-            re.sub(r" \(.*\)", "", unicode(s))
-            for s in biocaster_symptom_syns
-        ]),
-        'diseases':set([
-            unicode(s).strip()
-            for s in biocaster_disease_syns
-        ]),
-        'pathogens':set([
-            unicode(s).strip()
-            for s in biocaster_pathogen_syns
-        ]),
-    }
+    for instance, synonyms in instances.items():
+        biocaster_pathogen_syns.append({
+            'keyword' : synonyms[0],
+            'synonyms' : set(synonyms),
+            'category' : 'biocaster/pathogens',
+        })
+    
+    return (
+        biocaster_symptom_syns +
+        biocaster_disease_syns +
+        biocaster_pathogen_syns
+    )
 
 def mine_usgs_ontology():
     # [Terrain](http://cegis.usgs.gov/ontology.html#constructing_ontologies)
@@ -579,11 +615,13 @@ def mine_usgs_ontology():
         "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Terrain.n3",
         format="n3"
     )
-    usgs_keywords = {}
-    usgs_keywords['terrain'] = get_linked_keywords(
+    usgs_keywords = []
+    for keyword_object in get_linked_keywords(
         terrain_ontology,
         "http://www.w3.org/2002/07/owl#Thing"
-    )
+    ):
+        keyword_object['category'] = 'usgs/terrain'
+        usgs_keywords.append(keyword_object)
     return usgs_keywords
 
 def dashatize(text):
@@ -601,34 +639,34 @@ def dashatize(text):
         return [text]
 
 def eha_keywords():
-    keywords = {}
-    keywords.update(download_google_sheet(
-        'https://docs.google.com/a/ecohealth.io/spreadsheets/d/1Ncl7mXzX8d1mJRuqouLPCXHb4ltMqjb0sJJ2C8rD80I/edit#gid=0'
+    keywords = []
+    keywords.extend(download_google_sheet(
+        'https://docs.google.com/a/ecohealth.io/spreadsheets/d/1M4dIaV7_YanJdau2sJuRt3LmF71h2q_Wf93qFSzMdoY/edit#gid=0',
     ))
-    keywords.update(download_google_sheet(
+    keywords.extend(download_google_sheet(
         'https://docs.google.com/a/ecohealth.io/spreadsheet/ccc?key=0AuwHL_SlxPmAdDRyYnRDNzFRbnlOSHM2NlZtVFNRVGc#gid=0',
         default_type='disease'
     ))
-    keywords.update(download_google_sheet(
+    keywords.extend(download_google_sheet(
         'https://docs.google.com/a/ecohealth.io/spreadsheet/ccc?key=0AuwHL_SlxPmAdEFQUUxMUjRnVDZvQUR6UFZFdC1FelE#gid=0',
         default_type='symptom'
     ))
+    for keyword in keywords:
+        keyword['category'] = 'eha/' + keyword['category']
     return keywords
 
 def create_ontologies_pickle():
-    keywords = squash_dict({
-        'wordnet' : all_wordnet_keywords(),
-        'pm' : portfolio_manager_tags(),
-        'biocaster' : mine_biocaster_ontology(),
-        'doid' : mine_disease_ontology(),
-        'symp' : mine_symptom_ontology(),
-        'usgs' : mine_usgs_ontology(),
-        'eha' : eha_keywords()
-    }, layers=1)
+    keywords = (
+        all_wordnet_keywords() +
+        mine_biocaster_ontology() +
+        mine_disease_ontology() +
+        mine_symptom_ontology() +
+        mine_usgs_ontology()
+    )
     
-    print "Total keywords:", len(set(flatten(squash_dict(keywords).values())))
+    print "Total keywords:", len(keywords)
     
-    with open('ontologies.p', 'wb') as f:
+    with open('ontologies-0.1.1.p', 'wb') as f:
         pickle.dump(keywords, f)
 
 if __name__ == "__main__":

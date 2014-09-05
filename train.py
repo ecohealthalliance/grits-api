@@ -149,7 +149,7 @@ def get_features_and_classifications(
 def train(debug):
     training_set = get_pickle('training.p')
     validation_set = get_pickle('validation.p')
-    ontologies = get_pickle('ontologies-0.0.1.p')
+    ontologies = get_pickle('ontologies-0.1.1.p')
     
     ontologies['hm/disease'] = set([r['meta']['disease'] for r in training_set])
     
