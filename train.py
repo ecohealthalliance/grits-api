@@ -146,7 +146,7 @@ def get_features_and_classifications(
     return np.array(features), np.array(classifications), resources_used
 
 
-def train():
+def train(debug):
     training_set = get_pickle('training.p')
     validation_set = get_pickle('validation.p')
     ontologies = get_pickle('ontologies-0.0.1.p')
@@ -350,17 +350,22 @@ def train():
         predictions,
         average='micro')[0:3]
     
-    print "Which classes are we performing poorly on?"
-    
-    labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
-    prfs = sklearn.metrics.precision_recall_fscore_support(
-        labels_validation,
-        predictions,
-        labels=labels
-    )
-    for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
-        print cl
-        print "precision:",p,"recall",r,"F-score:",f,"support:",s
+    if debug:
+        print "Which classes are we performing poorly on?"
+        
+        labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
+        prfs = sklearn.metrics.precision_recall_fscore_support(
+            labels_validation,
+            predictions,
+            labels=labels
+        )
+        for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
+            print cl
+            print "precision:",p,"recall",r,"F-score:",f,"support:",s
 
 if __name__ == '__main__':
-    train()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-debug', action='store_true')
+    args = parser.parse_args()
+    train(args.debug)
