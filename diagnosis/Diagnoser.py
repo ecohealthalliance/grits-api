@@ -31,7 +31,7 @@ with open(os.path.join(curdir, "../diseaseToParent.yaml")) as f:
 
 class Diagnoser():
 
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
 
     def __init__(
         self, classifier, dict_vectorizer,
@@ -42,7 +42,8 @@ class Diagnoser():
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.case_count_annotator = CaseCountAnnotator()
-        self.patient_info_annotator = PatientInfoAnnotator()
+        # TODO: Rename patient info annotator
+        self.keypoint_annotator = PatientInfoAnnotator()
         self.jvm_nlp_annotator = JVMNLPAnnotator(['times'])
         processing_pipeline = []
         processing_pipeline.append(('link', LinkedKeywordAdder(keyword_array)))
@@ -163,18 +164,31 @@ class Diagnoser():
         except Exception as e:
             times_grouped = {}
             logger.error(
-                time_sofar.next() +
+                time_sofar.next() + 
                 'Could not annotate times, ' +
                 'the JVM time extraction server might not be running.' +
                 '\nException:\n' + str(e)
             )
 
-        anno_doc.add_tier(self.patient_info_annotator, keyword_categories={
-            # TODO: Use keywords
-            'occupation' : ['farmer'],
-            'location' : [
-                span.text for span in anno_doc.tiers['geonames'].spans
-            ]
+        anno_doc.add_tier(self.keypoint_annotator, keyword_categories={
+            'occupation' : [
+                kw['keyword'] for kw in self.keyword_array
+                if 'occupation' in kw['category']
+            ],
+            'host' : [
+                kw['keyword'] for kw in self.keyword_array
+                if 'host' in kw['category']
+            ],
+            'risk' : [
+                kw['keyword'] for kw in self.keyword_array
+                if 'risk' in kw['category']
+            ],
+            'symptom' : [
+                kw['keyword'] for kw in self.keyword_array
+                if 'symptom' in kw['category']
+            ],
+            'location' : anno_doc.tiers['geonames'].spans,
+            'time' : anno_doc.tiers['times'].spans if 'times' in anno_doc.tiers else [],
         })
         keypoints = []
         for span in anno_doc.tiers['patientInfo'].spans:
