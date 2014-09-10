@@ -124,6 +124,7 @@ def process_girder_resource(item_id=None):
     Update the entry with the results, then update it with cleaned and 
     translated versions of the scraped content.
     """
+    logger.info('Processing girder resource:' + item_id)
     item_id = bson.ObjectId(item_id)
     global processor_version
     resource = girder_db.item.find_one(item_id)
@@ -226,6 +227,7 @@ def diagnose(text_obj):
     else:
         clean_english_content = text_obj.get('cleanContent', {}).get('content')
     if clean_english_content:
+        logger.info('Diagnosing text:\n' + clean_english_content)
         return make_json_compat(my_diagnoser.diagnose(clean_english_content))
     else:
         return { 'error' : 'No content available to diagnose.' }
