@@ -1,12 +1,8 @@
 import json
-import pickle
-import flask
-from flask import render_template, request, abort, jsonify, Response
-import numpy
 
 import config
 
-from celery import chain
+import celery
 import tasks
 
 import bson
@@ -14,95 +10,135 @@ import pymongo
 girder_db = pymongo.Connection(config.mongo_url)['girder']
 
 import datetime
-def my_serializer(obj):
-    """
-    Serializes dates, ObjectIds and potentially other useful things
-    """
-    if isinstance(obj, datetime.datetime):
-        return obj.isoformat()
-    if isinstance(obj, bson.ObjectId):
-        return str(obj)
-    if isinstance(obj, numpy.int64):
-        return int(obj)
-    else:
-        raise TypeError(obj)
 
-from diagnosis.Diagnoser import Diagnoser
-with open('classifier.p') as f:
-    my_classifier = pickle.load(f)
-with open('dict_vectorizer.p') as f:
-    my_dict_vectorizer = pickle.load(f)
-with open('keyword_links.p') as f:
-    keyword_links = pickle.load(f)
-with open('keyword_sets.p') as f:
-    keyword_sets = pickle.load(f)
-my_diagnoser = Diagnoser(my_classifier,
-                         my_dict_vectorizer,
-                         keyword_links=keyword_links,
-                         keyword_categories=keyword_sets,
-                         cutoff_ratio=.7)
+import tornado.ioloop
+import tornado.web
 
-app = flask.Flask(__name__, static_url_path='')
+import urlparse
+import re
 
-def get_values():
-    """
-    Return a dict with the request values, even if there is not mimetype.
-    """
-    if len(request.values) > 0:
-        return request.values.to_dict()
-    elif len(request.data) > 0:
-        # data Contains the incoming request data as string if it came with a
-        # mimetype Flask does not handle,
-        # which happens when we get meteor posts from the diagnostic dashboard.
-        return json.loads(request.data)
-    return {}
+class DiagnoseHandler(tornado.web.RequestHandler):
+    public = False
+    @tornado.web.asynchronous
+    def get(self):
+        # Try to parse the json bodies submitted by the diagnostic dash:
+        try:
+            params = json.loads(self.request.body)
+        except ValueError as e:
+            params = {}
+        
+        content = self.get_argument('content', params.get('content'))
+        url = self.get_argument('url', params.get('url'))
+        
+        if content:
+            task = celery.chain(
+                tasks.diagnose.s({
+                    'cleanContent' : dict(content=content)
+                }).set(queue='priority')
+            )()
+        elif url:
+            hostname = ""
+            try:
+                hostname = urlparse.urlparse(url).hostname or ""
+            except:
+                pass
+            # Only allow hostnames that end with .word
+            # This is to avoid the security vulnerability Russ pointed out where
+            # we could end up scrapping localhost or IP addresses that should
+            # not be publicly accessible.
+            if not re.match(r".+\.\D+", hostname):
+                self.write({
+                    'error' : "Invalid URL"
+                })
+                self.set_header("Content-Type", "application/json")  
+                self.finish()
+                return
+            
+            task = celery.chain(
+                tasks.scrape.s(url).set(queue='priority'),
+                tasks.process_text.s().set(queue='priority'),
+                tasks.diagnose.s().set(queue='priority')
+            )()
+        else:
+            self.write({
+                'error' : "Please provide a url or content to diagnose."
+            })
+            self.set_header("Content-Type", "application/json")  
+            self.finish()
+            return
+        
+        # Create a result set so we can check all the tasks in the chain for
+        # failure status.
+        results = []
+        r = task
+        while r.parent:
+            results.append(r.parent)
+            r = r.parent
+        res_set = celery.result.ResultSet(results)
+        
+        def check_celery_task():
+            if res_set.ready() or res_set.failed():
+                try:
+                    resp = task.get()
+                except Exception as e:
+                    self.write({
+                        'error' : unicode(e)
+                    })
+                    self.set_header("Content-Type", "application/json")  
+                    self.finish()
+                    return
+                if not self.public and task.parent:
+                    resp['scrapedData'] = task.parent.get()
+                self.write(resp)
+                self.set_header("Content-Type", "application/json")  
+                self.finish()
+            else:
+                tornado.ioloop.IOLoop.instance().add_timeout(
+                    datetime.timedelta(0,1), check_celery_task
+                )
 
-@app.route('/test', methods = ['POST', 'GET'])
-def test():
-    return str(get_values())
+        check_celery_task()
 
-@app.route('/diagnose', methods = ['POST', 'GET'])
-def diagnosis():
-    content = get_values().get('content')
-    return json.dumps(my_diagnoser.diagnose(content), default=my_serializer)
+    @tornado.web.asynchronous
+    def post(self):
+        return self.get()
 
-@app.route('/public_diagnose', methods = ['POST', 'GET'])
-def public_diagnosis():
-    content = get_values().get('content')
-    api_key = get_values().get('api_key')
-    if api_key == 'grits28754':
-        return Response(json.dumps(my_diagnoser.diagnose(content), default=my_serializer),
-                        mimetype='application/json')
-    else:
-        abort(401)
+class PublicDiagnoseHandler(DiagnoseHandler):
+    public = True
+    @tornado.web.asynchronous
+    def get(self):
+        api_key = self.get_argument("api_key")
+        if api_key == config.api_key:
+            return super(PublicDiagnoseHandler, self).get()
+        else:
+            self.send_error(401)
+    @tornado.web.asynchronous
+    def post(self):
+        return self.get()
 
+class TestHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write(self.get_argument("url"))
+        self.finish()
+    def post(self):
+        return self.get()
 
-@app.route('/enqueue_girder_diagnosis/<item_id>', methods = ['POST', 'GET'])
-def enqueue_diagnosis(item_id):
-    item_id = bson.ObjectId(item_id)
-    if girder_db.item.find_one(item_id):
-        girder_db.item.update({'_id':item_id}, {
-            '$set': {
-                'meta.processing' : True,
-                'meta.diagnosing' : True
-            }
-        })
-        chain(
-            tasks.process_girder_resource.s(item_id=item_id).set(queue='priority'),
-            tasks.diagnose_girder_resource.s(item_id=item_id)
-        )()
-        return flask.jsonify(
-             success=True
-        )
-    else:
-        return flask.jsonify(
-             success=False
-        )
+application = tornado.web.Application([
+    (r"/test", TestHandler),
+    (r"/diagnose", DiagnoseHandler),
+    (r"/public_diagnose", PublicDiagnoseHandler)
+])
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-debug', action='store_true')
     args = parser.parse_args()
-    app.run(host='0.0.0.0', debug=args.debug)
+    if args.debug:
+        # Run tasks in the current process so we don't have to run a worker
+        # when debugging.
+        tasks.celery_tasks.conf.update(
+            CELERY_ALWAYS_EAGER = True,
+        )
+    application.listen(5000)
+    tornado.ioloop.IOLoop.instance().start()

@@ -1,6 +1,7 @@
 nltk
 lxml
 pymongo
+pyyaml
 beautifulsoup
 goose-extractor
 readability-lxml
@@ -9,7 +10,7 @@ pattern
 numpy
 scipy
 scikit-learn
-flask
+tornado
 unicodecsv
 geopy
 futures
@@ -21,3 +22,4 @@ celery[mongodb]
 flower
 microsofttranslator
 threadpool
+nose

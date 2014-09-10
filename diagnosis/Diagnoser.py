@@ -10,6 +10,8 @@ import datetime
 from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
 from annotator.case_count_annotator import CaseCountAnnotator
+from annotator.patient_info_annotator import PatientInfoAnnotator
+from annotator.jvm_nlp_annotator import JVMNLPAnnotator
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -22,31 +24,53 @@ def time_sofar_gen(start_time):
     while True:
         yield '[' + str(datetime.datetime.now() - start_time) + ']'
 
+import yaml, os
+curdir = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(curdir, "../diseaseToParent.yaml")) as f:
+    disease_to_parent = yaml.load(f)
+
 class Diagnoser():
 
-    __version__ = '0.0.1'
+    __version__ = '0.1.2'
 
-    def __init__(self, classifier, dict_vectorizer,
-                 keyword_links=None,
-                 keyword_categories=None, cutoff_ratio=0.65):
+    def __init__(
+        self, classifier, dict_vectorizer,
+        cutoff_ratio=0.65,
+        keyword_array=None
+    ):
+        self.keyword_array = keyword_array
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.case_count_annotator = CaseCountAnnotator()
-        self.keyword_categories = keyword_categories if keyword_categories else {}
+        # TODO: Rename patient info annotator
+        self.keypoint_annotator = PatientInfoAnnotator()
+        self.jvm_nlp_annotator = JVMNLPAnnotator(['times'])
         processing_pipeline = []
-        if keyword_links:
-            self.keyword_links = keyword_links
-            processing_pipeline.append(('link', LinkedKeywordAdder(keyword_links)))
+        processing_pipeline.append(('link', LinkedKeywordAdder(keyword_array)))
         processing_pipeline.append(('limit', LimitCounts(1)))
         self.keyword_processor = Pipeline(processing_pipeline)
         self.dict_vectorizer = dict_vectorizer
         self.keywords = dict_vectorizer.get_feature_names()
-        self.keyword_extractor = KeywordExtractor(self.keywords)
+        self.keyword_extractor = KeywordExtractor(keyword_array)
         self.cutoff_ratio = cutoff_ratio
     def best_guess(self, X):
         probs = self.classifier.predict_proba(X)[0]
         p_max = max(probs)
-        return [(i,p) for i,p in enumerate(probs) if p >= p_max * self.cutoff_ratio]
+        result = set()
+        for i,p in enumerate(probs):
+            cutoff_ratio = self.cutoff_ratio
+            parent = disease_to_parent.get(self.classifier.classes_[i])
+            parents = []
+            if parent:
+                parents.append(parent)
+                while parents[-1] in disease_to_parent:
+                    parents.append(disease_to_parent[parents[-1]])
+            if p >= p_max * self.cutoff_ratio:
+                result.add((i,p))
+                for i2, label in enumerate(self.classifier.classes_.tolist()):
+                    if label in parents:
+                        result.add((i2,max(p, probs[i2])))
+        return list(result)
     def diagnose(self, content):
         time_sofar = time_sofar_gen(datetime.datetime.now())
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
@@ -61,19 +85,21 @@ class Diagnoser():
             if norm > 0:
                scores /= norm
             scores *= p
+            # These might be numpy types. I coerce them to native python
+            # types so we can easily serialize the output as json.
             scored_keywords = zip(self.keywords, scores)
             return {
-                'name' : self.classifier.classes_[i],
-                'probability' : p,
+                'name' : unicode(self.classifier.classes_[i]),
+                'probability' : float(p),
                 'keywords' : [{
-                        'name' : kwd,
+                        'name' : unicode(kwd),
                         'score' : float(score),
                     }
                     for kwd, score in scored_keywords
                     if score > 0 and kwd in base_keyword_dict],
                 'inferred_keywords' : [{
-                        'name' : kwd,
-                        'score' : score,
+                        'name' : unicode(kwd),
+                        'score' : float(score),
                     }
                     for kwd, score in scored_keywords
                     if score > 0 and kwd not in base_keyword_dict]
@@ -96,7 +122,9 @@ class Diagnoser():
                     ]
                 }
             else:
-                geonames_grouped[span.geoname['geonameid']]['textOffsets'].append(
+                geonames_grouped[
+                    span.geoname['geonameid']
+                ]['textOffsets'].append(
                     [span.start, span.end]
                 )
         logger.info(time_sofar.next() + 'Annotated geonames')
@@ -111,28 +139,90 @@ class Diagnoser():
                 'modifiers': span.modifiers,
                 'cumulative': span.cumulative,
                 'textOffsets': [[span.start, span.end]]
-                })
+            })
         logger.info(time_sofar.next() + 'Extracted case counts')
+        try:
+            anno_doc.add_tier(self.jvm_nlp_annotator)
+            times_grouped = {}
+            for span in anno_doc.tiers['times'].spans:
+                # TODO -- how should we handle DURATION and other exotice date types?
+                if span.type == 'DATE':
+                    if not span.label in times_grouped:
+                        times_grouped[span.label] = {
+                            'type': 'datetime',
+                            'name': span.label,
+                            'value': span.label,
+                            'textOffsets': [
+                                [span.start, span.end]
+                            ]
+                        }
+                    else:
+                        times_grouped[span.label]['textOffsets'].append(
+                            [span.start, span.end]
+                        )
+            logger.info(time_sofar.next() + 'Annotated times')
+        except Exception as e:
+            times_grouped = {}
+            logger.error(
+                time_sofar.next() + 
+                'Could not annotate times, ' +
+                'the JVM time extraction server might not be running.' +
+                '\nException:\n' + str(e)
+            )
 
-        extracted_dates = list(feature_extractors.extract_dates(content))
-        logger.info(time_sofar.next() + 'Extracted dates')
+        anno_doc.add_tier(self.keypoint_annotator, keyword_categories={
+            'occupation' : [
+                kw['keyword'] for kw in self.keyword_array
+                if 'occupation' in kw['category']
+            ],
+            'host' : [
+                kw['keyword'] for kw in self.keyword_array
+                if 'host' in kw['category']
+            ],
+            'risk' : [
+                kw['keyword'] for kw in self.keyword_array
+                if 'risk' in kw['category']
+            ],
+            'symptom' : [
+                kw['keyword'] for kw in self.keyword_array
+                if 'symptom' in kw['category']
+            ],
+            'location' : anno_doc.tiers['geonames'].spans,
+            'time' : anno_doc.tiers['times'].spans if 'times' in anno_doc.tiers else [],
+        })
+        keypoints = []
+        for span in anno_doc.tiers['patientInfo'].spans:
+            keypoints.append(
+                dict(
+                    span.metadata,
+                    type='patientInfo',
+                    textOffsets=[[span.start, span.end]]
+                )
+            )
+        logger.info(time_sofar.next() + 'Extracted patient info')
+
         return {
             'diagnoserVersion' : self.__version__,
             'dateOfDiagnosis' : datetime.datetime.now(),
             'keywords_found' : [
                 {
-                    'name' : keyword,
-                    'count' : count,
-                    'categories' : [cat
-                            for cat, kws in self.keyword_categories.items()
-                            if keyword in kws]
+                    'name' : unicode(keyword),
+                    'count' : int(count),
+                    'categories' : [
+                        kw['category']
+                        for kw in self.keyword_array
+                        if kw['keyword'].lower() == keyword.lower()
+                    ]
                 }
                 for keyword, count in base_keyword_dict.items()
             ],
             'diseases': diseases,
-            'features': extracted_dates +\
-                case_counts +\
+            'keypoints' : keypoints,
+            'features': (
+                case_counts +
+                times_grouped.values() + 
                 geonames_grouped.values()
+            )
         }
 
 if __name__ == '__main__':
