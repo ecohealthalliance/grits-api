@@ -7,95 +7,43 @@ import requests
 import json
 import re
 import pickle
-import collections
 import nltk
 from nltk import wordnet
 synsets = wordnet.wordnet.synsets
 import rdflib
 import urlparse
+import yaml, os
 
-# Generic helpers:
-def squash_dict(d, delimiter='/', crunch=False, layers=-1):
-    """
-    Combine recursively nested dicts into the top level dict by prefixing their
-    keys with the top level key and delimiter.
-    Use the layers parameter to limit the recursion depth.
-    Adding the prefixed keys could collide with keys already in the
-    top level dictionary, use crunch to suppress errors and replace the
-    top level keys when this happens.
-    """
-    dout = {}
-    for k, v in d.items():
-        if isinstance(v, dict) and layers != 0:
-            for vk, vv in squash_dict(v, delimiter, crunch, layers - 1).items():
-                new_key = k + delimiter + vk
-                if not crunch and new_key in d.keys():
-                    raise Exception("Collision when squashing dict.")
-                dout[new_key] = vv
-        else:
-            dout[k] = v
-    return dout
-
-def flatten(li, depth=-1):
-    for subli in li:
-        if isinstance(subli, (list, set)) and depth != 0:
-            for it in flatten(subli, depth - 1):
-                yield it
-        else:
-            yield subli
-
-class memoized(object):
-    """
-    Decorator. Caches a function's return value each time it is called.
-    If called later with the same arguments, the cached value is returned
-    (not reevaluated).
-    """
-    def __init__(self, func):
-       self.func = func
-       self.cache = {}
-    def __call__(self, *args):
-       if not isinstance(args, collections.Hashable):
-          # uncacheable. a list, for instance.
-          # better to not cache than blow up.
-          return self.func(*args)
-       if args in self.cache:
-          return self.cache[args]
-       else:
-          value = self.func(*args)
-          self.cache[args] = value
-          return value
-    def __repr__(self):
-       '''Return the function's docstring.'''
-       return self.func.__doc__
-    def __get__(self, obj, objtype):
-       '''Support instance methods.'''
-       return functools.partial(self.__call__, obj)
+from diagnosis.utils import *
 
 # Specialized helpers
+
 def traverse_hyponyms(synset, depth=3):
-    hyponym_dict = {}
+    all_hyponyms = []
     for syn in synset:
         d_r_lemmas = [syn]
-        for lemma in syn.lemmas:
+        for lemma in syn.lemmas():
             d_r_lemmas.extend(lemma.derivationally_related_forms())
         lemmas = set([
-            lemma.name.split('.')[0].replace('_', ' ')
+            lemma.name().split('.')[0].replace('_', ' ')
             for lemma in d_r_lemmas
         ])
-        for lemma in lemmas:
-            hyponym_dict[lemma] = lemmas
+        all_hyponyms.append({
+            'synonyms' :  lemmas,
+            'parent_synonyms' : set()
+        })
         if depth > 0:
-            child_hyponym_dict = traverse_hyponyms(syn.hyponyms(), depth-1)
-            for hypo, parents in child_hyponym_dict.items():
-                parents |= lemmas
-            hyponym_dict.update(child_hyponym_dict)
-    return hyponym_dict
-def exclude_keywords(keyword_map, excluded):
-    return {
-        k : v - excluded
-        for k, v in keyword_map.items()
-        if k not in excluded
-    }
+            child_hyponyms = traverse_hyponyms(syn.hyponyms(), depth-1)
+            for hypo in child_hyponyms:
+                hypo['parent_synonyms'] = hypo.get('parent_synonyms', set()) | lemmas
+            all_hyponyms.extend(child_hyponyms)
+    return all_hyponyms
+
+def exclude_keywords(keyword_array, excluded):
+    for k in keyword_array:
+        k['synonyms'] -= excluded
+        k['parent_synonyms'] -= excluded
+    return keyword_array
 
 def get_subject_to_label_dict(ontology):
     """
@@ -189,13 +137,12 @@ def get_linked_keywords(ontology, root):
         ancestors.remove(root)
     keywords = []
     for subject, labels in subject_to_labels.items():
-        all_ancestors = set(flatten(map(
+        parent_synonyms = set(flatten(map(
             subject_to_labels.get,
             subject_to_ancestors[subject]
         ), 1))
         keywords.append({
-            'keyword' : labels[0],
-            'ancestors': all_ancestors,
+            'parent_synonyms': parent_synonyms,
             'synonyms': labels
         })
         # TODO: Check for duplicate keywords this introduces
@@ -232,11 +179,38 @@ def download_google_sheet(sheet_url, default_type=None):
         synonyms = filter(lambda k: len(k) > 0, synonyms)
         keyword = entry['gsx$keyword']['$t'].strip()
         keywords.append({
-            'keyword' : keyword,
             'category': kw_type,
             'synonyms' : set([keyword] + synonyms),
         })
     return keywords
+
+def healthmap_labels(other_synsets_to_add):
+    curdir = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(curdir, "healthmapLabels.yaml")) as f:
+        hm_disease_labels = yaml.load(f)
+    def preprocess_label(l):
+        return re.sub('\W', '', l.lower())
+        
+    syn_obj_map = {}
+    for syn_obj in other_synsets_to_add:
+        for syn in syn_obj['synonyms']:
+            key = preprocess_label(syn)
+            syn_obj_map[key] = syn_obj_map.get(key, []) + [syn_obj]
+    
+    def detect_synonyms(disease):
+        synonyms = []
+        for syn_obj in syn_obj_map.get(preprocess_label(disease), []):
+            synonyms += syn_obj['synonyms']
+        return set(synonyms)
+
+    return [
+        {
+            'hm_label' : d,
+            'synonyms' : detect_synonyms(d),
+            'category' : 'hm/disease'
+        }
+        for d in hm_disease_labels
+    ]
 
 def wordnet_pathogens():
     # WordNet : Pathogens
@@ -247,11 +221,13 @@ def wordnet_pathogens():
     all_wn_pathogens = traverse_hyponyms(synset)
     pathogens = exclude_keywords(
         all_wn_pathogens,
-        set(filter(
-            lambda x: len(x) < 2,
-            all_wn_pathogens
-        )) | set(['computer virus'])
+        set(['computer virus'])
     )
+    for p in pathogens:
+        for s in p['synonyms']:
+            if len(p) < 2: p['synonyms'] -= set([p])
+        for s in p['parent_synonyms']:
+            if len(p) < 2: p['parent_synonyms'] -= set([p])
     print len(pathogens), "wordnet pathogens found"
     return pathogens
 
@@ -295,88 +271,35 @@ def wordnet_hostnames():
     return hostnames
                       
 def all_wordnet_keywords():
-    keywords_by_category = {
-        'pathogens' : wordnet_pathogens(),
-        'hosts' : wordnet_hostnames(),
-        # Some potential extensions for extracting season features:
-        # * Use season component from extracted dates
-        # * Use location to account for hemisphere differences interpreting
-        #   season vocabulary.
-        'season' : traverse_hyponyms([
-            synsets("season")[1]] + 
-            synsets("annual")
-        ),
-        'climate' : traverse_hyponyms(
-            synsets("weather")[:1]
-        )
-    }
-    keywords_by_category.update(squash_dict({ 'mod' : {
-        "large" : (
-            traverse_hyponyms(synsets("massive") +
-            synsets("large"))
-        ),
-        "severe" : traverse_hyponyms(synsets("dangerous")),
-        "rare" : (
-            traverse_hyponyms(synsets("uncommon") +
-            synsets("atypical"))
-        ),
-        "painful" : traverse_hyponyms(synsets("painful"))
-    }}, layers=1))
     keywords = []
-    for category, keyword_to_synset in keywords_by_category.items():
-        for keyword, synset in keyword_to_synset.items():
-            keywords.append({
-                'keyword' : keyword,
-                #TODO: Add lemmata as synonyms.
-                'category' : 'wordnet/' + category,
-            })
+    for s in wordnet_pathogens():
+        s['category'] = 'wordnet/pathogens'
+        keywords.append(s)
+    for s in wordnet_hostnames():
+        s['category'] = 'wordnet/hosts'
+        keywords.append(s)
+    for s in traverse_hyponyms([
+        synsets("season")[1]] + 
+        synsets("annual")
+    ):
+        s['category'] = 'wordnet/season'
+        keywords.append(s)
+    for s in traverse_hyponyms(synsets("weather")[:1]):
+        s['category'] = 'wordnet/climate'
+        keywords.append(s)
+    for s in traverse_hyponyms(synsets("massive") + synsets("large")):
+        s['category'] = 'wordnet/mod/large'
+        keywords.append(s)
+    for s in traverse_hyponyms(synsets("dangerous")):
+        s['category'] = 'wordnet/mod/severe'
+        keywords.append(s)
+    for s in traverse_hyponyms(synsets("atypical") + synsets("uncommon")):
+        s['category'] = 'wordnet/mod/rare'
+        keywords.append(s)
+    for s in traverse_hyponyms(synsets("painful")):
+        s['category'] = 'wordnet/mod/painful'
+        keywords.append(s)
     return keywords
-
-def portfolio_manager_tags():
-    import bson
-    with open("portfolio_manager_tags.bson", 'rb') as f:
-        result = bson.decode_all(f.read())
-    pm_keywords = {}
-    for tag in result:
-        try:
-            #I'm not sure if we should throw out the case information just yet...
-            tag_name = unicode(tag.get('name').strip().lower())
-            #Remove some of the compound tags
-            if "(" in tag_name or "," in tag_name:
-                continue
-            if tag_name.startswith("the "):
-                tag_name = tag_name[4:]
-            if tag_name.endswith(" and"):
-                tag_name = tag_name[:-4]
-            #Remove long tags that we are unlikely to find
-            if len(tag_name) > 30:
-                continue
-            if 'category' in tag:
-                cat = tag['category']
-                if cat in pm_keywords:
-                    pm_keywords[cat].add(tag_name)
-                else:
-                    pm_keywords[cat] = set([tag_name])
-        except:
-            print 'Exception on tag:', tag
-    tag_blacklist = set(['can', 'don', 'dish', 'ad', 'mass', 'yellow'])
-    
-    print "Portfolio Manager Keyword Counts:"
-    # We get most of these categories from our spreadsheet now.
-    # The symptom and disease categories should be reviewed to see
-    # if they add anything now and where it comes from.
-    # We should try to keep all the content curated by EHA in one location.
-    for cat, keywords in pm_keywords.items():
-        print cat, ':', len(keywords)
-    print ""
-    
-    pm_keywords['symptom'] -= tag_blacklist
-    pm_keywords['disease'] -= tag_blacklist
-    for cat, keywords in pm_keywords.items():
-        pm_keywords[cat] = { k : set() for k in keywords }
-    
-    return pm_keywords
-
 
 # [The Disease ontology](http://disease-ontology.org/downloads/)
 def mine_disease_ontology():
@@ -400,8 +323,10 @@ def mine_disease_ontology():
     def create_re_for_predicate(predicate):
         esc_pred = re.escape(predicate)
         return re.compile(
-            "(" + predicate + r" (?P<" + predicate + ">(.+?))" + r")" +
-            r"(,|\.|(\s(or|and|\w+\_\w+)))",
+            "(" + predicate + 
+            r"\s{1,2}(the\s{1,2})?(?P<" + predicate + ">(.+?))" +
+            r")" +
+            r"(,|\.|(\s(or|and|\w+\_\w+)\b))",
             re.I
         )
     
@@ -431,23 +356,44 @@ def mine_disease_ontology():
     }
     """)
     
-    grouped_disease_predicates = [
+    disease_predicates = flatten([
         list(parse_doid_def(unicode(r)))
         for r in qres
-    ]
+    ], 1)
     
     doid_keywords = []
 
-    for disease_predicates in flatten(grouped_disease_predicates, 1):
-        for predicate, value in disease_predicates.items():
+    for disease_predicate in disease_predicates:
+        for predicate, value in disease_predicate.items():
             doid_keywords.append({
-                'keyword': value,
-                'category': predicate,
+                'synonyms': [value.strip()],
+                'category': 'doid/' + predicate,
             })
     for keyword_object in get_linked_keywords(
         disease_ontology,
         "http://purl.obolibrary.org/obo/DOID_4"
     ):
+        new_synonyms = set()
+        for synonym in keyword_object['synonyms']:
+            synonym = unicode(synonym).strip()
+            misc_paren_notes = [
+                "context-dependent category",
+                "qualifier value",
+                "clinical",
+                "acute",
+                "body structure",
+                "category"
+            ]
+            m = re.match(
+                "(?P<label>.+?)\s+\((?P<misc_note>" +
+                '|'.join(map(re.escape, misc_paren_notes)) +
+                ")\)",
+                synonym, re.I
+            )
+            if m:
+                d = m.groupdict()
+                synonym = d['label']
+            new_synonyms.add(synonym.strip())
         keyword_object['category'] = 'doid/diseases'
         doid_keywords.append(keyword_object)
     print len(doid_keywords), "keywords extracted from doid"
@@ -476,6 +422,70 @@ def mine_symptom_ontology():
 # ido = rdflib.Graph()
 # ido.parse("http://purl.obolibrary.org/obo/ido.owl", format="xml")
 
+def biocaster_keywords_with_subject(g, subject_condition):
+    """
+    Query the biocaster ontology using the given subject condition
+    and return syn sets for all the terminology found.
+    """
+    results = list(g.query("""
+    SELECT DISTINCT ?instance ?label ?synonym
+    WHERE {
+        """ + subject_condition + """ .
+        ?instance a ?subject .
+        OPTIONAL { ?instance biocaster:label ?label } .
+        ?instance biocaster:synonymTerm ?synonym
+    }
+    """, initNs={
+        'biocaster': rdflib.URIRef("http://biocaster.nii.ac.jp/biocaster#"),
+        'rdfsn': rdflib.URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
+    }))
+    instances = {
+        instance_ref : {
+            'label' : unicode(label),
+            'synonyms' : set([unicode(label)] if label else []),
+        }
+        for instance_ref, label, noop in results
+    }
+    for instance_ref, noop, syn_ref in results:
+        if syn_ref in g.synonym_to_label:
+            instances[instance_ref]['synonyms'] |= set([g.synonym_to_label[syn_ref]])
+        else:
+            #Non english term
+            pass
+    for instance in instances.values():
+        new_synonyms = set()
+        for synonym in instance['synonyms']:
+            synonym = unicode(synonym).strip()
+            hosts = [
+                "Avian",
+                "Bovine",
+                "Caprine",
+                "Canine",
+                "Cervine",
+                "Feline",
+                "Swine",
+                "Non-Human Primate",
+                "Human",
+                "Honeybee",
+                "Fish",
+                "Rodent",
+                "Equine",
+                "Lagomorph"
+            ]
+            m = re.match(
+                "(?P<label>.+?)\s+\((?P<host>" +
+                '|'.join(map(re.escape, hosts)) +
+                ")\)",
+                synonym, re.I
+            )
+            if m:
+                d = m.groupdict()
+                synonym = d['label']
+                instance['host'] = d['host']
+            new_synonyms.add(synonym.strip())
+        instance['synonyms'] = new_synonyms
+    return instances
+
 # [Biocaster ontology](https://code.google.com/p/biocaster-ontology/downloads/detail?name=BioCaster2010-30-Aug-904.owl&can=2&q=)
 def mine_biocaster_ontology():
     # The ontology is composed of subject-relationship-object triples.
@@ -493,93 +503,45 @@ def mine_biocaster_ontology():
         "https://biocaster-ontology.googlecode.com/files/BioCaster2010-30-Aug-904.owl",
         format="xml"
     )
+    qres = g.query("""
+    SELECT DISTINCT ?synonym ?label
+    WHERE {
+        ?synonym rdfsn:type biocaster:englishTerm .
+        ?synonym biocaster:label ?label
+    }
+    """, initNs={
+        'biocaster': rdflib.URIRef("http://biocaster.nii.ac.jp/biocaster#"),
+        'rdfsn': rdflib.URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
+    })
+    g.synonym_to_label = {
+        syn_ref : unicode(label)
+        for syn_ref, label  in qres    
+    }
+    biocaster_symptom_syns = map(
+        lambda d: dict(d, category='biocaster/symptoms'),
+        biocaster_keywords_with_subject(g,
+            "?subject rdfs:subClassOf* biocaster:SYMPTOM"
+        ).values()
+    )
 
-    # Symptoms
+    biocaster_disease_syns = map(
+        lambda d: dict(d, category='biocaster/diseases'),
+        biocaster_keywords_with_subject(g,
+            "?subject rdfs:subClassOf* biocaster:DISEASE"
+        ).values()
+    )
     
-    qres = g.query("""
-    SELECT DISTINCT ?instance ?label
-    WHERE {
-        ?subject rdfs:subClassOf* biocaster:SYMPTOM .
-        ?instance a ?subject .
-        ?instance biocaster:synonymTerm ?synonym .
-        ?synonym rdfsn:type biocaster:englishTerm .
-        ?synonym biocaster:label ?label
-    }
-    """, initNs={
-        'biocaster': rdflib.URIRef("http://biocaster.nii.ac.jp/biocaster#"),
-        'rdfsn': rdflib.URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
-    })
-    biocaster_symptom_syns = []
-    instances = {}
-    for instance, label in qres:
-        label = unicode(label).strip()
-        instances[instance] = instances.get(instance, set()) | set([label])
-    
-    for instance, synonyms in instances.items():
-        biocaster_symptom_syns.append({
-            'keyword' : synonyms[0],
-            'synonyms' : set(synonyms),
-            'category' : 'biocaster/symptom',
-        })
-    
-    # Diseases
-    
-    qres = g.query("""
-    SELECT DISTINCT ?subject ?label
-    WHERE {
-        ?subject rdfs:subClassOf* biocaster:DISEASE .
-        ?instance a ?subject .
-        ?instance biocaster:synonymTerm ?synonym .
-        ?synonym rdfsn:type biocaster:englishTerm .
-        ?synonym biocaster:label ?label
-    }
-    """, initNs={
-        'biocaster': rdflib.URIRef("http://biocaster.nii.ac.jp/biocaster#"),
-        'rdfsn': rdflib.URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
-    })
-    biocaster_disease_syns = []
-    instances = {}
-    for instance, label in qres:
-        label = unicode(label).strip()
-        instances[instance] = instances.get(instance, set()) | set([label])
-    
-    for instance, synonyms in instances.items():
-        biocaster_disease_syns.append({
-            'keyword' : synonyms[0],
-            'synonyms' : set(synonyms),
-            'category' : 'biocaster/diseases',
-        })
-    
-    # Pathogens
-    
-    qres = g.query("""
-    SELECT DISTINCT ?subject ?label
-    WHERE {
-        { ?subject rdfs:subClassOf* biocaster:BACTERIUM } UNION
-        { ?subject rdfs:subClassOf* biocaster:VIRUS } UNION
-        { ?subject rdfs:subClassOf* biocaster:FUNGUS } UNION
-        { ?subject rdfs:subClassOf* biocaster:PROTOZOAN } .
-        ?instance a ?subject .
-        ?instance biocaster:synonymTerm ?synonym .
-        ?synonym rdfsn:type biocaster:englishTerm .
-        ?synonym biocaster:label ?label
-    }
-    """, initNs={
-        'biocaster': rdflib.URIRef("http://biocaster.nii.ac.jp/biocaster#"),
-        'rdfsn': rdflib.URIRef("http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
-    })
-    biocaster_pathogen_syns = []
-    instances = {}
-    for instance, label in qres:
-        label = unicode(label).strip()
-        instances[instance] = instances.get(instance, set()) | set([label])
-    
-    for instance, synonyms in instances.items():
-        biocaster_pathogen_syns.append({
-            'keyword' : synonyms[0],
-            'synonyms' : set(synonyms),
-            'category' : 'biocaster/pathogens',
-        })
+    biocaster_pathogen_syns = map(
+        lambda d: dict(d, category='biocaster/pathogens'),
+        biocaster_keywords_with_subject(g,
+            """
+            { ?subject rdfs:subClassOf* biocaster:BACTERIUM } UNION
+            { ?subject rdfs:subClassOf* biocaster:VIRUS } UNION
+            { ?subject rdfs:subClassOf* biocaster:FUNGUS } UNION
+            { ?subject rdfs:subClassOf* biocaster:PROTOZOAN }
+            """
+        ).values()
+    )
     
     return (
         biocaster_symptom_syns +
@@ -624,20 +586,6 @@ def mine_usgs_ontology():
         usgs_keywords.append(keyword_object)
     return usgs_keywords
 
-def dashatize(text):
-    """
-    If the text contains a dash, return the possible
-    variations with/without the dash.
-    """
-    if '-' in text:
-        return [
-            text,
-            re.sub(r"-", '', text),
-            re.sub(r"-", ' ', text)
-        ]
-    else:
-        return [text]
-
 def eha_keywords():
     keywords = []
     keywords.extend(download_google_sheet(
@@ -655,25 +603,56 @@ def eha_keywords():
         keyword['category'] = 'eha/' + keyword['category']
     return keywords
 
-def create_ontologies_pickle():
-    keywords = (
-        all_wordnet_keywords() +
-        mine_biocaster_ontology() +
-        mine_disease_ontology() +
-        mine_symptom_ontology() +
-        mine_usgs_ontology()
-    )
-    
-    print "Total keywords:", len(keywords)
-    
-    with open('ontologies-0.1.1.p', 'wb') as f:
-        pickle.dump(keywords, f)
+def create_keyword_object_array(synset_object_array):
+    def parse_keyword(kw):
+        return re.sub(r"(\(.*?\))|(\[.*?\])", "", kw).strip().lower()
+    blocklist = set(['can', 'don', 'dish', 'ad', 'mass', 'yellow', 'the'])
+    keyword_object_array = []
+    keywords_sofar = {}
+    for synset_object in synset_object_array:
+        for kw in synset_object['synonyms']:
+            if kw in blocklist:
+                raise Exception("Blocked keyword: " + kw + ' in ' + unicode(synset_object))
+            if kw.strip() != kw:
+                raise Exception("Untrimmed keyword: " + kw + ' in ' + unicode(synset_object))
+            if ')' == kw[-1]:
+                print "Parenthetical keyword:", kw, 'in', unicode(synset_object)
+
+            keywords_sofar[kw] = synset_object
+            keyword_object_array.append({
+                'keyword' : kw,
+                'category' : synset_object['category'],
+                'linked_keywords' : [
+                    '[linked] ' + lkw
+                    for lkw in set(synset_object.get('parent_synonyms', [])) # | set([kw]) # not sure whether to include the kw
+                ],
+                'synset_object' : synset_object,
+                'case_sensitive' : (
+                    ' ' not in kw and
+                    len(kw) <= 6 and
+                    kw.upper() == kw
+                ),
+                'duplicate' : kw in keywords_sofar
+            })
+    print "Total keywords:", len(keyword_object_array)
+    return keyword_object_array
 
 if __name__ == "__main__":
+    print "gathering keywords..."
+    disease_kws = mine_disease_ontology() + mine_biocaster_ontology()
+    keywords = create_keyword_object_array(
+        all_wordnet_keywords() +
+        disease_kws +
+        mine_symptom_ontology() +
+        mine_usgs_ontology() +
+        healthmap_labels(disease_kws) +
+        eha_keywords()
+    )
     print "creating pickle..."
     print """
     To update the ontology data we use in our deployments use this command:
     aws s3 cp ontologies.p s3://classifier-data/ --region us-west-1
     """
-    create_ontologies_pickle()
+    with open('ontologies-0.1.1.p', 'wb') as f:
+        pickle.dump(keywords, f)
     print "pickle ready"

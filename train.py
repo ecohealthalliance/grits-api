@@ -49,35 +49,6 @@ def get_pickle(filename):
         print filename, "loaded"
         return result
 
-def import_keywords(*names, **kwargs):
-    import re
-    def parse_keyword(kw):
-        return re.sub(r"(\(.*?\))|(\[.*?\])", "", kw).strip().lower()
-    blocklist = set(['can', 'don', 'dish', 'ad', 'mass', 'yellow'])
-    out_keywords = []
-    for name in names:
-        obj = kwargs['source'][name]
-        for kw in obj:
-            assert kw not in blocklist
-            if kw.strip() != kw:
-                raise Exception("Untrimmed keyword: " + name + ' ' + kw)
-            linked_keywords = obj[kw] if isinstance(obj, dict) else []
-            out_keywords.append({
-                'keyword' : kw,
-                'category': name,
-                'linked_keywords': [
-                    '[linked] ' + parse_keyword(lkw)
-                    for lkw in set(linked_keywords) | set([kw])
-                ],
-                'case_sensitive' : (
-                    ' ' not in kw and
-                    len(kw) <= 6 and
-                    kw.upper() == kw
-                )
-            })
-        
-    return out_keywords
-
 label_overrides = {
     '532c9a73f99fe75cf538331c' : 'Fungal Meningitis',
     # Foot and Mouth disease rarely affects humans.
@@ -149,11 +120,9 @@ def get_features_and_classifications(
 def train(debug):
     training_set = get_pickle('training.p')
     validation_set = get_pickle('validation.p')
-    ontologies = get_pickle('ontologies-0.1.1.p')
+    keywords = get_pickle('ontologies-0.1.1.p')
     
-    ontologies['hm/disease'] = set([r['meta']['disease'] for r in training_set])
-    
-    keyword_array = import_keywords(
+    categories = set([
         'hm/disease',
         'eha/symptom',
         'eha/mode of transmission',
@@ -182,13 +151,13 @@ def train(debug):
         'wordnet/mod/painful',
         'wordnet/mod/large',
         'doid/diseases',
-        'eha/disease',
-        source=ontologies
-    )
-    lowercase_keyword_index = group_by(
-        lambda k: k['keyword'].lower(),
-        keyword_array
-    )
+        'eha/disease'
+    ])
+
+    keyword_array = [
+        keyword_obj for keyword_obj in keywords
+        if keyword_obj['category'] in categories
+    ]
     
     # Keyword Extraction
     extract_features = Pipeline([
