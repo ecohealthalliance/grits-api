@@ -50,7 +50,6 @@ def get_pickle(filename):
         return result
 
 label_overrides = {
-    '532c9a73f99fe75cf538331c' : 'Fungal Meningitis',
     # Foot and Mouth disease rarely affects humans.
     # This sounds like it should be HFM
     '53303a44f99fe75cf5390a56' : 'Hand, Foot and Mouth Disease',

@@ -25,11 +25,15 @@ class KeywordExtractor():
         
         self.case_insensitive_vectorizer = CountVectorizer(
             vocabulary=not_case_sensitive,
+            # Default token pattern requires word length of 2
+            # so it can't extract "hepatitis A"
+            token_pattern=r'(?u)\b\w+\b',
             ngram_range=(1, 4)
         )
         self.case_sensitive_vectorizer = CountVectorizer(
             vocabulary=case_sensitive,
             ngram_range=(1, 1),
+            token_pattern=r'(?u)\b\w+\b',
             lowercase=False
         )
     def fit(self, X, y):

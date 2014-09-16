@@ -198,7 +198,7 @@ def healthmap_labels(other_synsets_to_add):
             syn_obj_map[key] = syn_obj_map.get(key, []) + [syn_obj]
     
     def detect_synonyms(disease):
-        synonyms = []
+        synonyms = [disease]
         for syn_obj in syn_obj_map.get(preprocess_label(disease), []):
             synonyms += syn_obj['synonyms']
         return set(synonyms)
@@ -615,6 +615,9 @@ def create_keyword_object_array(synset_object_array):
                 raise Exception("Blocked keyword: " + kw + ' in ' + unicode(synset_object))
             if kw.strip() != kw:
                 raise Exception("Untrimmed keyword: " + kw + ' in ' + unicode(synset_object))
+            if len(kw) == 0:
+                print "Empty keyword in", synset_object
+                continue
             if ')' == kw[-1]:
                 print "Parenthetical keyword:", kw, 'in', unicode(synset_object)
 

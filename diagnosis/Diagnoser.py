@@ -66,7 +66,7 @@ class Diagnoser():
                     parents.append(disease_to_parent[parents[-1]])
             if p >= p_max * self.cutoff_ratio:
                 result.add((i,p))
-                for i2, label in enumerate(self.classifier.classes_.tolist()):
+                for i2, label in enumerate(self.classifier.classes_):
                     if label in parents:
                         result.add((i2,max(p, probs[i2])))
         return list(result)
