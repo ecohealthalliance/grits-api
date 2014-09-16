@@ -66,3 +66,9 @@ class memoized(object):
     def __get__(self, obj, objtype):
        '''Support instance methods.'''
        return functools.partial(self.__call__, obj)
+
+def resource_url(id, set_name="devtest", branch="fetch_4-18-2014"):
+    if isinstance(id, dict):
+        id = id['_id']
+    return "https://github.com/ecohealthalliance/corpora/blob/" +\
+        branch + "/healthmap/" + set_name + "/" + id + ".md"

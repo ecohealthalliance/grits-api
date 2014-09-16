@@ -6,7 +6,7 @@ import pickle
 import config
 import diagnosis
 from diagnosis.KeywordExtractor import *
-from diagnosis.Diagnoser import Diagnoser
+from diagnosis.Diagnoser import Diagnoser, get_disease_parents
 from diagnosis.Diagnoser import disease_to_parent
 import numpy as np
 import re
@@ -15,7 +15,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
-from diagnosis.utils import group_by, flatten
+from diagnosis.utils import group_by, flatten, resource_url
 
 def get_pickle(filename):
     """
@@ -93,9 +93,11 @@ def get_features_and_classifications(
     Vectorize feature_dicts, filter some out, and add parent labels.
     """
     features = []
+    out_feature_dicts = []
     classifications = []
     resources_used = []
-    for feature_vector, r in zip(
+    for feature_dict, feature_vector, r in zip(
+        feature_dicts,
         my_dict_vectorizer.transform(feature_dicts),
         resources
     ):
@@ -111,14 +113,15 @@ def get_features_and_classifications(
         while diseases[-1] in disease_to_parent_map:
             diseases.append(disease_to_parent_map[diseases[-1]])
         features.append(feature_vector)
+        out_feature_dicts.append(feature_dict)
         classifications.append(diseases)
         resources_used.append(r)
-    return np.array(features), np.array(classifications), resources_used
+    return np.array(features), out_feature_dicts, np.array(classifications), resources_used
 
 
-def train(debug):
-    training_set = get_pickle('training.p')
-    validation_set = get_pickle('validation.p')
+def prepare_classifier(debug):
+    training_set = get_pickle('training.p')#[:100]
+    validation_set = get_pickle('validation.p')#[:200]
     keywords = get_pickle('ontologies-0.1.1.p')
     
     categories = set([
@@ -184,6 +187,7 @@ def train(debug):
 
     (
         feature_mat_train,
+        filtered_train_feature_dicts,
         labels_train,
         resources_train
     ) = get_features_and_classifications(
@@ -195,6 +199,7 @@ def train(debug):
     
     (
         feature_mat_validation,
+        filtered_validation_feature_dicts,
         labels_validation,
         resources_validation
     ) = get_features_and_classifications(
@@ -206,18 +211,39 @@ def train(debug):
     
     print "articles we could extract keywords from:"
     print len(resources_validation), '/', len(validation_set)
-
-    #Check for duplicate features:
-    unique_features = {}
-    for feature_a, resource_a in zip(feature_mat_train, resources_train):
-        for feature_b, resource_b in unique_features.items():
-            if not all(feature_a == feature_b):
-                print "Duplicate found:"
-                print resource_url(resource_a['_id'])
-                print resource_url(resource_b['_id'])
-                print feature_a
-                break
-            unique_features.append(feature_a)
+    
+    keyword_to_hm_label = {}
+    for kw_obj in keyword_array:
+        label = kw_obj['synset_object'].get('hm_label')
+        if label and label not in labels_to_omit:
+            keyword_to_hm_label[kw_obj['keyword'].lower()] = label
+    healthmap_labels_found = [
+        list(set(flatten(map(lambda d : get_disease_parents(d) + [d],
+            [
+                keyword_to_hm_label[k.lower()]
+                for k in d.keys()
+                if k.lower() in keyword_to_hm_label
+            ]
+        ))))
+        for d in filtered_validation_feature_dicts
+    ]
+    print (
+        'Articles with HM labels: ',
+        len([k for k in healthmap_labels_found if len(k) > 0]), '/',
+        len(healthmap_labels_found)
+    )
+    # Print out some of the healthmap labels
+    if debug:
+        for l, h, r, fvft in zip(
+            labels_validation,
+            healthmap_labels_found,
+            resources_validation,
+            filtered_validation_feature_dicts
+        )[-20:]:
+            if r['_id'] == '53304873f99fe75cf5392377':
+                print r
+                print fvft
+            print l,h,resource_url(r)
         
     print """
     Articles in the validation set that we are sure to miss
@@ -230,7 +256,42 @@ def train(debug):
     ]
     print len(not_in_train),'/',len(labels_validation)
     print not_in_train
+    
+    (
+        feature_mat_validation,
+        labels_validation,
+        healthmap_labels_found
+    ) = zip(*[
+        (f_array, label, hm_label)
+        for f_array, label, hm_label in zip(
+            feature_mat_validation,
+            labels_validation,
+            healthmap_labels_found
+        )
+        if len(hm_label) > 0
+    ])
+    
+    train(
+        feature_mat_train,
+        labels_train,
+        feature_mat_validation,
+        labels_validation,
+        healthmap_labels_found,
+        my_dict_vectorizer,
+        keyword_array,
+        debug
+    )
 
+def train(
+    feature_mat_train,
+    labels_train,
+    feature_mat_validation,
+    labels_validation,
+    healthmap_labels_found,
+    my_dict_vectorizer,
+    keyword_array,
+    debug
+):
     my_classifier = OneVsRestClassifier(LogisticRegression(
         # When fit intercept is False the classifier predicts nothing when
         # all the features are zero.
@@ -275,52 +336,60 @@ def train(debug):
         keyword_array=keyword_array,
         cutoff_ratio=.7
     )
-    
-    print "macro average:"
-    training_predictions = [
-        tuple([
-            my_diagnoser.classifier.classes_[i]
-            for i, p in my_diagnoser.best_guess(X)
-        ])
-        for X in feature_mat_train
-    ]
-    print "Training set:\nprecision: %s recall: %s f-score: %s" %\
-        sklearn.metrics.precision_recall_fscore_support(
-            map(tuple, labels_train),
-            training_predictions,
-            average='macro'
-        )[0:3]
-    
-    predictions = training_predictions = [
-        tuple([
-            my_diagnoser.classifier.classes_[i]
-            for i, p in my_diagnoser.best_guess(X)
-        ])
-        for X in feature_mat_validation
-    ]
-    prfs = sklearn.metrics.precision_recall_fscore_support(
-        labels_validation,
-        predictions
-    )
+    import warnings
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        training_predictions = [
+            tuple([
+                my_diagnoser.classifier.classes_[i]
+                for i, p in my_diagnoser.best_guess(X)
+            ])
+            for X in feature_mat_train
+        ]
+        print "Training set (macro):\nprecision: %s recall: %s f-score: %s" %\
+            sklearn.metrics.precision_recall_fscore_support(
+                map(tuple, labels_train),
+                training_predictions,
+                average='macro'
+            )[0:3]
+        
+        predictions = [
+            tuple([
+                my_diagnoser.classifier.classes_[i]
+                for i, p in my_diagnoser.best_guess(X)
+            ])
+            for X in feature_mat_validation
+        ]
     # I've noticed that the macro f-score is not the harmonic mean of the percision
     # and recall. Perhaps this could be a result of the macro f-score being computed 
     # as an average of f-scores.
     # Furthermore, the macro f-scrore can be smaller than the precision and
     # recall which seems like it shouldn't be possible.
-    print "Validation set:\nprecision: %s recall: %s f-score: %s" %\
+    print "Validation set (macro):\nprecision: %s recall: %s f-score: %s" %\
         sklearn.metrics.precision_recall_fscore_support(
             labels_validation,
             predictions,
             average='macro')[0:3]
-    print "micro average:"
-    print "precision: %s recall: %s f-score: %s" %\
-        sklearn.metrics.precision_recall_fscore_support(labels_validation,
-        predictions,
-        average='micro')[0:3]
+    print "Validation set [HM] (macro):\nprecision: %s recall: %s f-score: %s" %\
+        sklearn.metrics.precision_recall_fscore_support(
+            labels_validation,
+            healthmap_labels_found,
+            average='macro')[0:3]
+    print "Validation set (micro):\nprecision: %s recall: %s f-score: %s" %\
+        sklearn.metrics.precision_recall_fscore_support(
+            labels_validation,
+            predictions,
+            average='micro')[0:3]
+    print "Validation set [HM] (micro):\nprecision: %s recall: %s f-score: %s" %\
+        sklearn.metrics.precision_recall_fscore_support(
+            labels_validation,
+            healthmap_labels_found,
+            average='micro')[0:3]
+    # for l, p, r in zip(labels_validation[:100], predictions[:100], validation_set[:100]):
+    #     print l,p,resource_url(r)
     
     if debug:
         print "Which classes are we performing poorly on?"
-        
         labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
         prfs = sklearn.metrics.precision_recall_fscore_support(
             labels_validation,
@@ -336,4 +405,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-debug', action='store_true')
     args = parser.parse_args()
-    train(args.debug)
+    prepare_classifier(args.debug)

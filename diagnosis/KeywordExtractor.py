@@ -14,28 +14,38 @@ class KeywordExtractor():
     Keyword set is *not* culled during the fit operation.
     """
     def __init__(self, keyword_array):
+        # TODO: Why does this lower the score?
+        case_sensitive_analyser = CountVectorizer(
+            token_pattern=r'(?u)\b\w+\b',
+            ngram_range=(1, 1),
+            lowercase=False
+        ).build_analyzer()
+        case_insensitive_analyser = CountVectorizer(
+            token_pattern=r'(?u)\b\w+\b',
+            ngram_range=(1, 5)
+        ).build_analyzer()
         case_sensitive = set()
         not_case_sensitive = set()
         for kw_obj in keyword_array:
             keyword = kw_obj['keyword']
             if kw_obj['case_sensitive']:
-                case_sensitive.add(keyword)
+                case_sensitive.add(' '.join(case_sensitive_analyser(keyword)))
             else:
-                not_case_sensitive.add(keyword.lower())
-        
-        self.case_insensitive_vectorizer = CountVectorizer(
-            vocabulary=not_case_sensitive,
-            # Default token pattern requires word length of 2
-            # so it can't extract "hepatitis A"
-            token_pattern=r'(?u)\b\w+\b',
-            ngram_range=(1, 4)
-        )
+                not_case_sensitive.add(' '.join(case_insensitive_analyser(keyword)))
         self.case_sensitive_vectorizer = CountVectorizer(
             vocabulary=case_sensitive,
             ngram_range=(1, 1),
             token_pattern=r'(?u)\b\w+\b',
             lowercase=False
         )
+        self.case_insensitive_vectorizer = CountVectorizer(
+            vocabulary=not_case_sensitive,
+            # Default token pattern requires word length of 2
+            # so it can't extract "hepatitis A"
+            token_pattern=r'(?u)\b\w+\b',
+            ngram_range=(1, 5)
+        )
+
     def fit(self, X, y):
         pass
     def transform_with_vectorizer(self, vectorizer, texts):
