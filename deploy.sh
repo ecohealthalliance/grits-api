@@ -13,4 +13,5 @@ cd annie
 ../grits_api_env/bin/python setup.py install
 cd ../
 grits_api_env/bin/python train.py
+grits_api_env/bin/python diagnosis/mongo_import_autocompletes.py
 sudo supervisorctl restart celery_priority celery_process celery_diagnose flask
