@@ -65,7 +65,8 @@ labels_to_omit = [
     'Other Human Disease',
     'Other Animal Disease',
     'Other Plant Disease',
-    #Pathogen labels:
+    # Pathogen labels:
+    # These could be replaced with the diseases they cause
     'Food-related toxin',
     'Free Living Amoeba',
     'Pests',
@@ -73,7 +74,7 @@ labels_to_omit = [
     'E. coli',
     'Algae',
     'Amoeba',
-    #Labels I'm not sure what to make of:
+    # Labels I'm not sure what to make of:
     'Vaccine Complication',
     'Environmental',
     'Conflict',
@@ -82,6 +83,7 @@ labels_to_omit = [
     'Paralytic Shellfish Poisoning',
     'Cold',
 ]
+#Parotitis is more of a symptom than a disease
 
 def get_features_and_classifications(
     feature_dicts,
@@ -212,39 +214,6 @@ def prepare_classifier(debug):
     print "articles we could extract keywords from:"
     print len(resources_validation), '/', len(validation_set)
     
-    keyword_to_hm_label = {}
-    for kw_obj in keyword_array:
-        label = kw_obj['synset_object'].get('hm_label')
-        if label and label not in labels_to_omit:
-            keyword_to_hm_label[kw_obj['keyword'].lower()] = label
-    healthmap_labels_found = [
-        list(set(flatten(map(lambda d : get_disease_parents(d) + [d],
-            [
-                keyword_to_hm_label[k.lower()]
-                for k in d.keys()
-                if k.lower() in keyword_to_hm_label
-            ]
-        ))))
-        for d in filtered_validation_feature_dicts
-    ]
-    print (
-        'Articles with HM labels: ',
-        len([k for k in healthmap_labels_found if len(k) > 0]), '/',
-        len(healthmap_labels_found)
-    )
-    # Print out some of the healthmap labels
-    if debug:
-        for l, h, r, fvft in zip(
-            labels_validation,
-            healthmap_labels_found,
-            resources_validation,
-            filtered_validation_feature_dicts
-        )[-20:]:
-            if r['_id'] == '53304873f99fe75cf5392377':
-                print r
-                print fvft
-            print l,h,resource_url(r)
-        
     print """
     Articles in the validation set that we are sure to miss
     because we have no training data for their labels:
@@ -257,18 +226,68 @@ def prepare_classifier(debug):
     print len(not_in_train),'/',len(labels_validation)
     print not_in_train
     
+    keyword_to_hm_label = {}
+    for kw_obj in keyword_array:
+        label = kw_obj['synset_object'].get('hm_label')
+        if label and label not in labels_to_omit:
+            keyword_to_hm_label[kw_obj['keyword'].lower()] = label
+            # TODO:
+            # Some keywords are used for multiple HM labels
+            # e.g. Rubella is a keyword for Rubella and Measles
+            # (This comes from a synonym relationship in the biocaster ontology.
+            # I believe it may be technically incorrect, but a common usage.) 
+            # To mitigate this problem, we could choose the keyword
+            # with the shortest lev distance to the label.
+    healthmap_labels_found = []
+    for d in filtered_validation_feature_dicts:
+        # best_label = None
+        # best_score = 0
+        # for k, score in d.items():
+        #     if score > best_score:
+        #         hm_label = keyword_to_hm_label.get(k.lower())
+        #         if hm_label:
+        #             best_label = hm_label
+        #             best_score = score
+        # if best_label:
+        #     healthmap_labels_found.append(
+        #         get_disease_parents(best_label) + [best_label]
+        #     )
+        # else:
+        #     healthmap_labels_found.append([])
+        doc_hm_label_set = set()
+        for k, score in d.items():
+            hm_label = keyword_to_hm_label.get(k.lower())
+            if hm_label:
+                doc_hm_label_set |= set(get_disease_parents(hm_label) + [hm_label])
+        healthmap_labels_found.append(list(doc_hm_label_set))
+    print 'Articles with HM labels: ',\
+        len([k for k in healthmap_labels_found if len(k) > 0]), '/',\
+        len(healthmap_labels_found)
+    # Print out some of the healthmap labels
+    if debug:
+        for l, h, r, fvft in zip(
+            labels_validation,
+            healthmap_labels_found,
+            resources_validation,
+            filtered_validation_feature_dicts
+        )[-20:]:
+            if r['_id'] == '53304873f99fe75cf5392377':
+                print r
+                print fvft
+            print l,h,resource_url(r)
+    
     (
         feature_mat_validation,
         labels_validation,
         healthmap_labels_found
     ) = zip(*[
-        (f_array, label, hm_label)
-        for f_array, label, hm_label in zip(
+        (f_array, label, hm_label_set)
+        for f_array, label, hm_label_set in zip(
             feature_mat_validation,
             labels_validation,
             healthmap_labels_found
         )
-        if len(hm_label) > 0
+        #if len(hm_label_set) > 0
     ])
     
     train(
