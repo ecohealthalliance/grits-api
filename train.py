@@ -122,9 +122,18 @@ def get_features_and_classifications(
 
 
 def prepare_classifier(debug):
-    training_set = get_pickle('training.p')#[:100]
-    validation_set = get_pickle('validation.p')#[:200]
+    training_set = get_pickle('training.p')
+    validation_set = get_pickle('validation.p')
     keywords = get_pickle('ontologies-0.1.1.p')
+    
+    training_set = [
+        r for r in training_set    
+        if len(r['cleanContent']) * 1.0 / len(r['content']) > 0.1
+    ]
+    validation_set = [
+        r for r in validation_set
+        if len(r['cleanContent']) * 1.0 / len(r['content']) > 0.1
+    ]
     
     categories = set([
         'hm/disease',
@@ -224,7 +233,7 @@ def prepare_classifier(debug):
         if (y not in flatten(labels_train, 1))
     ]
     print len(not_in_train),'/',len(labels_validation)
-    print not_in_train
+    print set(not_in_train)
     
     keyword_to_hm_label = {}
     for kw_obj in keyword_array:
@@ -409,7 +418,7 @@ def train(
     
     if debug:
         print "Which classes are we performing poorly on?"
-        labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
+        labels = sorted(list(set(flatten(labels_validation)) | set(flatten(predictions))))
         prfs = sklearn.metrics.precision_recall_fscore_support(
             labels_validation,
             predictions,

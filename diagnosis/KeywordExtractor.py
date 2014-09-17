@@ -9,13 +9,13 @@ class LowerKeyDict(dict):
         return self.store[key.lower()]
 
 class KeywordExtractor():
-    """
-    Does case insensitive matching and all returned keywords are lowercase.
-    Keyword set is *not* culled during the fit operation.
-    """
     def __init__(self, keyword_array):
+        # The CountVectorizer will pick up overlapping keywords, so for example
+        # we will pickup "Foot and Mouth", "Hand, Foot and Mouth"
+        # If we had a way to rule out matches like this we might see better perf.
+        
         # Default token pattern requires word length of 2
-        # so it can't extract "hepatitis A"
+        # so it can't extract "Hepatitis A"
         token_pattern = r'(?u)\b\w+\b'
         case_sensitive_analyser = CountVectorizer(
             token_pattern=token_pattern,
