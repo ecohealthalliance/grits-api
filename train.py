@@ -16,6 +16,7 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
 from diagnosis.utils import group_by, flatten
+import warnings
 
 def get_pickle(filename):
     """
@@ -82,6 +83,9 @@ labels_to_omit = [
     'Paralytic Shellfish Poisoning',
     'Cold',
 ]
+# Should we omit these?:
+# Foodborne Illness
+# Parotitis
 
 def get_features_and_classifications(
     feature_dicts,
@@ -207,18 +211,6 @@ def train(debug):
     print "articles we could extract keywords from:"
     print len(resources_validation), '/', len(validation_set)
 
-    #Check for duplicate features:
-    unique_features = {}
-    for feature_a, resource_a in zip(feature_mat_train, resources_train):
-        for feature_b, resource_b in unique_features.items():
-            if not all(feature_a == feature_b):
-                print "Duplicate found:"
-                print resource_url(resource_a['_id'])
-                print resource_url(resource_b['_id'])
-                print feature_a
-                break
-            unique_features.append(feature_a)
-        
     print """
     Articles in the validation set that we are sure to miss
     because we have no training data for their labels:
@@ -229,7 +221,7 @@ def train(debug):
         if (y not in flatten(labels_train, 1))
     ]
     print len(not_in_train),'/',len(labels_validation)
-    print not_in_train
+    print set(not_in_train)
 
     my_classifier = OneVsRestClassifier(LogisticRegression(
         # When fit intercept is False the classifier predicts nothing when
@@ -275,53 +267,52 @@ def train(debug):
         keyword_array=keyword_array,
         cutoff_ratio=.7
     )
-    
-    print "macro average:"
-    training_predictions = [
-        tuple([
-            my_diagnoser.classifier.classes_[i]
-            for i, p in my_diagnoser.best_guess(X)
-        ])
-        for X in feature_mat_train
-    ]
-    print "Training set:\nprecision: %s recall: %s f-score: %s" %\
-        sklearn.metrics.precision_recall_fscore_support(
-            map(tuple, labels_train),
-            training_predictions,
-            average='macro'
-        )[0:3]
-    
-    predictions = training_predictions = [
-        tuple([
-            my_diagnoser.classifier.classes_[i]
-            for i, p in my_diagnoser.best_guess(X)
-        ])
-        for X in feature_mat_validation
-    ]
-    prfs = sklearn.metrics.precision_recall_fscore_support(
-        labels_validation,
-        predictions
-    )
+    with warnings.catch_warnings():
+        # The updated version of scikit will spam warnings here.
+        warnings.simplefilter("ignore")
+        training_predictions = [
+            tuple([
+                my_diagnoser.classifier.classes_[i]
+                for i, p in my_diagnoser.best_guess(X)
+            ])
+            for X in feature_mat_train
+        ]
+        print "Training set (macro avg):\nprecision: %s recall: %s f-score: %s" %\
+            sklearn.metrics.precision_recall_fscore_support(
+                map(tuple, labels_train),
+                training_predictions,
+                average='macro'
+            )[0:3]
+        
+        predictions = [
+            tuple([
+                my_diagnoser.classifier.classes_[i]
+                for i, p in my_diagnoser.best_guess(X)
+            ])
+            for X in feature_mat_validation
+        ]
     # I've noticed that the macro f-score is not the harmonic mean of the percision
     # and recall. Perhaps this could be a result of the macro f-score being computed 
     # as an average of f-scores.
     # Furthermore, the macro f-scrore can be smaller than the precision and
     # recall which seems like it shouldn't be possible.
-    print "Validation set:\nprecision: %s recall: %s f-score: %s" %\
+    print "Validation set (macro avg):\nprecision: %s recall: %s f-score: %s" %\
         sklearn.metrics.precision_recall_fscore_support(
             labels_validation,
             predictions,
             average='macro')[0:3]
-    print "micro average:"
-    print "precision: %s recall: %s f-score: %s" %\
-        sklearn.metrics.precision_recall_fscore_support(labels_validation,
-        predictions,
-        average='micro')[0:3]
-    
+    print "Validation set (micro avg):\nprecision: %s recall: %s f-score: %s" %\
+        sklearn.metrics.precision_recall_fscore_support(
+            labels_validation,
+            predictions,
+            average='micro')[0:3]
+        
     if debug:
         print "Which classes are we performing poorly on?"
         
-        labels = list(set(flatten(labels_validation)) | set(flatten(predictions)))
+        labels = sorted(
+            list(set(flatten(labels_validation)) | set(flatten(predictions)))
+        )
         prfs = sklearn.metrics.precision_recall_fscore_support(
             labels_validation,
             predictions,

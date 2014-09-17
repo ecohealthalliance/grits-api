@@ -203,14 +203,17 @@ def healthmap_labels(other_synsets_to_add):
             synonyms += syn_obj['synonyms']
         return set(synonyms)
 
-    return [
-        {
-            'hm_label' : d,
-            'synonyms' : detect_synonyms(d),
+    result = []
+    for original_diease_label in hm_disease_labels:
+        result.append({
+            'hm_label' : original_diease_label,
+            # Some labels such as Bronchitis/Bronchiolitis contain multiple synonyms.
+            'synonyms' : set.union(
+                *map(detect_synonyms, original_diease_label.split('/'))
+            ),
             'category' : 'hm/disease'
-        }
-        for d in hm_disease_labels
-    ]
+        })
+    return result
 
 def wordnet_pathogens():
     # WordNet : Pathogens
@@ -604,8 +607,6 @@ def eha_keywords():
     return keywords
 
 def create_keyword_object_array(synset_object_array):
-    def parse_keyword(kw):
-        return re.sub(r"(\(.*?\))|(\[.*?\])", "", kw).strip().lower()
     blocklist = set(['can', 'don', 'dish', 'ad', 'mass', 'yellow', 'the'])
     keyword_object_array = []
     keywords_sofar = {}
@@ -642,14 +643,15 @@ def create_keyword_object_array(synset_object_array):
 
 if __name__ == "__main__":
     print "gathering keywords..."
-    disease_kws = mine_disease_ontology() + mine_biocaster_ontology()
+    disease_kws = mine_disease_ontology() +\
+        mine_biocaster_ontology() +\
+        eha_keywords()
     keywords = create_keyword_object_array(
         all_wordnet_keywords() +
         disease_kws +
         mine_symptom_ontology() +
         mine_usgs_ontology() +
-        healthmap_labels(disease_kws) +
-        eha_keywords()
+        healthmap_labels(disease_kws)
     )
     print "creating pickle..."
     print """
