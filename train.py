@@ -6,7 +6,7 @@ import pickle
 import config
 import diagnosis
 from diagnosis.KeywordExtractor import *
-from diagnosis.Diagnoser import Diagnoser
+from diagnosis.Diagnoser import Diagnoser, get_disease_parents
 from diagnosis.Diagnoser import disease_to_parent
 import numpy as np
 import re
@@ -15,8 +15,9 @@ from sklearn.pipeline import Pipeline
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
-from diagnosis.utils import group_by, flatten
+from diagnosis.utils import group_by, flatten, resource_url
 import warnings
+import whoosh_search
 
 def get_pickle(filename):
     """
@@ -121,7 +122,7 @@ def get_features_and_classifications(
 
 
 def train(debug):
-    training_set = get_pickle('training.p')
+    training_set = get_pickle('training.p')[:3]
     validation_set = get_pickle('validation.p')
     keywords = get_pickle('ontologies-0.1.1.p')
     
@@ -223,74 +224,14 @@ def train(debug):
     print len(not_in_train),'/',len(labels_validation)
     print set(not_in_train)
 
-    my_classifier = OneVsRestClassifier(LogisticRegression(
-        # When fit intercept is False the classifier predicts nothing when
-        # all the features are zero.
-        # On one hand, we can guess the article is most likely to be dengue or
-        # another common disease and still occassionally be right,
-        # and having a intercept offset could allow us
-        # to create a model that is a tighter fit.
-        # On one hand, predictions based off of nothing might puzzle users.
-        # fit_intercept=False,
-        # l1 penalty will produce sparser coefficients.
-        # it seems to perform worse,
-        # but the classifications will be easier to inspect,
-        # and we might be able to avoid some overfitting based on weak
-        # correlations that turn out to be false.
-        # penalty='l1',
-        # Using class weighting we might be able to avoid overpredicting
-        # the more common labels.
-        # However, auto weighting has only hurt our mico f-scores so far.
-        # class_weight='auto',
-    ), n_jobs=-1)
-    
-    my_classifier.fit(feature_mat_train, labels_train)
-    
-    # Pickle everything that will be needed for classification:
-    with open('classifier.p', 'wb') as f:
-        pickle.dump(my_classifier, f)
-    with open('dict_vectorizer.p', 'wb') as f:
-        pickle.dump(my_dict_vectorizer, f)
-    with open('keyword_array.p', 'wb') as f:
-        pickle.dump(keyword_array, f)
-    # Reload variables from pickles to test them:
-    with open('classifier.p') as f:
-        my_classifier = pickle.load(f)
-    with open('dict_vectorizer.p') as f:
-        my_dict_vectorizer = pickle.load(f)
-    with open('keyword_array.p') as f:
-        keyword_array = pickle.load(f)
-    
-    my_diagnoser = Diagnoser(
-        my_classifier,
-        my_dict_vectorizer,
-        keyword_array=keyword_array,
-        cutoff_ratio=.7
-    )
-    with warnings.catch_warnings():
-        # The updated version of scikit will spam warnings here.
-        warnings.simplefilter("ignore")
-        training_predictions = [
-            tuple([
-                my_diagnoser.classifier.classes_[i]
-                for i, p in my_diagnoser.best_guess(X)
-            ])
-            for X in feature_mat_train
-        ]
-        print "Training set (macro avg):\nprecision: %s recall: %s f-score: %s" %\
-            sklearn.metrics.precision_recall_fscore_support(
-                map(tuple, labels_train),
-                training_predictions,
-                average='macro'
-            )[0:3]
-        
-        predictions = [
-            tuple([
-                my_diagnoser.classifier.classes_[i]
-                for i, p in my_diagnoser.best_guess(X)
-            ])
-            for X in feature_mat_validation
-        ]
+    predictions = [
+        whoosh_search.search(r['cleanContent'])
+        for r in resources_validation
+    ]
+    predictions = [
+        tuple(get_disease_parents(p[0][0]) + [p[0][0]]) if len(p) > 0 else tuple()
+        for p in predictions
+    ]
     # I've noticed that the macro f-score is not the harmonic mean of the percision
     # and recall. Perhaps this could be a result of the macro f-score being computed 
     # as an average of f-scores.
@@ -321,6 +262,13 @@ def train(debug):
         for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
             print cl
             print "precision:",p,"recall",r,"F-score:",f,"support:",s
+
+        for l, p, r in zip(
+            labels_validation,
+            predictions,
+            resources_validation
+        )[:20]:
+            print l, p, resource_url(r)
 
 if __name__ == '__main__':
     import argparse
