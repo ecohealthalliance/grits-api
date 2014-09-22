@@ -10,6 +10,7 @@ import datetime
 from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
 from annotator.case_count_annotator import CaseCountAnnotator
+from annotator.keyword_annotator import KeywordAnnotator
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -32,6 +33,7 @@ class Diagnoser():
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.case_count_annotator = CaseCountAnnotator()
+        self.keyword_annotator = KeywordAnnotator()
         self.keyword_categories = keyword_categories if keyword_categories else {}
         processing_pipeline = []
         if keyword_links:
@@ -52,6 +54,7 @@ class Diagnoser():
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
         feature_dict = self.keyword_processor.transform([base_keyword_dict])
         X = self.dict_vectorizer.transform(feature_dict)[0]
+
         logger.info(time_sofar.next() + 'Computed feature vector')
         def diagnosis(i, p):
             scores = self.classifier.coef_[i] * X
@@ -61,16 +64,17 @@ class Diagnoser():
             if norm > 0:
                scores /= norm
             scores *= p
+
             scored_keywords = zip(self.keywords, scores)
+            keyword_scores = {}
+            for keyword, score in scored_keywords:
+                if score > 0 and keyword in base_keyword_dict:
+                    keyword_scores[keyword] = float(score)
+
             return {
                 'name' : self.classifier.classes_[i],
                 'probability' : p,
-                'keywords' : [{
-                        'name' : kwd,
-                        'score' : float(score),
-                    }
-                    for kwd, score in scored_keywords
-                    if score > 0 and kwd in base_keyword_dict],
+                'scored_keywords': scored_keywords,
                 'inferred_keywords' : [{
                         'name' : kwd,
                         'score' : score,
@@ -114,25 +118,38 @@ class Diagnoser():
                 })
         logger.info(time_sofar.next() + 'Extracted case counts')
 
+        anno_doc.add_tier(self.keyword_annotator)
+        keyword_types = ['diseases', 'hosts', 'modes', 'pathogens', 'symptoms']
+        keyword_groups = {}
+        for keyword_type in keyword_types:
+            keyword_groups[keyword_type] = {}
+            for span in anno_doc.tiers[keyword_type].spans:
+                if not span.label in keyword_groups[keyword_type]:
+                    keyword_groups[keyword_type][span.label] = {
+                        'type': keyword_type,
+                        'value': span.label,
+                        'textOffsets': [[span.start, span.end]]
+                    }
+                else:
+                    keyword_groups[keyword_type][span.label]['textOffsets'].append(
+                        [span.start, span.end]
+                    )
+
         extracted_dates = list(feature_extractors.extract_dates(content))
         logger.info(time_sofar.next() + 'Extracted dates')
+
         return {
             'diagnoserVersion' : self.__version__,
             'dateOfDiagnosis' : datetime.datetime.now(),
-            'keywords_found' : [
-                {
-                    'name' : keyword,
-                    'count' : count,
-                    'categories' : [cat
-                            for cat, kws in self.keyword_categories.items()
-                            if keyword in kws]
-                }
-                for keyword, count in base_keyword_dict.items()
-            ],
             'diseases': diseases,
             'features': extracted_dates +\
-                case_counts +\
-                geonames_grouped.values()
+                        case_counts +\
+                        geonames_grouped.values() +\
+                        keyword_groups['diseases'].values() +\
+                        keyword_groups['hosts'].values() +\
+                        keyword_groups['modes'].values() +\
+                        keyword_groups['pathogens'].values() +\
+                        keyword_groups['symptoms'].values()
         }
 
 if __name__ == '__main__':
