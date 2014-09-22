@@ -38,9 +38,9 @@ if __name__ == '__main__':
     category_labels = [
         ('diseases', ['doid/diseases', 'pm/disease']),
         ('symptoms', ['biocaster/symptoms', 'doid/has_symptom', 'pm/symptom', 'symp/symptoms']),
-        ('hosts', ['doid/transmitted_by', 'wordnet/hosts']),
+        ('hosts', ['wordnet/hosts']),
         ('pathogens', ['wordnet/pathogens', 'biocaster/pathogens']),
-        ('modes', ['pm/mode of transmission'])
+        ('modes', ['pm/mode of transmission', 'doid/transmitted_by'])
     ]
 
     for category, labels in category_labels:
