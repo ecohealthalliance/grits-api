@@ -64,16 +64,16 @@ class Diagnoser():
     def best_guess(self, X):
         probs = self.classifier.predict_proba(X)[0]
         p_max = max(probs)
-        result = set()
+        result = {}
         for i,p in enumerate(probs):
             cutoff_ratio = self.cutoff_ratio
             parents = get_disease_parents(self.classifier.classes_[i])
             if p >= p_max * self.cutoff_ratio:
-                result.add((i,p))
+                result[i] = max(p, result.get(i, 0))
                 for i2, label in enumerate(self.classifier.classes_):
                     if label in parents:
-                        result.add((i2,max(p, probs[i2])))
-        return list(result)
+                        result[i2] = max(p, probs[i2], result.get(i2, 0))
+        return result.items()
     def diagnose(self, content):
         time_sofar = time_sofar_gen(datetime.datetime.now())
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
