@@ -86,6 +86,7 @@ labels_to_omit = [
 # Should we omit these?:
 # Foodborne Illness
 # Parotitis
+# Hospital-Related Infection
 
 def get_features_and_classifications(
     feature_dicts,
