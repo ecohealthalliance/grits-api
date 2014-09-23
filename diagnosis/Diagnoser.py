@@ -146,7 +146,8 @@ class Diagnoser():
             times_grouped = {}
             for span in anno_doc.tiers['times'].spans:
                 # TODO -- how should we handle DURATION and other exotice date types?
-                if span.type == 'DATE':
+                # Ignore them for now, only take DATEs that have a timePoint
+                if span.type == 'DATE' and 'timePoint' in span:
                     if not span.label in times_grouped:
                         times_grouped[span.label] = {
                             'type': 'datetime',
