@@ -29,6 +29,15 @@ curdir = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(curdir, "../diseaseToParent.yaml")) as f:
     disease_to_parent = yaml.load(f)
 
+def get_disease_parents(disease):
+    parents = []
+    parent = disease_to_parent.get(disease)
+    if parent:
+        parents.append(parent)
+        while parents[-1] in disease_to_parent:
+            parents.append(disease_to_parent[parents[-1]])
+    return parents
+
 class Diagnoser():
 
     __version__ = '0.1.2'
@@ -59,15 +68,10 @@ class Diagnoser():
         result = set()
         for i,p in enumerate(probs):
             cutoff_ratio = self.cutoff_ratio
-            parent = disease_to_parent.get(self.classifier.classes_[i])
-            parents = []
-            if parent:
-                parents.append(parent)
-                while parents[-1] in disease_to_parent:
-                    parents.append(disease_to_parent[parents[-1]])
+            parents = get_disease_parents(self.classifier.classes_[i])
             if p >= p_max * self.cutoff_ratio:
                 result.add((i,p))
-                for i2, label in enumerate(self.classifier.classes_.tolist()):
+                for i2, label in enumerate(self.classifier.classes_):
                     if label in parents:
                         result.add((i2,max(p, probs[i2])))
         return list(result)

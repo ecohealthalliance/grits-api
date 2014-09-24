@@ -9,33 +9,45 @@ class LowerKeyDict(dict):
         return self.store[key.lower()]
 
 class KeywordExtractor():
-    """
-    Does case insensitive matching and all returned keywords are lowercase.
-    Keyword set is *not* culled during the fit operation.
-    """
     def __init__(self, keyword_array):
+        # The CountVectorizer will pick up overlapping keywords, so for example
+        # we will pickup "Foot and Mouth", "Hand, Foot and Mouth"
+        # If we had a way to rule out matches like this we might see better perf.
+        
+        # Default token pattern requires word length of 2
+        # so it can't extract "Hepatitis A"
+        token_pattern = r'(?u)\b\w+\b'
+        case_sensitive_analyser = CountVectorizer(
+            token_pattern=token_pattern,
+            lowercase=False
+        ).build_analyzer()
+        case_insensitive_analyser = CountVectorizer(
+            token_pattern=token_pattern,
+        ).build_analyzer()
         case_sensitive = set()
         not_case_sensitive = set()
         for kw_obj in keyword_array:
             keyword = kw_obj['keyword']
             if kw_obj['case_sensitive']:
-                case_sensitive.add(keyword)
+                case_sensitive.add(' '.join(case_sensitive_analyser(keyword)))
             else:
-                not_case_sensitive.add(keyword.lower())
-        
-        self.case_insensitive_vectorizer = CountVectorizer(
-            vocabulary=not_case_sensitive,
-            ngram_range=(1, 4)
-        )
+                not_case_sensitive.add(' '.join(case_insensitive_analyser(keyword)))
         self.case_sensitive_vectorizer = CountVectorizer(
             vocabulary=case_sensitive,
             ngram_range=(1, 1),
+            token_pattern=token_pattern,
             lowercase=False
         )
+        self.case_insensitive_vectorizer = CountVectorizer(
+            vocabulary=not_case_sensitive,
+            token_pattern=token_pattern,
+            ngram_range=(1, 5)
+        )
+
     def fit(self, X, y):
         pass
     def transform_with_vectorizer(self, vectorizer, texts):
-        mat = vectorizer.transform(texts)
+        mat = vectorizer.fit_transform(texts)
         vocab = vectorizer.get_feature_names()
         out_dicts = []
         for r in range(mat.shape[0]):
