@@ -163,6 +163,24 @@ def train(debug):
         if keyword_obj['category'] in categories
     ]
     
+    from sklearn.feature_extraction.text import CountVectorizer
+    vocab_extractor = CountVectorizer(
+        ngram_range=(1, 3),
+        min_df=0.05,
+        max_df=0.06,
+    ).fit([
+        r['cleanContent'] for r in training_set
+    ])
+    keyword_array += [
+        {
+            'keyword' : keyword,
+            'category' : 'misc',
+            'case_sensitive' : False,
+            'linked_keywords' : []
+        }
+        for keyword in vocab_extractor.vocabulary_
+    ]
+    
     # Keyword Extraction
     extract_features = Pipeline([
         ('kwext', KeywordExtractor(keyword_array)),

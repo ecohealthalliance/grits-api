@@ -45,7 +45,6 @@ class KeywordExtractor():
             token_pattern=token_pattern,
             ngram_range=(1, 5)
         )
-
     def fit(self, X, y):
         pass
     def transform_with_vectorizer(self, vectorizer, texts):
