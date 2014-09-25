@@ -14,9 +14,11 @@ class KeywordExtractor():
         # we will pickup "Foot and Mouth", "Hand, Foot and Mouth"
         # If we had a way to rule out matches like this we might see better perf.
         
-        # Default token pattern requires word length of 2
-        # so it can't extract "Hepatitis A"
-        token_pattern = r'(?u)\b\w+\b'
+        # We use a custom token pattern because the default requires word length
+        # of 2 so it can't extract "Hepatitis A"
+        # The http pattern is used to tokenize URLs.
+        # It might be better to remove them during preprocessing.
+        token_pattern = r'(?u)\b(?:(?:http\S+)|\w+)\b'
         case_sensitive_analyser = CountVectorizer(
             token_pattern=token_pattern,
             lowercase=False

@@ -22,3 +22,9 @@ class TestDiagnoser(unittest.TestCase):
         diagnosis = self.my_diagnoser.diagnose("Hepatitis B, Hepatitis C, and Hepatitis D and Hepatitis E")
         diseases = [d['name'] for d in diagnosis['diseases']]
         self.assertEqual(len(diseases), len(set(diseases)))
+        
+    def test_url_keywords(self):
+        diagnosis = self.my_diagnoser.diagnose(
+        "A map of Kazakhstan, showing the Akmola region UN-B in the north, can be found at: http://un-dx.ucoz.com/KZ-MAP.gif"
+        )
+        assert 'MAP' not in set([kw['name'] for kw in diagnosis['keywords_found']])
