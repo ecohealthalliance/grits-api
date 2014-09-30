@@ -1,3 +1,4 @@
+import os
 import celery
 import json
 import bson
@@ -48,12 +49,13 @@ celery_tasks.conf.update(
 db_handle = pymongo.Connection(config.mongo_url)
 girder_db = db_handle['girder']
 
+_module_path = os.path.dirname(os.path.abspath(__file__))
 from diagnosis.Diagnoser import Diagnoser
-with open('classifier.p') as f:
+with open(os.path.join(_module_path, 'classifier.p')) as f:
     my_classifier = pickle.load(f)
-with open('dict_vectorizer.p') as f:
+with open(os.path.join(_module_path, 'dict_vectorizer.p')) as f:
     my_dict_vectorizer = pickle.load(f)
-with open('keyword_array.p') as f:
+with open(os.path.join(_module_path, 'keyword_array.p')) as f:
     keyword_array = pickle.load(f)
 my_diagnoser = Diagnoser(
     my_classifier,
