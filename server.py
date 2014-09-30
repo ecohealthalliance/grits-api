@@ -17,6 +17,8 @@ import tornado.web
 import urlparse
 import re
 
+from server_support import handleDiagnosis
+
 class DiagnoseHandler(tornado.web.RequestHandler):
     public = False
     @tornado.web.asynchronous
@@ -26,78 +28,36 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             params = json.loads(self.request.body)
         except ValueError as e:
             params = {}
-        
+
         content = self.get_argument('content', params.get('content'))
         url = self.get_argument('url', params.get('url'))
-        
-        if content:
-            task = celery.chain(
-                tasks.diagnose.s({
-                    'cleanContent' : dict(content=content)
-                }).set(queue='priority')
-            )()
-        elif url:
-            hostname = ""
-            try:
-                hostname = urlparse.urlparse(url).hostname or ""
-            except:
-                pass
-            # Only allow hostnames that end with .word
-            # This is to avoid the security vulnerability Russ pointed out where
-            # we could end up scrapping localhost or IP addresses that should
-            # not be publicly accessible.
-            if not re.match(r".+\.\D+", hostname):
+
+        statusCallback = handleDiagnosis(content=content, url=url)
+
+        def checkStatus():
+            statusObj = statusCallback()
+
+            if statusObj["status"] == "failure":
                 self.write({
-                    'error' : "Invalid URL"
+                    "error": statusObj["message"]
                 })
-                self.set_header("Content-Type", "application/json")  
+                self.set_header("Content-Type", "application/json")
                 self.finish()
-                return
-            
-            task = celery.chain(
-                tasks.scrape.s(url).set(queue='priority'),
-                tasks.process_text.s().set(queue='priority'),
-                tasks.diagnose.s().set(queue='priority')
-            )()
-        else:
-            self.write({
-                'error' : "Please provide a url or content to diagnose."
-            })
-            self.set_header("Content-Type", "application/json")  
-            self.finish()
-            return
-        
-        # Create a result set so we can check all the tasks in the chain for
-        # failure status.
-        results = []
-        r = task
-        while r.parent:
-            results.append(r.parent)
-            r = r.parent
-        res_set = celery.result.ResultSet(results)
-        
-        def check_celery_task():
-            if res_set.ready() or res_set.failed():
-                try:
-                    resp = task.get()
-                except Exception as e:
-                    self.write({
-                        'error' : unicode(e)
-                    })
-                    self.set_header("Content-Type", "application/json")  
-                    self.finish()
-                    return
-                if not self.public and task.parent:
-                    resp['scrapedData'] = task.parent.get()
-                self.write(resp)
-                self.set_header("Content-Type", "application/json")  
+            elif statusObj["status"] == "success":
+                response = statusObj["result"]
+
+                if not self.public:
+                    response["scrapedData"] = statusObj["content"]
+
+                self.write(response)
+                self.set_header("Content-Type", "application/json")
                 self.finish()
             else:
                 tornado.ioloop.IOLoop.instance().add_timeout(
-                    datetime.timedelta(0,1), check_celery_task
+                    datetime.timedelta(0, 1), checkStatus
                 )
 
-        check_celery_task()
+        checkStatus()
 
     @tornado.web.asynchronous
     def post(self):
