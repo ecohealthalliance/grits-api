@@ -34,6 +34,10 @@ Install the pip requirements:
 
 Get the [annie](https://github.com/ecohealthalliance/annie) project and make sure it's in your pythonpath.
 
+Start a celery worker:
+
+	$ celery worker -A tasks -Q priority --loglevel=INFO --concurrency=2
+
 Start the server:
 
 	$ python server.py
@@ -81,6 +85,10 @@ Import Geonames data into Mongo and prepare the training data.
     ./import_geonames.sh
     python train.py
     
+Start a celery worker.
+
+    celery worker -A tasks -Q priority --loglevel=INFO --concurrency=2
+
 Start the server.
 
     python server.py
