@@ -26,10 +26,9 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             params = json.loads(self.request.body)
         except ValueError as e:
             params = {}
-        
+
         content = self.get_argument('content', params.get('content'))
         url = self.get_argument('url', params.get('url'))
-        
         if content:
             task = celery.chain(
                 tasks.diagnose.s({
@@ -50,10 +49,10 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 self.write({
                     'error' : "Invalid URL"
                 })
-                self.set_header("Content-Type", "application/json")  
+                self.set_header("Content-Type", "application/json")
                 self.finish()
                 return
-            
+
             task = celery.chain(
                 tasks.scrape.s(url).set(queue='priority'),
                 tasks.process_text.s().set(queue='priority'),
@@ -63,19 +62,19 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             self.write({
                 'error' : "Please provide a url or content to diagnose."
             })
-            self.set_header("Content-Type", "application/json")  
+            self.set_header("Content-Type", "application/json")
             self.finish()
             return
-        
+
         # Create a result set so we can check all the tasks in the chain for
         # failure status.
-        results = []
         r = task
+        results = [r]
         while r.parent:
             results.append(r.parent)
             r = r.parent
         res_set = celery.result.ResultSet(results)
-        
+
         def check_celery_task():
             if res_set.ready() or res_set.failed():
                 try:
@@ -84,13 +83,13 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                     self.write({
                         'error' : unicode(e)
                     })
-                    self.set_header("Content-Type", "application/json")  
+                    self.set_header("Content-Type", "application/json")
                     self.finish()
                     return
                 if not self.public and task.parent:
                     resp['scrapedData'] = task.parent.get()
                 self.write(resp)
-                self.set_header("Content-Type", "application/json")  
+                self.set_header("Content-Type", "application/json")
                 self.finish()
             else:
                 tornado.ioloop.IOLoop.instance().add_timeout(
