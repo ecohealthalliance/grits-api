@@ -40,6 +40,8 @@ Start a celery worker:
 
 Start the server:
 
+	# The -debug flag will run a celery worker synchronously in the same process,
+	# so you can debug without starting a separate worker process.
 	$ python server.py
 
 ## Full setup with virtualenv
