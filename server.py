@@ -17,6 +17,8 @@ import tornado.web
 import urlparse
 import re
 
+from annotator import prof
+
 class DiagnoseHandler(tornado.web.RequestHandler):
     public = False
     @tornado.web.asynchronous
@@ -122,10 +124,36 @@ class TestHandler(tornado.web.RequestHandler):
     def post(self):
         return self.get()
 
+class CprofileStatsHandler(tornado.web.RequestHandler):
+    public = True
+    @tornado.web.asynchronous
+    def get(self):
+        api_key = self.get_argument('api_key')
+        sort_by = self.get_argument('sort_by', 'cumulative_time')
+        if api_key == config.api_key:
+            self.write(prof.get_cprofile_stats_table(sort_by=sort_by))
+            self.finish()
+        else:
+            self.send_error(401)
+
+class StatsHandler(tornado.web.RequestHandler):
+    public = True
+    @tornado.web.asynchronous
+    def get(self):
+        api_key = self.get_argument('api_key')
+        sort_by = self.get_argument('sort_by', 'cumulative_time')
+        if api_key == config.api_key:
+            self.write(prof.get_stats_table(sort_by=sort_by))
+            self.finish()
+        else:
+            self.send_error(401)
+
 application = tornado.web.Application([
     (r"/test", TestHandler),
     (r"/diagnose", DiagnoseHandler),
-    (r"/public_diagnose", PublicDiagnoseHandler)
+    (r"/public_diagnose", PublicDiagnoseHandler),
+    (r"/cprofile_stats", CprofileStatsHandler),
+    (r"/stats", StatsHandler)
 ])
 
 if __name__ == "__main__":
