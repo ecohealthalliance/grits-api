@@ -124,26 +124,26 @@ class TestHandler(tornado.web.RequestHandler):
     def post(self):
         return self.get()
 
-class CprofileStatsHandler(tornado.web.RequestHandler):
+class CprofileHandler(tornado.web.RequestHandler):
     public = True
     @tornado.web.asynchronous
     def get(self):
         api_key = self.get_argument('api_key')
         sort_by = self.get_argument('sort_by', 'cumulative_time')
         if api_key == config.api_key:
-            self.write(prof.get_cprofile_stats_table(sort_by=sort_by))
+            self.write(prof.get_cprofile_table(sort_by=sort_by))
             self.finish()
         else:
             self.send_error(401)
 
-class StatsHandler(tornado.web.RequestHandler):
+class ProfileHandler(tornado.web.RequestHandler):
     public = True
     @tornado.web.asynchronous
     def get(self):
         api_key = self.get_argument('api_key')
         sort_by = self.get_argument('sort_by', 'cumulative_time')
         if api_key == config.api_key:
-            self.write(prof.get_stats_table(sort_by=sort_by))
+            self.write(prof.get_profile_table(sort_by=sort_by))
             self.finish()
         else:
             self.send_error(401)
@@ -152,8 +152,8 @@ application = tornado.web.Application([
     (r"/test", TestHandler),
     (r"/diagnose", DiagnoseHandler),
     (r"/public_diagnose", PublicDiagnoseHandler),
-    (r"/cprofile_stats", CprofileStatsHandler),
-    (r"/stats", StatsHandler)
+    (r"/cprofile", CprofileHandler),
+    (r"/profile", ProfileHandler)
 ])
 
 if __name__ == "__main__":
