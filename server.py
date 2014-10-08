@@ -21,6 +21,7 @@ from annotator import prof
 
 class DiagnoseHandler(tornado.web.RequestHandler):
     public = False
+    @prof.CProfiled('grits-api')
     @tornado.web.asynchronous
     def get(self):
         # Try to parse the json bodies submitted by the diagnostic dash:
@@ -124,18 +125,6 @@ class TestHandler(tornado.web.RequestHandler):
     def post(self):
         return self.get()
 
-class CprofileHandler(tornado.web.RequestHandler):
-    public = True
-    @tornado.web.asynchronous
-    def get(self):
-        api_key = self.get_argument('api_key')
-        sort_by = self.get_argument('sort_by', 'cumulative_time')
-        if api_key == config.api_key:
-            self.write(prof.get_cprofile_table(sort_by=sort_by))
-            self.finish()
-        else:
-            self.send_error(401)
-
 class ProfileHandler(tornado.web.RequestHandler):
     public = True
     @tornado.web.asynchronous
@@ -148,12 +137,51 @@ class ProfileHandler(tornado.web.RequestHandler):
         else:
             self.send_error(401)
 
+class ClearProfileHandler(tornado.web.RequestHandler):
+    public = True
+    @tornado.web.asynchronous
+    def get(self):
+        api_key = self.get_argument('api_key')
+        if api_key == config.api_key:
+            prof.clear_profile()
+            self.redirect('/profile?api_key=' + api_key)
+            self.finish()
+        else:
+            self.send_error(401)
+
+class CprofileHandler(tornado.web.RequestHandler):
+    public = True
+    @tornado.web.asynchronous
+    def get(self):
+        api_key = self.get_argument('api_key')
+        sort_by = self.get_argument('sort_by', 'cumulative_time')
+        if api_key == config.api_key:
+            self.write(prof.get_cprofile_table(sort_by=sort_by))
+            self.finish()
+        else:
+            self.send_error(401)
+
+class ClearCProfileHandler(tornado.web.RequestHandler):
+    public = True
+    @tornado.web.asynchronous
+    def get(self):
+        api_key = self.get_argument('api_key')
+        if api_key == config.api_key:
+            prof.clear_cprofile()
+            self.redirect('/cprofile?api_key=' + api_key)
+            self.finish()
+        else:
+            self.send_error(401)
+
+
 application = tornado.web.Application([
     (r"/test", TestHandler),
     (r"/diagnose", DiagnoseHandler),
     (r"/public_diagnose", PublicDiagnoseHandler),
+    (r"/profile", ProfileHandler),
     (r"/cprofile", CprofileHandler),
-    (r"/profile", ProfileHandler)
+    (r"/clear_profile", ClearProfileHandler),
+    (r"/clear_cprofile", ClearCProfileHandler)
 ])
 
 if __name__ == "__main__":
