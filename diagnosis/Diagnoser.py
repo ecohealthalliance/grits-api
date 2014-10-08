@@ -10,7 +10,7 @@ import datetime
 from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
 from annotator.case_count_annotator import CaseCountAnnotator
-from annotator.patient_info_annotator import PatientInfoAnnotator
+# from annotator.patient_info_annotator import PatientInfoAnnotator
 from annotator.jvm_nlp_annotator import JVMNLPAnnotator
 
 import logging
@@ -52,7 +52,7 @@ class Diagnoser():
         self.geoname_annotator = GeonameAnnotator()
         self.case_count_annotator = CaseCountAnnotator()
         # TODO: Rename patient info annotator
-        self.keypoint_annotator = PatientInfoAnnotator()
+        # self.keypoint_annotator = PatientInfoAnnotator()
         self.jvm_nlp_annotator = JVMNLPAnnotator(['times'])
         processing_pipeline = []
         processing_pipeline.append(('link', LinkedKeywordAdder(keyword_array)))
@@ -168,42 +168,42 @@ class Diagnoser():
         except Exception as e:
             times_grouped = {}
             logger.error(
-                time_sofar.next() + 
+                time_sofar.next() +
                 'Could not annotate times, ' +
                 'the JVM time extraction server might not be running.' +
                 '\nException:\n' + str(e)
             )
 
-        anno_doc.add_tier(self.keypoint_annotator, keyword_categories={
-            'occupation' : [
-                kw['keyword'] for kw in self.keyword_array
-                if 'occupation' in kw['category']
-            ],
-            'host' : [
-                kw['keyword'] for kw in self.keyword_array
-                if 'host' in kw['category']
-            ],
-            'risk' : [
-                kw['keyword'] for kw in self.keyword_array
-                if 'risk' in kw['category']
-            ],
-            'symptom' : [
-                kw['keyword'] for kw in self.keyword_array
-                if 'symptom' in kw['category']
-            ],
-            'location' : anno_doc.tiers['geonames'].spans,
-            'time' : anno_doc.tiers['times'].spans if 'times' in anno_doc.tiers else [],
-        })
-        keypoints = []
-        for span in anno_doc.tiers['patientInfo'].spans:
-            keypoints.append(
-                dict(
-                    span.metadata,
-                    type='patientInfo',
-                    textOffsets=[[span.start, span.end]]
-                )
-            )
-        logger.info(time_sofar.next() + 'Extracted patient info')
+        # anno_doc.add_tier(self.keypoint_annotator, keyword_categories={
+        #     'occupation' : [
+        #         kw['keyword'] for kw in self.keyword_array
+        #         if 'occupation' in kw['category']
+        #     ],
+        #     'host' : [
+        #         kw['keyword'] for kw in self.keyword_array
+        #         if 'host' in kw['category']
+        #     ],
+        #     'risk' : [
+        #         kw['keyword'] for kw in self.keyword_array
+        #         if 'risk' in kw['category']
+        #     ],
+        #     'symptom' : [
+        #         kw['keyword'] for kw in self.keyword_array
+        #         if 'symptom' in kw['category']
+        #     ],
+        #     'location' : anno_doc.tiers['geonames'].spans,
+        #     'time' : anno_doc.tiers['times'].spans if 'times' in anno_doc.tiers else [],
+        # })
+        # keypoints = []
+        # for span in anno_doc.tiers['patientInfo'].spans:
+        #     keypoints.append(
+        #         dict(
+        #             span.metadata,
+        #             type='patientInfo',
+        #             textOffsets=[[span.start, span.end]]
+        #         )
+        #     )
+        # logger.info(time_sofar.next() + 'Extracted patient info')
 
         return {
             'diagnoserVersion' : self.__version__,
@@ -221,10 +221,10 @@ class Diagnoser():
                 for keyword, count in base_keyword_dict.items()
             ],
             'diseases': diseases,
-            'keypoints' : keypoints,
+            # 'keypoints' : keypoints,
             'features': (
                 case_counts +
-                times_grouped.values() + 
+                times_grouped.values() +
                 geonames_grouped.values()
             )
         }
