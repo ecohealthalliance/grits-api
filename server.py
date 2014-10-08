@@ -17,11 +17,8 @@ import tornado.web
 import urlparse
 import re
 
-from annotator import prof
-
 class DiagnoseHandler(tornado.web.RequestHandler):
     public = False
-    @prof.CProfiled('grits-api')
     @tornado.web.asynchronous
     def get(self):
         # Try to parse the json bodies submitted by the diagnostic dash:
