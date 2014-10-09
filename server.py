@@ -17,6 +17,8 @@ import tornado.web
 import urlparse
 import re
 
+from annotator import prof
+
 class DiagnoseHandler(tornado.web.RequestHandler):
     public = False
     @tornado.web.asynchronous
