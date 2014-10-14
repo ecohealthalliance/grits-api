@@ -43,7 +43,13 @@ class TestDiagnoser(unittest.TestCase):
         )
         diseases = [d['name'] for d in diagnosis['diseases']]
         self.assertEqual(len(diseases), len(set(diseases)))
-        
+    
+    def test_duplicate_kw_categories(self):
+        diagnosis = self.my_diagnoser.diagnose("influenza")
+        category_sets = [kw['categories'] for kw in diagnosis['keywords_found']]
+        for s in category_sets:
+            self.assertEqual(len(s), len(set(s)))
+    
     def test_url_keywords(self):
         diagnosis = self.my_diagnoser.diagnose(
         "A map showing the Akmola region UN-B can be found at: http://un-dx.ucoz.com/KZ-MAP.gif"
@@ -65,4 +71,3 @@ class TestDiagnoser(unittest.TestCase):
                 (datetime.utcnow() - start),
                 timedelta(seconds=30)
             )
-

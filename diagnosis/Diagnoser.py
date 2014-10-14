@@ -198,11 +198,11 @@ class Diagnoser():
                 {
                     'name' : unicode(keyword),
                     'count' : int(count),
-                    'categories' : [
+                    'categories' : list(set([
                         kw['category']
                         for kw in self.keyword_array
                         if kw['keyword'].lower() == keyword.lower()
-                    ]
+                    ]))
                 }
                 for keyword, count in base_keyword_dict.items()
             ],
