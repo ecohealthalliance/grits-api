@@ -1,7 +1,26 @@
+# coding=utf8
 import os, sys; sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import unittest
 import pickle
 from diagnosis.Diagnoser import Diagnoser
+import datetime, bson
+def make_json_compat(obj):
+    """
+    Coerce the types in an object to values that can be jsonified.
+    """
+    base_types = [str, unicode, basestring, bool, int, long, float, type(None)]
+    if type(obj) in base_types:
+        return obj
+    elif isinstance(obj, list):
+        return map(make_json_compat, obj)
+    elif isinstance(obj, dict):
+        return { k : make_json_compat(v) for k,v in obj.items() }
+    elif isinstance(obj, datetime.datetime):
+        return obj.isoformat()
+    elif isinstance(obj, bson.ObjectId):
+        return str(obj)
+    else:
+        raise TypeError(type(obj))
 
 class TestDiagnoser(unittest.TestCase):
     def setUp(self):
@@ -19,6 +38,36 @@ class TestDiagnoser(unittest.TestCase):
         )
         
     def test_duplicate_parents(self):
-        diagnosis = self.my_diagnoser.diagnose("Hepatitis B, Hepatitis C, and Hepatitis D and Hepatitis E")
+        diagnosis = self.my_diagnoser.diagnose(
+            "Hepatitis B, Hepatitis C, and Hepatitis D and Hepatitis E"
+        )
         diseases = [d['name'] for d in diagnosis['diseases']]
         self.assertEqual(len(diseases), len(set(diseases)))
+    
+    def test_duplicate_kw_categories(self):
+        diagnosis = self.my_diagnoser.diagnose("influenza")
+        category_sets = [kw['categories'] for kw in diagnosis['keywords_found']]
+        for s in category_sets:
+            self.assertEqual(len(s), len(set(s)))
+    
+    def test_url_keywords(self):
+        diagnosis = self.my_diagnoser.diagnose(
+        "A map showing the Akmola region UN-B can be found at: http://un-dx.ucoz.com/KZ-MAP.gif"
+        )
+        assert 'MAP' not in set([kw['name'] for kw in diagnosis['keywords_found']])
+
+    def test_timing_and_serialization(self):
+        from datetime import datetime, timedelta
+        import logging
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger('diagnosis.Diagnoser')
+        logger.setLevel(logging.INFO)
+        start = datetime.utcnow()
+        import codecs
+        with codecs.open('test_article.txt', encoding='utf-8') as f:
+            diagnosis = self.my_diagnoser.diagnose(f.read())
+            make_json_compat(diagnosis)
+            self.assertLess(
+                (datetime.utcnow() - start),
+                timedelta(seconds=30)
+            )
