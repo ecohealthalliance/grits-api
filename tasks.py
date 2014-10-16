@@ -11,6 +11,12 @@ import config
 import microsofttranslator
 import logging
 import datetime
+from corpora.process_resources import extract_clean_content, attach_translations
+from corpora import translation as translation_lib
+import corpora.scrape as scraper
+consecutive_exceptions = 0
+processor_version = '0.0.2'
+
 def make_json_compat(obj):
     """
     Coerce the types in an object to values that can be jsonified.
@@ -96,6 +102,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
             .get('cleanContent', {})\
             .get('content')
     if clean_english_content:
+        logger.info('Diagnosing text:\n' + clean_english_content)
         meta['diagnosis'] = my_diagnoser.diagnose(clean_english_content)
     else:
         meta['diagnosis'] = { 'error' : 'No content available to diagnose.' }
@@ -112,11 +119,6 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     girder_db['diagnosisLog'].insert(logged_resource)
     return make_json_compat(resource)
 
-from corpora.process_resources import extract_clean_content, attach_translations
-from corpora import translation as translation_lib
-import corpora.scrape as scraper
-consecutive_exceptions = 0
-processor_version = '0.0.2'
 @celery_tasks.task
 def process_girder_resource(item_id=None):
     """
@@ -124,11 +126,24 @@ def process_girder_resource(item_id=None):
     Update the entry with the results, then update it with cleaned and 
     translated versions of the scraped content.
     """
+    logger.info('Processing girder resource:' + item_id)
     item_id = bson.ObjectId(item_id)
     global processor_version
     resource = girder_db.item.find_one(item_id)
     private = resource['private'] = resource.get('private', {})
+    
+    
+    if StrictVersion(private['processorVersion']) >=\
+       StrictVersion(processor_version):
+        # Don't reprocess the article if the processor hasn't changed,
+        # unless there was an error during translation.
+        if private.get('englishTranslation', {}).get('error'):
+            pass
+        else:
+            return make_json_compat(resource)
+    
     private['processorVersion'] = processor_version
+    
     meta = resource['meta']
     rm_key(meta, 'processing')
     # Unset the diagnosis because the content might have changed.
@@ -215,7 +230,38 @@ def process_text(text_obj):
         text_obj['cleanContent'] = { 'error' : "Could not clean content." }
     else:
         text_obj['cleanContent'] = { 'content' : clean_content }
-    # TODO: Add translation
+    if not translation_lib.is_english(clean_content):
+        global consecutive_exceptions
+        if consecutive_exceptions > 4:
+            # Back off when we reach more than 4 consecutive exceptions
+            # because we probably hit the api limit.
+            text_obj['englishTranslation'] = {
+                'error' : 'Too many consecutive exceptions'
+            }
+        else:
+            try:
+                translation_api = microsofttranslator.Translator(
+                    config.bing_translate_id,
+                    config.bing_translate_secret)
+                translation = translation_api.translate(clean_content, 'en')
+                if translation.startswith("TranslateApiException:"):
+                    raise microsofttranslator.TranslateApiException(
+                        translation.split("TranslateApiException:")[1]) 
+                private['englishTranslation'] = {
+                    'content' : translation,
+                    'translationDate' : datetime.datetime.now(),
+                    'translationService' : 'microsoft'
+                }
+                logger.info('Translated text')
+                consecutive_exceptions = 0
+            except microsofttranslator.TranslateApiException as e:
+                consecutive_exceptions += 1
+                logger.error('Exception during translation: ' +\
+                    unicode(consecutive_exceptions) + ' total: ' +\
+                    unicode(e))
+                private['englishTranslation'] = {
+                    'error' : 'Exception during translation.'
+                }
     return text_obj
 
 @celery_tasks.task
@@ -226,6 +272,7 @@ def diagnose(text_obj):
     else:
         clean_english_content = text_obj.get('cleanContent', {}).get('content')
     if clean_english_content:
+        logger.info('Diagnosing text:\n' + clean_english_content)
         return make_json_compat(my_diagnoser.diagnose(clean_english_content))
     else:
         return { 'error' : 'No content available to diagnose.' }
