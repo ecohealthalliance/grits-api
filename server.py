@@ -17,6 +17,8 @@ import tornado.web
 import urlparse
 import re
 
+from annotator import prof
+
 class DiagnoseHandler(tornado.web.RequestHandler):
     public = False
     @tornado.web.asynchronous
@@ -122,10 +124,63 @@ class TestHandler(tornado.web.RequestHandler):
     def post(self):
         return self.get()
 
+class ProfileHandler(tornado.web.RequestHandler):
+    public = True
+    @tornado.web.asynchronous
+    def get(self):
+        api_key = self.get_argument('api_key')
+        sort_by = self.get_argument('sort_by', 'cumulative_time')
+        if api_key == config.api_key:
+            self.write(prof.get_profile_table(sort_by=sort_by))
+            self.finish()
+        else:
+            self.send_error(401)
+
+class ClearProfileHandler(tornado.web.RequestHandler):
+    public = True
+    @tornado.web.asynchronous
+    def get(self):
+        api_key = self.get_argument('api_key')
+        if api_key == config.api_key:
+            prof.clear_profile()
+            self.redirect('/profile?api_key=' + api_key)
+            self.finish()
+        else:
+            self.send_error(401)
+
+class CprofileHandler(tornado.web.RequestHandler):
+    public = True
+    @tornado.web.asynchronous
+    def get(self):
+        api_key = self.get_argument('api_key')
+        sort_by = self.get_argument('sort_by', 'cumulative_time')
+        if api_key == config.api_key:
+            self.write(prof.get_cprofile_table(sort_by=sort_by))
+            self.finish()
+        else:
+            self.send_error(401)
+
+class ClearCProfileHandler(tornado.web.RequestHandler):
+    public = True
+    @tornado.web.asynchronous
+    def get(self):
+        api_key = self.get_argument('api_key')
+        if api_key == config.api_key:
+            prof.clear_cprofile()
+            self.redirect('/cprofile?api_key=' + api_key)
+            self.finish()
+        else:
+            self.send_error(401)
+
+
 application = tornado.web.Application([
     (r"/test", TestHandler),
     (r"/diagnose", DiagnoseHandler),
-    (r"/public_diagnose", PublicDiagnoseHandler)
+    (r"/public_diagnose", PublicDiagnoseHandler),
+    (r"/profile", ProfileHandler),
+    (r"/cprofile", CprofileHandler),
+    (r"/clear_profile", ClearProfileHandler),
+    (r"/clear_cprofile", ClearCProfileHandler)
 ])
 
 if __name__ == "__main__":
