@@ -172,6 +172,8 @@ def download_google_sheet(sheet_url, default_type=None):
     keywords = []
     for entry in spreadsheet_data['feed']['entry']:
         kw_type = entry.get('gsx$type', {}).get('$t', default_type).strip()
+        if len(kw_type) == 0:
+            continue
         synonym_text = entry.get('gsx$synonyms', {}).get('$t')
         synonyms = [
             syn.strip() for syn in synonym_text.split(',')
@@ -247,7 +249,8 @@ def wordnet_hostnames():
     #Definately an incomplete list:
     non_host_names = set(['sponge', 'pest', 'mate',
                           'big game', 'prey',
-                          'young', 'worker', 'head',
+                          'young', 'work', 'worker', 'head',
+                          'dobson', # More likely a last name
                           'carnivore',
                           'dam',
                           'giant', 'world',
@@ -449,9 +452,14 @@ def biocaster_keywords_with_subject(g, subject_condition):
         }
         for instance_ref, label, noop in results
     }
+    synonyms_to_skip = [
+        'Consumption', # It rarely means TB, so it is better not to use it.
+    ]
     for instance_ref, noop, syn_ref in results:
         if syn_ref in g.synonym_to_label:
-            instances[instance_ref]['synonyms'] |= set([g.synonym_to_label[syn_ref]])
+            syn_label = g.synonym_to_label[syn_ref]
+            if syn_label not in synonyms_to_skip:
+                instances[instance_ref]['synonyms'] |= set([syn_label])
         else:
             #Non english term
             pass
@@ -607,7 +615,9 @@ def eha_keywords():
     return keywords
 
 def create_keyword_object_array(synset_object_array):
-    blocklist = set(['can', 'don', 'dish', 'ad', 'mass', 'yellow', 'the'])
+    blocklist = set([
+        'can', 'don', 'dish', 'ad', 'mass', 'yellow', 'the', 'Consumption',
+    ])
     keyword_object_array = []
     keywords_sofar = {}
     for synset_object in synset_object_array:
@@ -658,6 +668,6 @@ if __name__ == "__main__":
     To update the ontology data we use in our deployments use this command:
     aws s3 cp ontologies.p s3://classifier-data/ --region us-west-1
     """
-    with open('ontologies-0.1.1.p', 'wb') as f:
+    with open('ontologies-0.1.2.p', 'wb') as f:
         pickle.dump(keywords, f)
     print "pickle ready"

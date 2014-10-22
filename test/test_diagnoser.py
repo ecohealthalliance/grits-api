@@ -66,6 +66,7 @@ class TestDiagnoser(unittest.TestCase):
         import codecs
         with codecs.open('test_article.txt', encoding='utf-8') as f:
             diagnosis = self.my_diagnoser.diagnose(f.read())
+            print diagnosis
             make_json_compat(diagnosis)
             self.assertLess(
                 (datetime.utcnow() - start),

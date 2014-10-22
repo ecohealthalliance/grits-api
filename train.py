@@ -73,7 +73,6 @@ labels_to_omit = [
     'Bite',
     'E. coli',
     'Algae',
-    'Amoeba',
     #Labels I'm not sure what to make of:
     'Vaccine Complication',
     'Environmental',
@@ -83,6 +82,14 @@ labels_to_omit = [
     'Paralytic Shellfish Poisoning',
     'Cold',
 ]
+# Previously I had ommited 'Amoeba' because it is a type of organism rather than
+# a disease. However, now that I've investigated some of the articles labeled
+# with it, I think it should be included because it labels reports about
+# amoeba caused diseases that aren't covered by another label. 
+# E.g. brain eating amoeba causes "primary amoebic meningoencephalitis" 
+# (If we did have articles labeled this way, excluding the amoeba label
+# would help since inconsistent labels confuse the classifier).
+
 # Should we omit these?:
 # Foodborne Illness
 # Parotitis
@@ -124,10 +131,14 @@ def get_features_and_classifications(
 def train(debug):
     training_set = get_pickle('training.p')
     validation_set = get_pickle('validation.p')
-    keywords = get_pickle('ontologies-0.1.1.p')
+    keywords = get_pickle('ontologies-0.1.2.p')
     
     categories = set([
         'hm/disease',
+        'biocaster/pathogens',
+        'biocaster/diseases',
+        'biocaster/symptoms',
+        'symp/symptoms',
         'eha/symptom',
         'eha/mode of transmission',
         'eha/environmental factors',
@@ -136,32 +147,41 @@ def train(debug):
         'eha/control measures',
         'eha/description of infected',
         'eha/disease category',
+        'eha/host',
         'eha/host use',
         'eha/symptom',
+        'eha/disease',
+        'eha/location', 
         'eha/zoonotic type',
         'eha/risk',
-        'biocaster/symptoms',
         'wordnet/season',
         'wordnet/climate',
         'wordnet/pathogens',
         'wordnet/hosts',
-        'biocaster/pathogens',
-        'biocaster/diseases',
-        'symp/symptoms',
-        'doid/has_symptom',
-        'doid/transmitted_by',
-        'doid/located_in',
         'wordnet/mod/severe',
         'wordnet/mod/painful',
         'wordnet/mod/large',
+        'wordnet/mod/rare',
+        'doid/has_symptom',
+        'doid/symptoms',
+        'doid/transmitted_by',
+        'doid/located_in',
         'doid/diseases',
-        'eha/disease'
+        'doid/results_in',
+        'doid/has_material_basis_in',
+        'usgs/terrain'
     ])
 
     keyword_array = [
         keyword_obj for keyword_obj in keywords
         if keyword_obj['category'] in categories
     ]
+    
+    print "Unused categories:"
+    print set([
+        keyword_obj['category'] for keyword_obj in keywords
+        if keyword_obj['category'] not in categories
+    ])
     
     # Keyword Extraction
     extract_features = Pipeline([
