@@ -51,11 +51,22 @@ class KeywordExtractor():
     def transform_with_vectorizer(self, vectorizer, texts):
         mat = vectorizer.fit_transform(texts)
         vocab = vectorizer.get_feature_names()
+        conflicts = {}
+        for w1 in vocab:
+            for w2 in vocab:
+                if w1 != w2 and w1 in w2:
+                    conflicts[w1] = conflicts.get(w1, set()) | set([w2])
         out_dicts = []
         for r in range(mat.shape[0]):
             out_dict = {}
             for c in mat[r].nonzero()[1]:
                 out_dict[vocab[c]] = mat[r,c]
+            word_set = set(out_dict.keys())
+            # Remove words that overlap other words extracted from the document
+            out_dict = {
+                k: v for k, v in out_dict.items()
+                if conflicts.get(k, set()).isdisjoint(word_set)
+            }
             out_dicts.append(out_dict)
         return out_dicts
     def transform(self, texts):
