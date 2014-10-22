@@ -152,6 +152,7 @@ def train(debug):
         'eha/symptom',
         'eha/disease',
         'eha/location', 
+        'eha/transmission',
         'eha/zoonotic type',
         'eha/risk',
         'wordnet/season',
