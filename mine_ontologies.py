@@ -174,7 +174,7 @@ def download_google_sheet(sheet_url, default_type=None):
         kw_type = entry.get('gsx$type', {}).get('$t', default_type).strip()
         if len(kw_type) == 0:
             continue
-        synonym_text = entry.get('gsx$synonyms', {}).get('$t')
+        synonym_text = entry['gsx$synonyms'].get('$t')
         synonyms = [
             syn.strip() for syn in synonym_text.split(',')
         ] if synonym_text else []
@@ -476,6 +476,8 @@ def biocaster_keywords_with_subject(g, subject_condition):
                 "Feline",
                 "Swine",
                 "Non-Human Primate",
+                # I found an entry with a typo: Adenovirus infection (Humasn)
+                # TODO: We should fix the data or add an alias.
                 "Human",
                 "Honeybee",
                 "Fish",
@@ -668,6 +670,6 @@ if __name__ == "__main__":
     To update the ontology data we use in our deployments use this command:
     aws s3 cp ontologies.p s3://classifier-data/ --region us-west-1
     """
-    with open('ontologies-0.1.2.p', 'wb') as f:
+    with open('ontologies-0.1.3.p', 'wb') as f:
         pickle.dump(keywords, f)
     print "pickle ready"
