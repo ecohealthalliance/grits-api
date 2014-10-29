@@ -25,7 +25,7 @@ def update():
             }
         }, multi=True
     )
-    print "Enqueuing diagnosis out of date articles..."
+    print "Enqueuing diagnosis of articles with an out of date diagnosis or none at all..."
     print "Current diagnoser version:", Diagnoser.__version__
     print "Current preprocessor version:", tasks.processor_version
     while True:
