@@ -86,8 +86,12 @@ class Diagnoser():
         logger.info(time_sofar.next() + 'Diagnosed diseases')
 
         anno_doc = AnnoDoc(content)
-
+        anno_doc.add_tier(self.keyword_annotator)
+        anno_doc.add_tier(self.case_count_annotator)
         anno_doc.add_tier(self.geoname_annotator)
+        anno_doc.filter_overlapping_spans(
+            tier_names=[ 'locations', 'diseases', 'hosts', 'modes', 'pathogens', 'symptoms' ])
+
         geonames_grouped = {}
         for span in anno_doc.tiers['geonames'].spans:
             if not span.geoname['geonameid'] in geonames_grouped:
@@ -105,7 +109,6 @@ class Diagnoser():
                 )
         logger.info(time_sofar.next() + 'Annotated geonames')
 
-        anno_doc.add_tier(self.case_count_annotator)
         case_counts = []
         for span in anno_doc.tiers['caseCounts'].spans:
             case_counts.append({
@@ -118,7 +121,6 @@ class Diagnoser():
                 })
         logger.info(time_sofar.next() + 'Extracted case counts')
 
-        anno_doc.add_tier(self.keyword_annotator)
         keyword_types = ['diseases', 'hosts', 'modes', 'pathogens', 'symptoms']
         keyword_groups = {}
         for keyword_type in keyword_types:
