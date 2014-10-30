@@ -79,9 +79,9 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     Run the diagnostic classifiers/feature extractors
     on the girder item with the given id.
     """
+    logger.info("Diagnosing article with girder id: " + item_id)
     if prev_result == None:
         logger.error('Processing might have failed.')
-    
     item_id = bson.ObjectId(item_id)
     resource = girder_db.item.find_one(item_id)
     meta = resource['meta']
@@ -165,7 +165,12 @@ def process_girder_resource(item_id=None):
     
     content = private['scrapedData']['content']
     clean_content = extract_clean_content(content)
-    prev_clean_content = private.get('cleanContent', {}).get('content')
+    prev_clean_content_obj = private.get('cleanContent')
+    # In some db items cleanContent is a string.
+    if isinstance(prev_clean_content_obj, dict):
+        prev_clean_content = prev_clean_content_obj.get('content')
+    else:
+        prev_clean_content = None
     if not clean_content:
         private['cleanContent'] = { "error" : "Could not clean content." }
         girder_db.item.update({'_id': item_id}, resource)
