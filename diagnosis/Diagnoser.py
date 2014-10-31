@@ -52,6 +52,7 @@ class Diagnoser():
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.case_count_annotator = CaseCountAnnotator()
+        # TODO: Rename patient info annotator
         self.keypoint_annotator = PatientInfoAnnotator()
         self.jvm_nlp_annotator = JVMNLPAnnotator(['times'])
         self.keyword_annotator = KeywordAnnotator()
