@@ -142,6 +142,7 @@ class Diagnoser():
         )
 
         logger.info('filtering overlapping spans done')
+
         if 'times' in anno_doc.tiers:
             times_grouped = {}
             for span in anno_doc.tiers['times'].spans:
@@ -160,7 +161,6 @@ class Diagnoser():
                         times_grouped[span.label]['textOffsets'].append(
                             [span.start, span.end]
                         )
-            logger.info(time_sofar.next() + 'Annotated times')
 
         geonames_grouped = {}
         for span in anno_doc.tiers['geonames'].spans:
@@ -240,15 +240,13 @@ class Diagnoser():
                         [span.start, span.end]
                     )
 
-        extracted_dates = list(feature_extractors.extract_dates(content))
         logger.info(time_sofar.next() + 'Extracted dates')
 
         return {
             'diagnoserVersion' : self.__version__,
             'dateOfDiagnosis' : datetime.datetime.now(),
             'diseases': diseases,
-            'features': extracted_dates +\
-                        case_counts +\
+            'features': case_counts +\
                         geonames_grouped.values() +\
                         times_grouped.values() +\
                         keyword_groups['diseases'].values() +\
