@@ -1,11 +1,15 @@
 HFM-CoxsackieA : Hand, Foot and Mouth Disease
+# Should this map to HFM or Enterovirus?
 HFM-Enterovirus71 : Hand, Foot and Mouth Disease
 Algae : Environmental
 Avian Influenza : Influenza
+Avian Influenza H5N1 : Avian Influenza
+Avian Influenza H5N6 : Avian Influenza
+Avian Influenza H7N2 : Avian Influenza
 Avian Influenza H7N9 : Avian Influenza
 Canine Influenza : Influenza
 Equine Influenza : Influenza
-# How do we distinguish these without using the disease name?
+# How do we distinguish HxNy without using the disease name?
 Swine Flu H1N1 : Influenza
 Swine Flu H3N2 : Influenza
 Valley Fever : Fever
@@ -23,9 +27,10 @@ Hemorrhagic Fever : Fever
 Hepatitis A : Hepatitis
 Hepatitis B : Hepatitis
 Hepatitis C : Hepatitis
+Hepatitis D : Hepatitis
 Hepatitis E : Hepatitis
-Meningitis - Strep/Pneumoccocal : Meningitis
-Meningitis - Neisseria : Meningitis
+Meningitis - Strep/Pneumoccocal : Bacterial Meningitis
+Meningitis - Neisseria : Bacterial Meningitis
 Fungal Meningitis : Meningitis
 Viral Meningitis : Meningitis
 Bacterial Meningitis : Meningitis

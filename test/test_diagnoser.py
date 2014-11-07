@@ -36,7 +36,17 @@ class TestDiagnoser(unittest.TestCase):
             keyword_array=keyword_array,
             cutoff_ratio=.7
         )
-        
+    
+    def test_problem_keywords(self):
+        diagnosis = self.my_diagnoser.diagnose(
+            "meningococcal septicaemia and respiratory illness"
+        )
+        keywords = set([k['name'] for k in diagnosis['keywords_found']])
+        self.assertSetEqual(
+            set([
+                'meningococcal septicaemia',
+                'respiratory illness']) - keywords,
+            set())
     def test_duplicate_parents(self):
         diagnosis = self.my_diagnoser.diagnose(
             "Hepatitis B, Hepatitis C, and Hepatitis D and Hepatitis E"
