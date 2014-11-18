@@ -8,6 +8,7 @@ import diagnosis
 from diagnosis.KeywordExtractor import *
 from diagnosis.Diagnoser import Diagnoser
 from diagnosis.Diagnoser import disease_to_parent
+from diagnosis.Diagnoser import get_disease_parents
 import numpy as np
 import re
 import sklearn
@@ -17,6 +18,7 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
 from diagnosis.utils import group_by, flatten
 import warnings
+import pymongo
 
 def get_pickle(filename):
     """
@@ -51,11 +53,8 @@ def get_pickle(filename):
         return result
 
 label_overrides = {
-    # Foot and Mouth disease rarely affects humans.
-    # This sounds like it should be HFM
-    '53303a44f99fe75cf5390a56' : 'Hand, Foot and Mouth Disease',
-    '532c9b63f99fe75cf5383521' : 'Gastroenteritis',
-    '532cc391f99fe75cf5389989' : 'Tuberculosis'
+    '532c9b63f99fe75cf5383521' : ['Gastroenteritis'],
+    '532cc391f99fe75cf5389989' : ['Tuberculosis']
 }
 
 labels_to_omit = [
@@ -95,42 +94,85 @@ labels_to_omit = [
 # Parotitis
 # Hospital-Related Infection
 
-def get_features_and_classifications(
-    feature_dicts,
-    my_dict_vectorizer,
-    resources,
-    disease_to_parent_map
-):
+class DataSet(object):
     """
-    Vectorize feature_dicts, filter some out, and add parent labels.
+    A training or test dateset for a classifier
     """
-    features = []
-    classifications = []
-    resources_used = []
-    for feature_vector, r in zip(
-        my_dict_vectorizer.transform(feature_dicts),
-        resources
-    ):
-        if feature_vector.sum() == 0:
-            #Skip all zero features
-            continue
-        if r['meta']['disease'] in labels_to_omit:
-            continue
-        if r['_id'] in label_overrides:
-            diseases = [label_overrides[r['_id']]]
+    def __init__(self, feature_extractor, items=None):
+        self.feature_extractor = feature_extractor
+        self.items = []
+        if items:
+            for item in items:
+                self.append(item)
+    def append(self, item):
+        if item['_id'] in label_overrides:
+            item['labels'] = label_overrides[r['_id']]
         else:
-            diseases = [r['meta']['disease']]
-        while diseases[-1] in disease_to_parent_map:
-            diseases.append(disease_to_parent_map[diseases[-1]])
-        features.append(feature_vector)
-        classifications.append(diseases)
-        resources_used.append(r)
-    return np.array(features), np.array(classifications), resources_used
-
+            item['labels'] = [
+                disease
+                for event in item['meta']['events']
+                for disease in event['diseases']
+                # TODO: Use disease label table here when it's ready
+                if disease not in labels_to_omit and
+                    # TODO: We should make multiple classifiers
+                    # if we want to also diagnose plant and animal diseases. 
+                    not (
+                        event.get('species') and
+                        event.get('species').lower() is not 'human'
+                    )
+            ]
+        if len(item['labels']):
+            print "Warning: skipping unlabeled item"
+            return
+        return self.items.append(item)
+    def __len__(self):
+        return len(self.items)
+    def get_feature_dicts(self):
+        if hasattr(self, '_feature_dicts'):
+            return self._feature_dicts
+        def get_cleaned_english_content(report):
+            translation = resource\
+                .get('private', {})\
+                .get('englishTranslation', {})\
+                .get('content')
+            if translation:
+                return translation
+            else:
+                return  resource\
+                .get('private', {})\
+                .get('cleanContent', {})\
+                .get('content')
+        self._feature_dicts = feature_extractor.transform(
+            map(get_cleaned_english_content, training_set)
+        )
+        return self._feature_dicts
+    def get_feature_vectors(self):
+        """
+        Vectorize feature_dicts, filter some out, and add parent labels.
+        """
+        if hasattr(self, '_feature_vectors'):
+            return self._feature_vectors
+        features = []
+        for feature_vector, r in zip(
+            self.dict_vectorizer.transform(self.feature_dicts),
+            resources
+        ):
+            if feature_vector.sum() == 0:
+                print "Warning: all zero feature vector"
+            features.append(feature_vector)
+        self._feature_vectors = np.array(features)
+        return self._feature_vectors
+    def get_labels(add_parents=False):
+        def get_item_labels(item):
+            if add_parents:
+                return list(set(
+                    item['labels'] +\
+                    flatten(map(get_disease_parents, item['labels']))))
+            else:
+                return item['labels']
+        return map(get_item_labels, self.items)
 
 def train(debug):
-    training_set = get_pickle('training.p')
-    validation_set = get_pickle('validation.p')
     keywords = get_pickle('ontologies-0.1.3.p')
     
     categories = set([
@@ -178,27 +220,60 @@ def train(debug):
         if keyword_obj['category'] in categories
     ]
     
-    print "Unused categories:"
-    print set([
+    usused_keyword_cats = set([
         keyword_obj['category'] for keyword_obj in keywords
         if keyword_obj['category'] not in categories
     ])
+    if len(usused_keyword_cats) > 0:
+        print "Unused keyword categories:"
+        print usused_keyword_cats
     
     # Keyword Extraction
-    extract_features = Pipeline([
+    feature_extractor = Pipeline([
         ('kwext', KeywordExtractor(keyword_array)),
         ('link', LinkedKeywordAdder(keyword_array)),
         ('limit', LimitCounts(1)),
     ])
-    train_feature_dicts = extract_features.transform([
-        r['cleanContent'] for r in training_set
-    ])
-    validation_feature_dicts = extract_features.transform([
-        r['cleanContent'] for r in validation_set
-    ])
+    
+    # The train set is 90% of all data after the first ~7 months of HM data
+    # (everything before August 30).
+    # The mixed-test set is the other 10% of the data.
+    # The time-offset test set is the first ~6 months.
+    # There is a 1 month buffer between the train and test set
+    # to avoid overlapping events.
+    # We use the first 6 months rather than the last because we keep adding 
+    # new data and want this test set to stay the same.
+    girder_db = pymongo.Connection('localhost')['girder']
+    time_offset_test_set = DataSet(feature_extractor, girder_db.item.find({
+        "created" : {
+            "$lte" : datetime.datetime(2012, 8, 30)
+        },
+        "private.cleanContent": { "$exists" : True },
+        "meta.events": { "$exists" : True }
+    }))
+    remaining_reports = girder_db.item.find({
+        "created" : {
+            "$gt" : datetime.datetime(2012, 9, 30)
+        },
+        "private.cleanContent": { "$exists" : True },
+        "meta.events": { "$exists" : True }
+    })
+    training_set = DataSet(feature_extractor)
+    mixed_test_set = DataSet(feature_extractor)
+    for report in remaining_reports:
+        # Choose 1/10 articles for the mixed test set
+        if int(report['name'][-4:]) % 10 == 1:
+            mixed_test_set.append(report)
+        else:
+            training_set.append(report)
+    
+    print "time_offset_test_set size", len(time_offset_test_set)
+    print "mixed_test_set size", len(mixed_test_set)
+    print "training_set size", len(training_set)
+    
     #If we get sparse rows working with the classifier this might yeild some
     #performance improvments.
-    my_dict_vectorizer = DictVectorizer(sparse=False).fit(train_feature_dicts)
+    my_dict_vectorizer = DictVectorizer(sparse=False).fit(training_set.get_feature_dicts())
     print 'Found keywords:', len(my_dict_vectorizer.vocabulary_)
     print "Keywords in the validation set that aren't in the training set:"
     print  (
@@ -207,42 +282,29 @@ def train(debug):
         ) -
         set(my_dict_vectorizer.vocabulary_)
     )
+    time_offset_test_set.dict_vectorizer = \
+    mixed_test_set.dict_vectorizer = \
+    training_set.dict_vectorizer = my_dict_vectorizer
 
-    (
-        feature_mat_train,
-        labels_train,
-        resources_train
-    ) = get_features_and_classifications(
-        train_feature_dicts,
-        my_dict_vectorizer,
-        training_set,
-        {}
-    )
-    
-    (
-        feature_mat_validation,
-        labels_validation,
-        resources_validation
-    ) = get_features_and_classifications(
-        validation_feature_dicts,
-        my_dict_vectorizer,
-        validation_set,
-        disease_to_parent
-    )
-    
-    print "articles we could extract keywords from:"
-    print len(resources_validation), '/', len(validation_set)
+    # TODO: Detect all 0 feature vectors    
+    # print "articles we could extract keywords from:"
+    # print len(resources_validation), '/', len(validation_set)
 
     print """
-    Articles in the validation set that we are sure to miss
+    Articles in the test sets that we are sure to miss
     because we have no training data for their labels:
     """
-    
+    validation_label_set = set(
+        flatten(
+            time_offset_test_set.get_labels() + mixed_test_set.get_labels(),
+            1
+        )
+    )
     not_in_train = [
-        y for y in flatten(labels_validation, 1)
-        if (y not in flatten(labels_train, 1))
+        label for label in validation_label_set
+        if (label not in flatten(training_set.get_labels(), 1))
     ]
-    print len(not_in_train),'/',len(labels_validation)
+    print len(not_in_train),'/',len(validation_label_set)
     print set(not_in_train)
 
     my_classifier = OneVsRestClassifier(LogisticRegression(
@@ -266,7 +328,13 @@ def train(debug):
         # class_weight='auto',
     ), n_jobs=-1)
     
-    my_classifier.fit(feature_mat_train, labels_train)
+    # Parent labels are not added to the training data because we seem to do
+    # better by adding them after the classification.
+    # This may be due to the parent classification having such a
+    # high confidence that the child labels are pushed below the cutoff.
+    my_classifier.fit(
+        training_set.get_feature_vectors(),
+        training_set.get_labels())
     
     # Pickle everything that will be needed for classification:
     with open('classifier.p', 'wb') as f:
@@ -297,52 +365,59 @@ def train(debug):
                 my_diagnoser.classifier.classes_[i]
                 for i, p in my_diagnoser.best_guess(X)
             ])
-            for X in feature_mat_train
+            for X in training_set.get_feature_vectors()
         ]
-        print "Training set (macro avg):\nprecision: %s recall: %s f-score: %s" %\
+        print ("Training set (macro avg):\n"
+            "precision: %s recall: %s f-score: %s") %\
             sklearn.metrics.precision_recall_fscore_support(
-                map(tuple, labels_train),
+                map(tuple, training_set.get_labels(add_parents=True)),
                 training_predictions,
                 average='macro'
             )[0:3]
-        
-        predictions = [
-            tuple([
-                my_diagnoser.classifier.classes_[i]
-                for i, p in my_diagnoser.best_guess(X)
-            ])
-            for X in feature_mat_validation
-        ]
-    # I've noticed that the macro f-score is not the harmonic mean of the percision
-    # and recall. Perhaps this could be a result of the macro f-score being computed 
-    # as an average of f-scores.
-    # Furthermore, the macro f-scrore can be smaller than the precision and
-    # recall which seems like it shouldn't be possible.
-    print "Validation set (macro avg):\nprecision: %s recall: %s f-score: %s" %\
-        sklearn.metrics.precision_recall_fscore_support(
-            labels_validation,
-            predictions,
-            average='macro')[0:3]
-    print "Validation set (micro avg):\nprecision: %s recall: %s f-score: %s" %\
-        sklearn.metrics.precision_recall_fscore_support(
-            labels_validation,
-            predictions,
-            average='micro')[0:3]
-        
-    if debug:
-        print "Which classes are we performing poorly on?"
-        
-        labels = sorted(
-            list(set(flatten(labels_validation)) | set(flatten(predictions)))
-        )
-        prfs = sklearn.metrics.precision_recall_fscore_support(
-            labels_validation,
-            predictions,
-            labels=labels
-        )
-        for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
-            print cl
-            print "precision:",p,"recall",r,"F-score:",f,"support:",s
+        for data_set, label, print_label_breakdown in [
+            ("Time offset set", time_offset_test_set, True),
+            ("Mixed test set", mixed_test_set, False)
+        ]:
+            predictions = [
+                tuple([
+                    my_diagnoser.classifier.classes_[i]
+                    for i, p in my_diagnoser.best_guess(X)
+                ])
+                for X in data_set.get_feature_vectors()
+            ]
+            print label
+            # I've noticed that the macro f-score is not the harmonic mean of 
+            # the percision and recall. Perhaps this could be a result of the 
+            # macro f-score being computed as an average of f-scores.
+            # Furthermore, the macro f-scrore can be smaller than the precision 
+            # and recall which seems like it shouldn't be possible.
+            print ("Validation set (macro avg):\n"
+                "precision: %s recall: %s f-score: %s") %\
+                sklearn.metrics.precision_recall_fscore_support(
+                    data_set.get_labels(add_parents=True),
+                    predictions,
+                    average='macro')[0:3]
+            print ("Validation set (micro avg):\n"
+                "precision: %s recall: %s f-score: %s") %\
+                sklearn.metrics.precision_recall_fscore_support(
+                    data_set.get_labels(add_parents=True),
+                    predictions,
+                    average='micro')[0:3]
+            
+            if print_label_breakdown:
+                print "Which classes are we performing poorly on?"
+                labels = sorted(
+                    list(set(flatten(data_set.get_labels(add_parents=True))) |\
+                    set(flatten(predictions)))
+                )
+                prfs = sklearn.metrics.precision_recall_fscore_support(
+                    data_set.get_labels(add_parents=True),
+                    predictions,
+                    labels=labels
+                )
+                for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
+                    print cl
+                    print "precision:",p,"recall",r,"F-score:",f,"support:",s
 
 if __name__ == '__main__':
     import argparse
