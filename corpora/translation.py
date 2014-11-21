@@ -154,7 +154,9 @@ def fetch_translations(path):
                 with open(file_path) as f:
                     translations.extend(json.load(f))
     if len(translations) == 0:
-        logger.warn("No translations were fetched!")
+        logger.warn("No stored translations were loaded from the file system. " +
+            "(This is a legacy feature for loading old translation into the database. " +
+            "Unless that's what you're trying to do, don't worry about this warning.)")
     return translations_to_dict(translations)
 
 translations = None

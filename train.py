@@ -113,16 +113,20 @@ class DataSet(object):
                 for event in item['meta']['events']
                 for disease in event['diseases']
                 # TODO: Use disease label table here when it's ready
-                if disease not in labels_to_omit and
+                if disease is not None and
+                    disease not in labels_to_omit and
                     # TODO: We should make multiple classifiers
                     # if we want to also diagnose plant and animal diseases. 
                     not (
                         event.get('species') and
-                        event.get('species').lower() is not 'human'
+                        len(event.get('species')) > 0 and
+                        event.get('species').lower() != "humans"
                     )
             ]
-        if len(item['labels']):
-            print "Warning: skipping unlabeled item"
+        if len(item['labels']) == 0:
+            # There are too many to list:
+            # print "Warning: skipping unlabeled (or animal only) item at",\
+            #     "http://healthmap.org/ai.php?" + item['name'][:-4]
             return
         return self.items.append(item)
     def __len__(self):
@@ -131,19 +135,19 @@ class DataSet(object):
         if hasattr(self, '_feature_dicts'):
             return self._feature_dicts
         def get_cleaned_english_content(report):
-            translation = resource\
+            translation = report\
                 .get('private', {})\
                 .get('englishTranslation', {})\
                 .get('content')
             if translation:
                 return translation
             else:
-                return  resource\
+                return  report\
                 .get('private', {})\
                 .get('cleanContent', {})\
                 .get('content')
-        self._feature_dicts = feature_extractor.transform(
-            map(get_cleaned_english_content, training_set)
+        self._feature_dicts = self.feature_extractor.transform(
+            map(get_cleaned_english_content, self.items)
         )
         return self._feature_dicts
     def get_feature_vectors(self):
@@ -153,25 +157,35 @@ class DataSet(object):
         if hasattr(self, '_feature_vectors'):
             return self._feature_vectors
         features = []
-        for feature_vector, r in zip(
-            self.dict_vectorizer.transform(self.feature_dicts),
-            resources
-        ):
+        for feature_vector in self.dict_vectorizer.transform(self.get_feature_dicts()):
             if feature_vector.sum() == 0:
-                print "Warning: all zero feature vector"
+                #print "Warning: all zero feature vector"
+                pass
             features.append(feature_vector)
         self._feature_vectors = np.array(features)
         return self._feature_vectors
-    def get_labels(add_parents=False):
+    def get_labels(self, add_parents=False):
         def get_item_labels(item):
             if add_parents:
                 return list(set(
                     item['labels'] +\
-                    flatten(map(get_disease_parents, item['labels']))))
+                    list(flatten(map(get_disease_parents, item['labels'])))))
             else:
                 return item['labels']
         return map(get_item_labels, self.items)
-
+    def remove_zero_feature_vectors(self):
+        props = zip(self.items, self.get_feature_dicts(), self.get_feature_vectors())
+        self.items = []
+        self._feature_dicts = []
+        self._feature_vectors = []
+        for item, f_dict, f_vec in props:
+            if f_vec.sum() > 0:
+                self.items.append(item)
+                self._feature_dicts.append(f_dict)
+                self._feature_vectors.append(f_vec)
+        # TODO:
+        # print "articles we could extract keywords from:"
+        # print len(resources_validation), '/', len(validation_set)
 def train(debug):
     keywords = get_pickle('ontologies-0.1.3.p')
     
@@ -248,23 +262,25 @@ def train(debug):
         "created" : {
             "$lte" : datetime.datetime(2012, 8, 30)
         },
-        "private.cleanContent": { "$exists" : True },
-        "meta.events": { "$exists" : True }
+        "private.cleanContent.content": { "$ne" : None },
+        "meta.events": { "$ne" : None }
     }))
     remaining_reports = girder_db.item.find({
         "created" : {
             "$gt" : datetime.datetime(2012, 9, 30)
         },
-        "private.cleanContent": { "$exists" : True },
-        "meta.events": { "$exists" : True }
+        "private.cleanContent.content": { "$ne" : None },
+        "meta.events": { "$ne" : None }
     })
     training_set = DataSet(feature_extractor)
     mixed_test_set = DataSet(feature_extractor)
     for report in remaining_reports:
         # Choose 1/10 articles for the mixed test set
-        if int(report['name'][-4:]) % 10 == 1:
+        if int(report['name'][:-4]) % 10 == 1:
             mixed_test_set.append(report)
         else:
+            # We have to leave some reports out to avoid memory errors
+            if int(report['name'][:-4]) % 10 < 7: continue
             training_set.append(report)
     
     print "time_offset_test_set size", len(time_offset_test_set)
@@ -278,7 +294,7 @@ def train(debug):
     print "Keywords in the validation set that aren't in the training set:"
     print  (
         set(DictVectorizer(sparse=False).fit(
-            validation_feature_dicts).vocabulary_
+            mixed_test_set.get_feature_dicts()).vocabulary_
         ) -
         set(my_dict_vectorizer.vocabulary_)
     )
@@ -286,9 +302,9 @@ def train(debug):
     mixed_test_set.dict_vectorizer = \
     training_set.dict_vectorizer = my_dict_vectorizer
 
-    # TODO: Detect all 0 feature vectors    
-    # print "articles we could extract keywords from:"
-    # print len(resources_validation), '/', len(validation_set)
+    time_offset_test_set.remove_zero_feature_vectors()
+    mixed_test_set.remove_zero_feature_vectors()
+    training_set.remove_zero_feature_vectors()
 
     print """
     Articles in the test sets that we are sure to miss
@@ -333,8 +349,8 @@ def train(debug):
     # This may be due to the parent classification having such a
     # high confidence that the child labels are pushed below the cutoff.
     my_classifier.fit(
-        training_set.get_feature_vectors(),
-        training_set.get_labels())
+        np.array(training_set.get_feature_vectors()),
+        np.array(training_set.get_labels()))
     
     # Pickle everything that will be needed for classification:
     with open('classifier.p', 'wb') as f:
@@ -375,8 +391,8 @@ def train(debug):
                 average='macro'
             )[0:3]
         for data_set, label, print_label_breakdown in [
-            ("Time offset set", time_offset_test_set, True),
-            ("Mixed test set", mixed_test_set, False)
+            #(time_offset_test_set, "Time offset set", True),
+            (mixed_test_set, "Mixed test set", False)
         ]:
             predictions = [
                 tuple([
@@ -391,6 +407,7 @@ def train(debug):
             # macro f-score being computed as an average of f-scores.
             # Furthermore, the macro f-scrore can be smaller than the precision 
             # and recall which seems like it shouldn't be possible.
+            print predictions[:5]
             print ("Validation set (macro avg):\n"
                 "precision: %s recall: %s f-score: %s") %\
                 sklearn.metrics.precision_recall_fscore_support(
