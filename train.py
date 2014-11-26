@@ -135,12 +135,13 @@ class DataSet(object):
         if hasattr(self, '_feature_dicts'):
             return self._feature_dicts
         def get_cleaned_english_content(report):
-            translation = report\
+            translation_dict = report\
                 .get('private', {})\
-                .get('englishTranslation', {})\
-                .get('content')
-            if translation:
-                return translation
+                .get('englishTranslation')
+            if translation_dict:
+                assert translation_dict.get('error') is None
+                assert translation_dict.get('content')
+                return translation_dict.get('content')
             else:
                 return  report\
                 .get('private', {})\
@@ -175,6 +176,7 @@ class DataSet(object):
         return map(get_item_labels, self.items)
     def remove_zero_feature_vectors(self):
         props = zip(self.items, self.get_feature_dicts(), self.get_feature_vectors())
+        original_items = self.items
         self.items = []
         self._feature_dicts = []
         self._feature_vectors = []
@@ -183,9 +185,9 @@ class DataSet(object):
                 self.items.append(item)
                 self._feature_dicts.append(f_dict)
                 self._feature_vectors.append(f_vec)
-        # TODO:
-        # print "articles we could extract keywords from:"
-        # print len(resources_validation), '/', len(validation_set)
+        print "Articles removed because of zero feature vectors:"
+        print len(original_items) - len(self.items), '/', len(original_items)
+
 def train(debug):
     keywords = get_pickle('ontologies-0.1.3.p')
     
@@ -259,17 +261,27 @@ def train(debug):
     # new data and want this test set to stay the same.
     girder_db = pymongo.Connection('localhost')['girder']
     time_offset_test_set = DataSet(feature_extractor, girder_db.item.find({
-        "created" : {
+        "meta.date" : {
             "$lte" : datetime.datetime(2012, 8, 30)
         },
         "private.cleanContent.content": { "$ne" : None },
+        # There must be no english translation, or the english translation
+        # must have content (i.e. no errors occurred when translating).
+        "$or" : [
+            { "private.englishTranslation": { "$exists" : False } },
+            { "private.englishTranslation.content": { "$ne" : None } },
+        ],
         "meta.events": { "$ne" : None }
     }))
     remaining_reports = girder_db.item.find({
-        "created" : {
+        "meta.date" : {
             "$gt" : datetime.datetime(2012, 9, 30)
         },
         "private.cleanContent.content": { "$ne" : None },
+        "$or" : [
+            { "private.englishTranslation": { "$exists" : False } },
+            { "private.englishTranslation.content": { "$ne" : None } },
+        ],
         "meta.events": { "$ne" : None }
     })
     training_set = DataSet(feature_extractor)
@@ -305,23 +317,6 @@ def train(debug):
     time_offset_test_set.remove_zero_feature_vectors()
     mixed_test_set.remove_zero_feature_vectors()
     training_set.remove_zero_feature_vectors()
-
-    print """
-    Articles in the test sets that we are sure to miss
-    because we have no training data for their labels:
-    """
-    validation_label_set = set(
-        flatten(
-            time_offset_test_set.get_labels() + mixed_test_set.get_labels(),
-            1
-        )
-    )
-    not_in_train = [
-        label for label in validation_label_set
-        if (label not in flatten(training_set.get_labels(), 1))
-    ]
-    print len(not_in_train),'/',len(validation_label_set)
-    print set(not_in_train)
 
     my_classifier = OneVsRestClassifier(LogisticRegression(
         # When fit intercept is False the classifier predicts nothing when
@@ -390,10 +385,21 @@ def train(debug):
                 training_predictions,
                 average='macro'
             )[0:3]
-        for data_set, label, print_label_breakdown in [
-            #(time_offset_test_set, "Time offset set", True),
+        train_label_set = set(flatten(training_set.get_labels(), 1))
+        for data_set, ds_label, print_label_breakdown in [
+            (time_offset_test_set, "Time offset set", True),
             (mixed_test_set, "Mixed test set", False)
         ]:
+            if len(data_set) == 0: continue
+            print ds_label
+            print "Labels we have no training data for:"
+            validation_label_set = set(flatten(data_set.get_labels(), 1))
+            not_in_train = [
+                label for label in validation_label_set
+                if (label not in train_label_set)
+            ]
+            print len(not_in_train),'/',len(validation_label_set)
+            print set(not_in_train)
             predictions = [
                 tuple([
                     my_diagnoser.classifier.classes_[i]
@@ -401,7 +407,6 @@ def train(debug):
                 ])
                 for X in data_set.get_feature_vectors()
             ]
-            print label
             # I've noticed that the macro f-score is not the harmonic mean of 
             # the percision and recall. Perhaps this could be a result of the 
             # macro f-score being computed as an average of f-scores.
