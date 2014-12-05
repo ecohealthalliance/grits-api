@@ -2,8 +2,6 @@ import argparse
 import pickle
 import numpy as np
 from KeywordExtractor import *
-import feature_extractors
-from LocationExtractor import LocationExtractor
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import Pipeline
 import datetime
