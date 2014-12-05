@@ -240,6 +240,7 @@ def train(debug):
         keyword_obj['category'] for keyword_obj in keywords
         if keyword_obj['category'] not in categories
     ])
+    
     if len(usused_keyword_cats) > 0:
         print "Unused keyword categories:"
         print usused_keyword_cats
@@ -260,9 +261,12 @@ def train(debug):
     # We use the first 6 months rather than the last because we keep adding 
     # new data and want this test set to stay the same.
     girder_db = pymongo.Connection('localhost')['girder']
+    # two years ago
+    start_date = datetime.datetime.utcnow() - datetime.timedelta(730.484)
     time_offset_test_set = DataSet(feature_extractor, girder_db.item.find({
         "meta.date" : {
-            "$lte" : datetime.datetime(2012, 8, 30)
+            "$lte" : start_date + datetime.timedelta(180),
+            "$gte" : start_date
         },
         "private.cleanContent.content": { "$ne" : None },
         # There must be no english translation, or the english translation
@@ -275,7 +279,7 @@ def train(debug):
     }))
     remaining_reports = girder_db.item.find({
         "meta.date" : {
-            "$gt" : datetime.datetime(2012, 9, 30)
+            "$gt" : start_date + datetime.timedelta(210)
         },
         "private.cleanContent.content": { "$ne" : None },
         "$or" : [
@@ -292,7 +296,7 @@ def train(debug):
             mixed_test_set.append(report)
         else:
             # We have to leave some reports out to avoid memory errors
-            if int(report['name'][:-4]) % 10 < 7: continue
+            # if int(report['name'][:-4]) % 10 < 7: continue
             training_set.append(report)
     
     print "time_offset_test_set size", len(time_offset_test_set)
