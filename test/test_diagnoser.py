@@ -81,3 +81,13 @@ class TestDiagnoser(unittest.TestCase):
                 (datetime.utcnow() - start),
                 timedelta(seconds=30)
             )
+
+    # def test_db_article(self):
+    #     import pymongo
+    #     from bson.objectid import ObjectId
+    #     import logging
+    #     logger = logging.getLogger('annotator.geoname_annotator')
+    #     logger.setLevel(logging.INFO)
+    #     girder_db = pymongo.Connection('localhost')['girder']
+    #     x = girder_db.item.find_one(ObjectId("532cca61f99fe75cf538aa7e"))['private']['cleanContent']['content']
+    #     diagnosis = self.my_diagnoser.diagnose(x)
