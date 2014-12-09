@@ -36,7 +36,17 @@ class TestDiagnoser(unittest.TestCase):
             keyword_array=keyword_array,
             cutoff_ratio=.7
         )
-        
+    
+    def test_problem_keywords(self):
+        diagnosis = self.my_diagnoser.diagnose(
+            "meningococcal septicaemia and respiratory illness"
+        )
+        keywords = set([k['name'] for k in diagnosis['keywords_found']])
+        self.assertSetEqual(
+            set([
+                'meningococcal septicaemia',
+                'respiratory illness']) - keywords,
+            set())
     def test_duplicate_parents(self):
         diagnosis = self.my_diagnoser.diagnose(
             "Hepatitis B, Hepatitis C, and Hepatitis D and Hepatitis E"
@@ -71,3 +81,13 @@ class TestDiagnoser(unittest.TestCase):
                 (datetime.utcnow() - start),
                 timedelta(seconds=30)
             )
+
+    # def test_db_article(self):
+    #     import pymongo
+    #     from bson.objectid import ObjectId
+    #     import logging
+    #     logger = logging.getLogger('annotator.geoname_annotator')
+    #     logger.setLevel(logging.INFO)
+    #     girder_db = pymongo.Connection('localhost')['girder']
+    #     x = girder_db.item.find_one(ObjectId("532cca61f99fe75cf538aa7e"))['private']['cleanContent']['content']
+    #     diagnosis = self.my_diagnoser.diagnose(x)
