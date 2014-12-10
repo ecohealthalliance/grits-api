@@ -2,8 +2,6 @@ import argparse
 import pickle
 import numpy as np
 from KeywordExtractor import *
-import feature_extractors
-from LocationExtractor import LocationExtractor
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import Pipeline
 import datetime
@@ -12,6 +10,7 @@ from annotator.geoname_annotator import GeonameAnnotator
 from annotator.case_count_annotator import CaseCountAnnotator
 from annotator.patient_info_annotator import PatientInfoAnnotator
 from annotator.jvm_nlp_annotator import JVMNLPAnnotator
+from annotator.keyword_annotator import KeywordAnnotator
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -54,6 +53,7 @@ class Diagnoser():
         # TODO: Rename patient info annotator
         self.keypoint_annotator = PatientInfoAnnotator()
         self.jvm_nlp_annotator = JVMNLPAnnotator(['times'])
+        self.keyword_annotator = KeywordAnnotator()
         processing_pipeline = []
         processing_pipeline.append(('link', LinkedKeywordAdder(keyword_array)))
         processing_pipeline.append(('limit', LimitCounts(1)))
@@ -80,6 +80,7 @@ class Diagnoser():
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
         feature_dict = self.keyword_processor.transform([base_keyword_dict])
         X = self.dict_vectorizer.transform(feature_dict)[0]
+
         logger.info(time_sofar.next() + 'Computed feature vector')
         def diagnosis(i, p):
             scores = self.classifier.coef_[i] * X
@@ -91,7 +92,13 @@ class Diagnoser():
             scores *= p
             # These might be numpy types. I coerce them to native python
             # types so we can easily serialize the output as json.
+
             scored_keywords = zip(self.keywords, scores)
+            keyword_scores = {}
+            for keyword, score in scored_keywords:
+                if score > 0 and keyword in base_keyword_dict:
+                    keyword_scores[keyword] = float(score)
+
             return {
                 'name' : unicode(self.classifier.classes_[i]),
                 'probability' : float(p),
@@ -112,8 +119,48 @@ class Diagnoser():
         logger.info(time_sofar.next() + 'Diagnosed diseases')
 
         anno_doc = AnnoDoc(content)
-
+        anno_doc.add_tier(self.keyword_annotator)
+        logger.info('keywords annotated')
+        anno_doc.add_tier(self.case_count_annotator)
+        logger.info('case counts annotated')
         anno_doc.add_tier(self.geoname_annotator)
+        logger.info('geonames annotated')
+        try:
+            anno_doc.add_tier(self.jvm_nlp_annotator)
+        except Exception as e:
+            logger.error(
+                time_sofar.next() +
+                'Could not annotate times, ' +
+                'the JVM time extraction server might not be running.' +
+                '\nException:\n' + str(e)
+            )
+
+        anno_doc.filter_overlapping_spans(
+            tier_names=[ 'times', 'geonames', 'diseases', 'hosts', 'modes',
+                         'pathogens', 'symptoms' ]
+        )
+
+        logger.info('filtering overlapping spans done')
+
+        times_grouped = {}
+        if 'times' in anno_doc.tiers:
+            for span in anno_doc.tiers['times'].spans:
+                # TODO -- how should we handle DURATION and other exotice date types?
+                if span.type == 'DATE':
+                    if not span.label in times_grouped:
+                        times_grouped[span.label] = {
+                            'type': 'datetime',
+                            'name': span.label,
+                            'value': span.label,
+                            'textOffsets': [
+                                [span.start, span.end]
+                            ]
+                        }
+                    else:
+                        times_grouped[span.label]['textOffsets'].append(
+                            [span.start, span.end]
+                        )
+
         geonames_grouped = {}
         for span in anno_doc.tiers['geonames'].spans:
             if not span.geoname['geonameid'] in geonames_grouped:
@@ -133,7 +180,6 @@ class Diagnoser():
                 )
         logger.info(time_sofar.next() + 'Annotated geonames')
 
-        anno_doc.add_tier(self.case_count_annotator)
         case_counts = []
         for span in anno_doc.tiers['caseCounts'].spans:
             case_counts.append({
@@ -145,34 +191,6 @@ class Diagnoser():
                 'textOffsets': [[span.start, span.end]]
             })
         logger.info(time_sofar.next() + 'Extracted case counts')
-        try:
-            anno_doc.add_tier(self.jvm_nlp_annotator)
-            times_grouped = {}
-            for span in anno_doc.tiers['times'].spans:
-                # TODO -- how should we handle DURATION and other exotice date types?
-                if span.type == 'DATE':
-                    if not span.label in times_grouped:
-                        times_grouped[span.label] = {
-                            'type': 'datetime',
-                            'name': span.label,
-                            'value': span.label,
-                            'textOffsets': [
-                                [span.start, span.end]
-                            ]
-                        }
-                    else:
-                        times_grouped[span.label]['textOffsets'].append(
-                            [span.start, span.end]
-                        )
-            logger.info(time_sofar.next() + 'Annotated times')
-        except Exception as e:
-            times_grouped = {}
-            logger.error(
-                time_sofar.next() + 
-                'Could not annotate times, ' +
-                'the JVM time extraction server might not be running.' +
-                '\nException:\n' + str(e)
-            )
 
         anno_doc.add_tier(self.keypoint_annotator, keyword_categories={
             'occupation' : [
@@ -205,28 +223,36 @@ class Diagnoser():
             )
         logger.info(time_sofar.next() + 'Extracted patient info')
 
+        keyword_types = ['diseases', 'hosts', 'modes', 'pathogens', 'symptoms']
+        keyword_groups = {}
+        for keyword_type in keyword_types:
+            keyword_groups[keyword_type] = {}
+            for span in anno_doc.tiers[keyword_type].spans:
+                if not span.label in keyword_groups[keyword_type]:
+                    keyword_groups[keyword_type][span.label] = {
+                        'type': keyword_type,
+                        'value': span.label,
+                        'textOffsets': [[span.start, span.end]]
+                    }
+                else:
+                    keyword_groups[keyword_type][span.label]['textOffsets'].append(
+                        [span.start, span.end]
+                    )
+
+        logger.info(time_sofar.next() + 'Extracted dates')
+
         return {
             'diagnoserVersion' : self.__version__,
             'dateOfDiagnosis' : datetime.datetime.now(),
-            'keywords_found' : [
-                {
-                    'name' : unicode(keyword),
-                    'count' : int(count),
-                    'categories' : list(set([
-                        kw['category']
-                        for kw in self.keyword_array
-                        if kw['keyword'].lower() == keyword.lower()
-                    ]))
-                }
-                for keyword, count in base_keyword_dict.items()
-            ],
             'diseases': diseases,
-            'keypoints' : keypoints,
-            'features': (
-                case_counts +
-                times_grouped.values() + 
-                geonames_grouped.values()
-            )
+            'features': case_counts +\
+                        geonames_grouped.values() +\
+                        times_grouped.values() +\
+                        keyword_groups['diseases'].values() +\
+                        keyword_groups['hosts'].values() +\
+                        keyword_groups['modes'].values() +\
+                        keyword_groups['pathogens'].values() +\
+                        keyword_groups['symptoms'].values()
         }
 
 if __name__ == '__main__':
