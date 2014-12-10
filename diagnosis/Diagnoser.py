@@ -142,8 +142,8 @@ class Diagnoser():
 
         logger.info('filtering overlapping spans done')
 
+        times_grouped = {}
         if 'times' in anno_doc.tiers:
-            times_grouped = {}
             for span in anno_doc.tiers['times'].spans:
                 # TODO -- how should we handle DURATION and other exotice date types?
                 if span.type == 'DATE':
