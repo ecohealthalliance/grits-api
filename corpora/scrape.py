@@ -69,8 +69,10 @@ def open_url(opener, url):
                     'exception' : "No html returned"
                 })
                 return result
+            encoding = chardet.detect(html)['encoding']
+            result['encoding'] = encoding
             result['htmlContent'] = unicode(
-                html.decode(encoding=chardet.detect(html)['encoding']),
+                html.decode(encoding=(encoding if encoding else 'ascii')),
             )
             return result
     except (urllib2.HTTPError, urllib2.URLError):
