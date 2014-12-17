@@ -1,11 +1,9 @@
-__version__ = '0.0.1'
+__version__ = '0.0.2'
 import urllib2, httplib
 import chardet
 import httplib2
 import scrape_promed
-import readability
 import sys, exceptions, socket
-import lxml
 import datetime
 
 class OpenURLHandler(urllib2.HTTPRedirectHandler):
@@ -69,12 +67,16 @@ def open_url(opener, url):
                     'exception' : "No html returned"
                 })
                 return result
-            encoding = chardet.detect(html)['encoding']
-            result['encoding'] = encoding
+            detected_encoding = chardet.detect(html)['encoding']
+            encoding = detected_encoding if detected_encoding else 'utf-8'
             result['htmlContent'] = unicode(
-                html.decode(encoding=(encoding if encoding else 'ascii')),
+                html,
+                encoding=encoding,
+                errors='ignore',
             )
+            result['encoding'] = encoding
             return result
+
     except (urllib2.HTTPError, urllib2.URLError):
         errDescription = '\n'.join([str(i) for i in sys.exc_info()])
         result.update({
@@ -96,8 +98,8 @@ def open_url(opener, url):
             'exception' : "SocketError:Could not scrape url: " + errDescription
         })
         return result
-    except (UnicodeEncodeError, UnicodeDecodeError):
-        # I think using iri2uri will prevent this
+    except UnicodeEncodeError:
+        # I think using iri2uri will prevent this, so we can probably get rid of this case.
         # http://stackoverflow.com/questions/4389572/how-to-fetch-a-non-ascii-url-with-python-urlopen
         errDescription = '\n'.join([str(i) for i in sys.exc_info()])
         result.update({
@@ -143,6 +145,8 @@ def scrape_main(url):
             'sourceUrl' : url,
             'unscrapable' : True,
             'exception' : "We don't scrape empres-i reports."
+            # The reason is that they contain mostly structured data that isn't
+            # useful for training text classifiers.
         }
     if 'news.google.com' in parsed_url.hostname:
         parsed_qs = urllib2.urlparse.parse_qs(parsed_url.query)
@@ -151,54 +155,20 @@ def scrape_main(url):
         if not testparse or not testparse.hostname:
             print url, "has a bad url parameter"
         if source_url:
-            return scrape(source_url)
+            result = scrape_main(source_url)
+            result['googleNews'] = True
+            return result
         else:
             print "Could not extract url parameter from: " + url
             return {
-                'sourceUrl' : url,
-                'unscrapable' : True
+                'sourceUrl' : source_url,
+                'unscrapable' : True,
+                'googleNews' : True
             }
     else:
         result = open_url(primary_opener, url)
         if result.get('unscrapable'):
             result = open_url(backup_opener, url)
-        # I found out about goose and readability from here:
-        # http://stackoverflow.com/questions/14164350/identifying-large-bodies-of-text-via-beautifulsoup-or-other-python-based-extract
-        # The poster seems to like goose more, and what's really nice about it
-        # is that it cleans up all the html.
-        # However, this means it looses links and formatting.
-        # Readability seems to just get rid of the cruft, so I'm using it here
-        # because we can process it's output with Goose later on to get pure text.
-        # Goose also has some nice metadata extraction features we might want to
-        # look into in the future.
-        readability_error = None
-        try:
-            document = readability.readability.Document(result['htmlContent'])
-            cleaner_content = document.summary()
-            if len(cleaner_content) > 50:
-                result.update({
-                    'content' : cleaner_content
-                })
-                return result
-            else:
-                readability_error = "Readability content too short: " + cleaner_content
-        except readability.readability.Unparseable as e:
-            readability_error = '\n'.join([str(i) for i in sys.exc_info()])
-        except (lxml.etree.XMLSyntaxError,
-                lxml.etree.DocumentInvalid,
-                lxml.etree.ParserError) as e:
-            readability_error = '\n'.join([str(i) for i in sys.exc_info()])
-        except (AttributeError, ValueError, TypeError) as e:
-            # This ought to be handled by readability.
-            readability_error = '\n'.join([str(i) for i in sys.exc_info()])
-        except exceptions.KeyboardInterrupt as e:
-            raise e
-        except:
-            readability_error = '\n'.join([str(i) for i in sys.exc_info()])
-        result.update({
-            'unscrapable' : True,
-            'exception' : "ReadabilityError: " + readability_error
-        })
         return result
 
 def scrape(url):

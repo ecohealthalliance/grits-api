@@ -1,14 +1,7 @@
 """
-This script will create CSVs that we can use to create
-resources translations. In the long run we should pay to use a translation API
-that is built into a processing pipeline (which will probably cost 1-2 cents an article).
+This script has functions for detecting english text and
+reading translations stored in csv files.
 """
-import argparse
-import goose
-import unicodecsv
-import datetime
-import random
-from bs4 import BeautifulSoup
 import re
 import os
 import json
@@ -129,15 +122,6 @@ def is_english(text):
             return True
     return False
 
-def batcher(li, batch_size=4000):
-    batch = []
-    for it in li:
-        batch.append(it)
-        if len(batch) == batch_size:
-            yield batch
-            batch = []
-    yield batch
-
 def translations_to_dict(translation_roa):
     translations = {}
     for translation in translation_roa:
@@ -174,31 +158,3 @@ def get_translation(id):
     if not translations:
         translations = fetch_translations(os.path.join(os.path.dirname(__file__), 'translations'))
     return translations.get(id)
-
-if __name__ == "__main__":
-    from iterate_resources import iterate_resources
-    from process_resources import process_resources, attach_translations, resource_url
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-path', default='healthmap')
-    parser.add_argument('-out', default='to_be_translated')
-    args = parser.parse_args()
-    start = datetime.datetime.now()
-    count = 0
-    resources = list(iterate_resources(args.path))
-    processed_resources = process_resources(attach_translations(resources))
-    non_english_resources = [r for r in processed_resources if isinstance(r, dict) and not is_english(r['cleanContent'])]
-    for r in non_english_resources:
-        if r.get('translated'):
-            print "Translated article that still appears to be non-English:"
-            print resource_url(r)
-            print r['cleanContent']
-    for idx, batch in enumerate(batcher(non_english_resources)):
-        with open(os.path.join(args.out, 'texts.' + str(idx) + '.csv'), 'wb') as f:
-            writer = unicodecsv.writer(f, encoding='utf-8')
-            for resource in batch:
-                if random.random() < 0.02:
-                    print count, "resource files iterated over so far..."
-                writer.writerow([resource['_id'], resource['cleanContent']])
-                count += 1
-    print "Non-English Resources:", count
-    print "Time: ", datetime.datetime.now() - start

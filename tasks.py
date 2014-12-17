@@ -11,9 +11,9 @@ import config
 import microsofttranslator
 import logging
 import datetime
-from corpora.process_resources import extract_clean_content, attach_translations
-from corpora import translation as translation_lib
-import corpora.scrape as scraper
+from scraper.process_resources import extract_clean_content
+from scraper import scraper
+from scraper import translation as translation_lib
 consecutive_exceptions = 0
 processor_version = '0.0.2'
 
@@ -163,7 +163,7 @@ def process_girder_resource(item_id=None):
         girder_db.item.update({'_id': item_id}, resource)
         return make_json_compat(resource)
     
-    content = private['scrapedData']['content']
+    content = private['scrapedData']['htmlContent']
     clean_content = extract_clean_content(content)
     prev_clean_content_obj = private.get('cleanContent')
     # In some db items cleanContent is a string.
@@ -241,7 +241,7 @@ def scrape(url):
 def process_text(text_obj):
     if text_obj.get('unscrapable'):
         return text_obj
-    content = text_obj['content']
+    content = text_obj['htmlContent']
     clean_content = extract_clean_content(content)
     if not clean_content:
         text_obj['cleanContent'] = { 'error' : "Could not clean content." }
