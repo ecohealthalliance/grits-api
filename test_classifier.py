@@ -16,8 +16,7 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
 from diagnosis.utils import group_by, flatten
 import warnings
-import pymongo
-from DataSet import DataSet
+from DataSet import fetch_datasets
 
 def run_tests(pickle_dir="classifier_conf"):
     with open(os.path.join(pickle_dir, 'classifier.p')) as f:
@@ -34,53 +33,11 @@ def run_tests(pickle_dir="classifier_conf"):
         ('limit', LimitCounts(1)),
     ])
     
-    # The train set is 90% of all data after the first ~7 months of HM data
-    # (everything before August 30).
-    # The mixed-test set is the other 10% of the data.
-    # The time-offset test set is the first ~6 months.
-    # There is a 1 month buffer between the train and test set
-    # to avoid overlapping events.
-    # We use the first 6 months rather than the last because we keep adding 
-    # new data and want this test set to stay the same.
-    girder_db = pymongo.Connection('localhost')['girder']
-    time_offset_test_set = DataSet(feature_extractor, girder_db.item.find({
-        "meta.date" : {
-            "$lte" : datetime.datetime(2012, 8, 30)
-        },
-        "private.cleanContent.content": { "$ne" : None },
-        # There must be no english translation, or the english translation
-        # must have content (i.e. no errors occurred when translating).
-        "$or" : [
-            { "private.englishTranslation": { "$exists" : False } },
-            { "private.englishTranslation.content": { "$ne" : None } },
-        ],
-        "meta.events": { "$ne" : None }
-    }))
-    remaining_reports = girder_db.item.find({
-        "meta.date" : {
-            "$gt" : datetime.datetime(2012, 9, 30)
-        },
-        "private.cleanContent.content": { "$ne" : None },
-        "$or" : [
-            { "private.englishTranslation": { "$exists" : False } },
-            { "private.englishTranslation.content": { "$ne" : None } },
-        ],
-        "meta.events": { "$ne" : None }
-    })
-    training_set = DataSet(feature_extractor)
-    mixed_test_set = DataSet(feature_extractor)
-    for report in remaining_reports:
-        # Choose 1/10 articles for the mixed test set
-        if int(report['name'][:-4]) % 10 == 1:
-            mixed_test_set.append(report)
-        else:
-            # We have to leave some reports out to avoid memory errors
-            if int(report['name'][:-4]) % 10 < 7: continue
-            training_set.append(report)
+    time_offset_test_set, mixed_test_set, training_set = fetch_datasets()
     
-    print "time_offset_test_set size", len(time_offset_test_set)
-    print "mixed_test_set size", len(mixed_test_set)
-    print "training_set size", len(training_set)
+    time_offset_test_set.feature_extractor =\
+    mixed_test_set.feature_extractor =\
+    training_set.feature_extractor = feature_extractor
     
     time_offset_test_set.dict_vectorizer = \
     mixed_test_set.dict_vectorizer = \
@@ -102,7 +59,7 @@ def run_tests(pickle_dir="classifier_conf"):
         train_label_set = set(flatten(training_set.get_labels(), 1))
         for data_set, ds_label, print_label_breakdown in [
             (training_set, "Training set", False),
-            #(time_offset_test_set, "Time offset set", True),
+            (time_offset_test_set, "Time offset set", True),
             (mixed_test_set, "Mixed test set", False),
         ]:
             if len(data_set) == 0: continue

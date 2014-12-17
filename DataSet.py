@@ -1,19 +1,27 @@
 import disease_label_table
 import numpy as np
 from diagnosis.utils import group_by, flatten
+import pymongo
+import datetime
 
 label_overrides = {
     '532c9b63f99fe75cf5383521' : ['Gastroenteritis'],
     '532cc391f99fe75cf5389989' : ['Tuberculosis']
 }
 
+misclassified_articles = [
+    "http://healthmap.org/ai.php?2960401"
+    #Should include malaria
+    #http://healthmap.org/ai.php?2612741
+]
+
 class DataSet(object):
     """
     A training or test dateset for a classifier
     """
-    def __init__(self, feature_extractor, items=None):
-        self.feature_extractor = feature_extractor
+    def __init__(self, items=None):
         self.items = []
+        self.rejected_items = 0
         if items:
             for item in items:
                 self.append(item)
@@ -27,7 +35,7 @@ class DataSet(object):
                 for disease in event['diseases']
                 # TODO: Use disease label table here when it's ready
                 if disease is not None and
-                    disease_label_table.is_not_human_disease( disease ) and
+                    not disease_label_table.is_not_human_disease( disease ) and
                     # TODO: We should make multiple classifiers
                     # if we want to also diagnose plant and animal diseases. 
                     not (
@@ -37,6 +45,7 @@ class DataSet(object):
                     )
             ]
         if len(item['labels']) == 0:
+            self.rejected_items += 1
             # There are too many to list:
             # print "Warning: skipping unlabeled (or animal only) item at",\
             #     "http://healthmap.org/ai.php?" + item['name'][:-4]
@@ -72,9 +81,6 @@ class DataSet(object):
             return self._feature_vectors
         features = []
         for feature_vector in self.dict_vectorizer.transform(self.get_feature_dicts()):
-            if feature_vector.sum() == 0:
-                #print "Warning: all zero feature vector"
-                pass
             features.append(feature_vector)
         self._feature_vectors = np.array(features)
         return self._feature_vectors
@@ -83,7 +89,7 @@ class DataSet(object):
             if add_parents:
                 return list(set(
                     item['labels'] +\
-                    list(flatten(map(disease_label_table.get_disease_parents, item['labels'])))))
+                    list(flatten(map(disease_label_table.get_inferred_labels, item['labels'])))))
             else:
                 return item['labels']
         return map(get_item_labels, self.items)
@@ -100,3 +106,75 @@ class DataSet(object):
                 self._feature_vectors.append(f_vec)
         print "Articles removed because of zero feature vectors:"
         print len(original_items) - len(self.items), '/', len(original_items)
+
+datasets = tuple()
+def fetch_datasets():
+    global datasets
+    if len(datasets) > 0:
+        print "Returning cached datasets"
+        return datasets
+    # The train set is 90% of all data after the first ~7 months of HM data
+    # that we have access to.
+    # The mixed-test set is the other 10% of the data.
+    # The time-offset test set is the first ~6 months.
+    # There is a 1 month buffer between the train and test set
+    # to avoid overlapping events.
+    # We use the first 6 months rather than the last because we keep adding 
+    # new data and want this test set to stay the same.
+    girder_db = pymongo.Connection('localhost')['girder']
+    # two years ago
+    start_date = datetime.datetime.utcnow() - datetime.timedelta(730.484)
+    time_offset_test_set = DataSet(girder_db.item.find({
+        "meta.date" : {
+            "$lte" : start_date + datetime.timedelta(180),
+            "$gte" : start_date
+        },
+        "private.cleanContent.content": { "$ne" : None },
+        # There must be no english translation, or the english translation
+        # must have content (i.e. no errors occurred when translating).
+        "$or" : [
+            { "private.englishTranslation": { "$exists" : False } },
+            { "private.englishTranslation.content": { "$ne" : None } },
+        ],
+        "meta.events": { "$ne" : None },
+        "private.scrapedData.scraperVersion" : "0.0.1",
+        "private.scrapedData.url": { "$exists" : True },
+        # This filters out articles that appear to redirect to a different page.
+        "$where" : "this.private.scrapedData.sourceUrl.length < this.private.scrapedData.url.length + 12"
+    }))
+    remaining_reports = girder_db.item.find({
+        "meta.date" : {
+            "$gt" : start_date + datetime.timedelta(210)
+        },
+        "private.cleanContent.content": { "$ne" : None },
+        "$or" : [
+            { "private.englishTranslation": { "$exists" : False } },
+            { "private.englishTranslation.content": { "$ne" : None } },
+        ],
+        "meta.events": { "$ne" : None },
+        "private.scrapedData.scraperVersion" : "0.0.1",
+        "private.scrapedData.url": { "$exists" : True },
+        # This filters out articles that appear to redirect to a different page.
+        "$where" : "this.private.scrapedData.sourceUrl.length < this.private.scrapedData.url.length + 12"
+    })
+    training_set = DataSet()
+    mixed_test_set = DataSet()
+    for report in remaining_reports:
+        # Choose 1/10 articles for the mixed test set
+        if int(report['name'][:-4]) % 10 == 1:
+            mixed_test_set.append(report)
+        else:
+            # We have to leave some reports out to avoid memory errors
+            # if int(report['name'][:-4]) % 10 < 7: continue
+            training_set.append(report)
+    
+    print "time_offset_test_set size", len(time_offset_test_set), " | rejected items:", time_offset_test_set.rejected_items
+    print "mixed_test_set size", len(mixed_test_set), " | rejected items:", mixed_test_set.rejected_items
+    print "training_set size", len(training_set), " | rejected items:", training_set.rejected_items
+    
+    datasets = (
+        time_offset_test_set,
+        mixed_test_set,
+        training_set
+    )
+    return datasets

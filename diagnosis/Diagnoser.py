@@ -54,7 +54,7 @@ class Diagnoser():
         result = {}
         for i,p in enumerate(probs):
             cutoff_ratio = self.cutoff_ratio
-            parents = disease_label_table.get_disease_parents(self.classifier.classes_[i])
+            parents = disease_label_table.get_inferred_labels(self.classifier.classes_[i])
             if p >= p_max * self.cutoff_ratio:
                 result[i] = max(p, result.get(i, 0))
                 for i2, label in enumerate(self.classifier.classes_):

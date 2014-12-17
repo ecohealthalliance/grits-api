@@ -23,25 +23,32 @@ def get_table():
                     row[key] = True
                 elif value == "FALSE":
                     row[key] = False
+                if value == "":
+                    del row[key]
             __table__.append(row)
     return __table__
 
 def is_not_human_disease(disease):
     for row in get_table():
         if row['label'] == disease:
-            return row['is_not_disease'] or row['not_human_disease']
+            return row.get('is_not_disease') or row.get('not_human_disease')
 
-__disease_to_parent__ = None
-def get_disease_parents(disease):
-    global __disease_to_parent__
-    if not __disease_to_parent__:
-        __disease_to_parent__ = {}
+__disease_to_parents__ = None
+def get_inferred_labels(disease):
+    global __disease_to_parents__
+    if not __disease_to_parents__:
+        __disease_to_parents__ = {}
         for row in get_table():
-            __disease_to_parent__[row['label']] = row['parent_label']
-    parents = []
-    parent = __disease_to_parent__.get(disease)
-    if parent:
-        parents.append(parent)
-        while parents[-1] in __disease_to_parent__:
-            parents.append(__disease_to_parent__[parents[-1]])
-    return parents
+            if 'parent_label' in row:
+                __disease_to_parents__[row['label']] = [row['parent_label']]
+    inferred_labels = []
+    parents = __disease_to_parents__.get(disease, [])
+    inferred_labels = parents
+    unresolved_labels = parents
+    while len(unresolved_labels) > 0:
+        label = unresolved_labels.pop()
+        if label in inferred_labels: continue
+        new_parents = __disease_to_parents__.get(label, [])
+        inferred_labels += new_parents
+        unresolved_labels += new_parents
+    return inferred_labels

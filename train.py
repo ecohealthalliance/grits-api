@@ -18,8 +18,7 @@ from diagnosis.utils import group_by, flatten
 import warnings
 import pymongo
 import test_classifier
-import disease_label_table
-from DataSet import DataSet
+from DataSet import fetch_datasets
 
 def get_pickle(filename):
     """
@@ -53,7 +52,7 @@ def get_pickle(filename):
         print filename, "loaded"
         return result
 
-def train(debug):
+def train(debug, pickle_dir):
     keywords = get_pickle('ontologies-0.1.3.p')
     
     categories = set([
@@ -117,65 +116,11 @@ def train(debug):
         ('limit', LimitCounts(1)),
     ])
     
-    # The train set is 90% of all data after the first ~7 months of HM data
-    # (everything before August 30).
-    # The mixed-test set is the other 10% of the data.
-    # The time-offset test set is the first ~6 months.
-    # There is a 1 month buffer between the train and test set
-    # to avoid overlapping events.
-    # We use the first 6 months rather than the last because we keep adding 
-    # new data and want this test set to stay the same.
-    girder_db = pymongo.Connection('localhost')['girder']
-    # two years ago
-    start_date = datetime.datetime.utcnow() - datetime.timedelta(730.484)
-    time_offset_test_set = DataSet(feature_extractor, girder_db.item.find({
-        "meta.date" : {
-            "$lte" : start_date + datetime.timedelta(180),
-            "$gte" : start_date
-        },
-        "private.cleanContent.content": { "$ne" : None },
-        # There must be no english translation, or the english translation
-        # must have content (i.e. no errors occurred when translating).
-        "$or" : [
-            { "private.englishTranslation": { "$exists" : False } },
-            { "private.englishTranslation.content": { "$ne" : None } },
-        ],
-        "meta.events": { "$ne" : None },
-        # Fix
-        # "private.scrapedData.redirects": { "$exists" : True },
-        # "$where" : """
-        # this.private.scrapedData.sourceUrl.length > this.private.scrapedData.url.length + 10
-        # """
-    }))
-    remaining_reports = girder_db.item.find({
-        "meta.date" : {
-            "$gt" : start_date + datetime.timedelta(210)
-        },
-        "private.cleanContent.content": { "$ne" : None },
-        "$or" : [
-            { "private.englishTranslation": { "$exists" : False } },
-            { "private.englishTranslation.content": { "$ne" : None } },
-        ],
-        "meta.events": { "$ne" : None },
-        # "private.scrapedData.redirects": { "$exists" : True },
-        # "$where" : """
-        # this.private.scrapedData.sourceUrl.length > this.private.scrapedData.url.length + 10
-        # """
-    })
-    training_set = DataSet(feature_extractor)
-    mixed_test_set = DataSet(feature_extractor)
-    for report in remaining_reports:
-        # Choose 1/10 articles for the mixed test set
-        if int(report['name'][:-4]) % 10 == 1:
-            mixed_test_set.append(report)
-        else:
-            # We have to leave some reports out to avoid memory errors
-            # if int(report['name'][:-4]) % 10 < 7: continue
-            training_set.append(report)
+    time_offset_test_set, mixed_test_set, training_set = fetch_datasets()
     
-    print "time_offset_test_set size", len(time_offset_test_set)
-    print "mixed_test_set size", len(mixed_test_set)
-    print "training_set size", len(training_set)
+    time_offset_test_set.feature_extractor =\
+    mixed_test_set.feature_extractor =\
+    training_set.feature_extractor = feature_extractor
     
     #If we get sparse rows working with the classifier this might yeild some
     #performance improvments.
@@ -188,6 +133,7 @@ def train(debug):
         ) -
         set(my_dict_vectorizer.vocabulary_)
     )
+    
     time_offset_test_set.dict_vectorizer = \
     mixed_test_set.dict_vectorizer = \
     training_set.dict_vectorizer = my_dict_vectorizer
@@ -226,20 +172,22 @@ def train(debug):
         np.array(training_set.get_labels()))
     
     # Pickle everything that will be needed for classification:
-    with open('classifier.p', 'wb') as f:
+    with open(os.path.join(pickle_dir, 'classifier.p'), 'wb') as f:
         pickle.dump(my_classifier, f)
-    with open('dict_vectorizer.p', 'wb') as f:
+    with open(os.path.join(pickle_dir, 'dict_vectorizer.p'), 'wb') as f:
         pickle.dump(my_dict_vectorizer, f)
-    with open('keyword_array.p', 'wb') as f:
+    with open(os.path.join(pickle_dir, 'keyword_array.p'), 'wb') as f:
         pickle.dump(keyword_array, f)
     
-    test_classifier.run_tests('')
+    test_classifier.run_tests(pickle_dir=pickle_dir)
 
 if __name__ == '__main__':
     # This will run the classifier and save the output:
-    # unbuffer python train.py | tee classifier_conf/result.txt
+    # mkdir classifier_conf
+    # unbuffer python train.py -picle_dir classifier_conf | tee classifier_conf/result.txt
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-debug', action='store_true')
+    parser.add_argument('-pickle_dir', default='')
     args = parser.parse_args()
-    train(args.debug)
+    train(args.debug, args.pickle_dir)
