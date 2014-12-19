@@ -11,8 +11,12 @@ label_overrides = {
 
 misclassified_articles = [
     "http://healthmap.org/ai.php?2960401"
-    #Should include malaria
-    #http://healthmap.org/ai.php?2612741
+    
+    #Should include malaria, diarrhoea and dengue
+    "http://healthmap.org/ai.php?2612741"
+    
+    #Should be Echinococcosis
+    "http://healthmap.org/ai.php?2884661"
 ]
 
 class DataSet(object):
@@ -137,7 +141,7 @@ def fetch_datasets():
             { "private.englishTranslation.content": { "$ne" : None } },
         ],
         "meta.events": { "$ne" : None },
-        "private.scrapedData.scraperVersion" : "0.0.1",
+        "private.scrapedData.scraperVersion" : "0.0.3",
         "private.scrapedData.url": { "$exists" : True },
         # This filters out articles that appear to redirect to a different page.
         "$where" : "this.private.scrapedData.sourceUrl.length < this.private.scrapedData.url.length + 12"
@@ -152,7 +156,7 @@ def fetch_datasets():
             { "private.englishTranslation.content": { "$ne" : None } },
         ],
         "meta.events": { "$ne" : None },
-        "private.scrapedData.scraperVersion" : "0.0.1",
+        "private.scrapedData.scraperVersion" : "0.0.3",
         "private.scrapedData.url": { "$exists" : True },
         # This filters out articles that appear to redirect to a different page.
         "$where" : "this.private.scrapedData.sourceUrl.length < this.private.scrapedData.url.length + 12"

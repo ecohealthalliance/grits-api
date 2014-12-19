@@ -82,6 +82,11 @@ class TestDiagnoser(unittest.TestCase):
                 timedelta(seconds=30)
             )
 
+    def test_inference(self):
+        import disease_label_table
+        self.assertSetEqual(set(['Avian Influenza', 'Influenza']),
+            set(disease_label_table.get_inferred_labels('Avian Influenza H7N9')))
+
     # def test_db_article(self):
     #     import pymongo
     #     from bson.objectid import ObjectId

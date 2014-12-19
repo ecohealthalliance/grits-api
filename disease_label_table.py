@@ -43,12 +43,11 @@ def get_inferred_labels(disease):
                 __disease_to_parents__[row['label']] = [row['parent_label']]
     inferred_labels = []
     parents = __disease_to_parents__.get(disease, [])
-    inferred_labels = parents
-    unresolved_labels = parents
+    unresolved_labels = list(parents)
     while len(unresolved_labels) > 0:
         label = unresolved_labels.pop()
         if label in inferred_labels: continue
-        new_parents = __disease_to_parents__.get(label, [])
-        inferred_labels += new_parents
+        inferred_labels.append(label)
+        new_parents = list(__disease_to_parents__.get(label, []))
         unresolved_labels += new_parents
     return inferred_labels

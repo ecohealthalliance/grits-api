@@ -184,7 +184,7 @@ def train(debug, pickle_dir):
 if __name__ == '__main__':
     # This will run the classifier and save the output:
     # mkdir classifier_conf
-    # unbuffer python train.py -picle_dir classifier_conf | tee classifier_conf/result.txt
+    # unbuffer python train.py -pickle_dir classifier_conf | tee classifier_conf/result.txt
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-debug', action='store_true')

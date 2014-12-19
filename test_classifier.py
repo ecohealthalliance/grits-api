@@ -63,14 +63,13 @@ def run_tests(pickle_dir="classifier_conf"):
             (mixed_test_set, "Mixed test set", False),
         ]:
             if len(data_set) == 0: continue
-            print ds_label
-            print "Labels we have no training data for:"
+            print "Data set:", ds_label
             validation_label_set = set(flatten(data_set.get_labels(), 1))
             not_in_train = [
                 label for label in validation_label_set
                 if (label not in train_label_set)
             ]
-            print len(not_in_train),'/',len(validation_label_set)
+            print "Labels we have no training data for:", len(not_in_train),'/', len(validation_label_set)
             print set(not_in_train)
             predictions = [
                 tuple([
@@ -84,7 +83,6 @@ def run_tests(pickle_dir="classifier_conf"):
             # macro f-score being computed as an average of f-scores.
             # Furthermore, the macro f-scrore can be smaller than the precision 
             # and recall which seems like it shouldn't be possible.
-            print predictions[:5]
             print ("Validation set (macro avg):\n"
                 "precision: %s recall: %s f-score: %s") %\
                 sklearn.metrics.precision_recall_fscore_support(
@@ -112,6 +110,10 @@ def run_tests(pickle_dir="classifier_conf"):
                 for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
                     print cl
                     print "precision:",p,"recall",r,"F-score:",f,"support:",s
+                    
+                    
+            print "Misclassified articles:"
+            print "(Some labels on the pages the links go to were intentionall ommited)"
             for item, gt, p in zip(
                 data_set.items,
                 data_set.get_labels(add_parents=True),
@@ -121,7 +123,6 @@ def run_tests(pickle_dir="classifier_conf"):
                     print "http://healthmap.org/ai.php?" + item['name'][:-4]
                     print p, gt
                     print ""
-            
             
 if __name__ == '__main__':
     import argparse
