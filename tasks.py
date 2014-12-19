@@ -8,13 +8,14 @@ from celery import Celery
 import datetime
 from distutils.version import StrictVersion
 import config
-import microsofttranslator
 import logging
 import datetime
 from scraper.process_resources import extract_clean_content
 from scraper import scraper
-from scraper import translation as translation_lib
-consecutive_exceptions = 0
+from scraper.translation import Translator
+
+my_translator = Translator(config)
+
 processor_version = '0.0.2'
 
 def make_json_compat(obj):
@@ -162,29 +163,31 @@ def process_girder_resource(item_id=None):
     if private['scrapedData'].get('unscrapable'):
         girder_db.item.update({'_id': item_id}, resource)
         return make_json_compat(resource)
-    
-    content = private['scrapedData']['htmlContent']
-    clean_content = extract_clean_content(content)
+    try:
+        content = private['scrapedData']['htmlContent']
+    except KeyError as e:
+        print resource
+        raise e
+    clean_content_obj = extract_clean_content(content)
     prev_clean_content_obj = private.get('cleanContent')
     # In some db items cleanContent is a string.
     if isinstance(prev_clean_content_obj, dict):
         prev_clean_content = prev_clean_content_obj.get('content')
     else:
         prev_clean_content = None
-    if not clean_content:
-        private['cleanContent'] = { "error" : "Could not clean content." }
+    private['cleanContent'] = clean_content_obj
+    if clean_content_obj.get('malformed'):
         girder_db.item.update({'_id': item_id}, resource)
         return make_json_compat(resource)
-    private['cleanContent'] = { 'content' : clean_content }
     
-    if not translation_lib.is_english(clean_content):
+    if not my_translator.is_english(clean_content_obj['content']):
         prev_translation = resource.get('private', {}).get('englishTranslation')
-        if not prev_translation or prev_clean_content != clean_content:
+        if not prev_translation or prev_clean_content != clean_content_obj['content']:
             # The stored translation code can be removed eventually
             # We have some tranlations for specific documents saved in json files.
             # Once they are in the database there is no reason to keep those files
             # or this code.
-            stored_translation = translation_lib.get_translation(str(item_id))
+            stored_translation = my_translator.get_translation(str(item_id))
             if stored_translation:
                 private['englishTranslation'] = {
                     'content' : stored_translation,
@@ -192,39 +195,12 @@ def process_girder_resource(item_id=None):
                     'translationService' : 'stored translation'
                 }
             else:
-                global consecutive_exceptions
-                if consecutive_exceptions > 4:
-                    # Back off when we reach more than 4 consecutive exceptions
-                    # because we probably hit the api limit.
-                    private['englishTranslation'] = {
-                        'error' : 'Too many consecutive exceptions'
-                    }
-                else:
-                    try:
-                        translation_api = microsofttranslator.Translator(config.bing_translate_id, config.bing_translate_secret)
-                        translation = translation_api.translate(clean_content, 'en')
-                        if translation.startswith("TranslateApiException:"):
-                            raise microsofttranslator.TranslateApiException(translation.split("TranslateApiException:")[1]) 
-                        private['englishTranslation'] = {
-                            'content' : translation,
-                            'translationDate' : datetime.datetime.now(),
-                            'translationService' : 'microsoft'
-                        }
-                        logger.info('Translated: ' + resource['meta']['link'])
-                        consecutive_exceptions = 0
-                    except microsofttranslator.TranslateApiException as e:
-                        consecutive_exceptions += 1
-                        private['englishTranslation'] = {
-                            'error' : 'Exception during translation.'
-                        }
-                    except ValueError as e:
-                        # Some articles (e.g. 532c9a3af99fe75cf5383290)
-                        # trigger value errors in the microsofttranslator code
-                        # during JSON parsing.
-                        consecutive_exceptions += 1
-                        private['englishTranslation'] = {
-                            'error' : 'Exception during translation. (ValueError)'
-                        }
+                private['englishTranslation'] =\
+                    my_translator.translate_to_english(
+                        clean_content_obj['content'])
+                logger.info('Article translated: ' + resource['meta']['link'])
+                if private['englishTranslation'].get('error'):
+                    logger.warn('Translation Error: ' + private['englishTranslation'].get('error'))
     girder_db.item.update({'_id': item_id}, resource)
     return make_json_compat(resource)
 
@@ -242,43 +218,11 @@ def process_text(text_obj):
     if text_obj.get('unscrapable'):
         return text_obj
     content = text_obj['htmlContent']
-    clean_content = extract_clean_content(content)
-    if not clean_content:
-        text_obj['cleanContent'] = { 'error' : "Could not clean content." }
-    else:
-        text_obj['cleanContent'] = { 'content' : clean_content }
-    if not translation_lib.is_english(clean_content):
-        global consecutive_exceptions
-        if consecutive_exceptions > 4:
-            # Back off when we reach more than 4 consecutive exceptions
-            # because we probably hit the api limit.
-            text_obj['englishTranslation'] = {
-                'error' : 'Too many consecutive exceptions'
-            }
-        else:
-            try:
-                translation_api = microsofttranslator.Translator(
-                    config.bing_translate_id,
-                    config.bing_translate_secret)
-                translation = translation_api.translate(clean_content, 'en')
-                if translation.startswith("TranslateApiException:"):
-                    raise microsofttranslator.TranslateApiException(
-                        translation.split("TranslateApiException:")[1]) 
-                private['englishTranslation'] = {
-                    'content' : translation,
-                    'translationDate' : datetime.datetime.now(),
-                    'translationService' : 'microsoft'
-                }
-                logger.info('Translated text')
-                consecutive_exceptions = 0
-            except microsofttranslator.TranslateApiException as e:
-                consecutive_exceptions += 1
-                logger.error('Exception during translation: ' +\
-                    unicode(consecutive_exceptions) + ' total: ' +\
-                    unicode(e))
-                private['englishTranslation'] = {
-                    'error' : 'Exception during translation.'
-                }
+    clean_content_obj = extract_clean_content(content)
+    text_obj['cleanContent'] = clean_content_obj
+    if not my_translator.is_english(clean_content_obj['content']):
+        private['englishTranslation'] = my_translator.translate_to_english(
+            clean_content_obj['content'])
     return text_obj
 
 @celery_tasks.task

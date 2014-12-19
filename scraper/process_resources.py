@@ -3,11 +3,13 @@ from bs4 import BeautifulSoup
 import random
 import ctypes
 import concurrent.futures
-import os, json
+import os, sys, json
 import readability
 import lxml
-
+import re
+__version__ = '0.0.0'
 def extract_clean_content(content):
+    global __version__
     # I found out about goose and readability here:
     # http://stackoverflow.com/questions/14164350/identifying-large-bodies-of-text-via-beautifulsoup-or-other-python-based-extract
     # The poster seems to like goose more.
@@ -15,14 +17,20 @@ def extract_clean_content(content):
     # usually just remove cruft that isn't related to the article text.
     # There is a trade off between retaining links and formatting, and
     # getting cleaner text.
-    # For now, we're using goose for simplicity.
-    
+    # Readability seems to be better at finding the content in some cases
+    # so it is used for initial cleaning, then goose is used since its
+    # plain text output is easier to deal with downstream.
+    method = None
+    cleaned_content = ''
     ###### Readability code:
     readability_error = None
-    result = {}
     try:
         document = readability.readability.Document(content)
-        content = document.summary()
+        cleaner_content = document.summary().strip()
+        if len(cleaner_content) > 50:
+            content = cleaner_content
+        else:
+            readability_error = "Readability content too short: " + cleaner_content
     except readability.readability.Unparseable as e:
         readability_error = '\n'.join([str(i) for i in sys.exc_info()])
     except (lxml.etree.XMLSyntaxError,
@@ -32,9 +40,7 @@ def extract_clean_content(content):
     except (AttributeError, ValueError, TypeError) as e:
         # This ought to be handled by readability.
         readability_error = '\n'.join([str(i) for i in sys.exc_info()])
-    if readability_error:
-        print readability_error
-    #########
+    ######
     
     if not content.startswith('<html>'):
         content = '<html><body>' + content + '</body></html>'
@@ -52,9 +58,14 @@ def extract_clean_content(content):
         # Beautiful soup doesn't attempt to extract the article,
         # it just finds all the text in the html, which seems to be
         # good enough since we've already used readability on the articles.
+        content = re.sub('\<br\s?\/?\>', '\n', content)
         cleaned_content = BeautifulSoup(content).text
-    # if len(cleaned_content) < 50:
-    #     # Most of the articles with content this short don't
-    #     # have any content we would want to extract.
-    #     return None
-    return cleaned_content
+    return  {
+        'clearnerVersion' : __version__,
+        'method' : method,
+        'content' : cleaned_content,
+        'readability_error' : readability_error,
+        # Malformed should be true whenever we can detect an issue with the
+        # content that was extracted.
+        'malformed' : len(cleaned_content) < 50
+    }

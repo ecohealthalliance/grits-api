@@ -54,7 +54,7 @@ def scrape_promed_id(id, lang=None):
             return {
                 'promedId': id,
                 'title': label,
-                'content': post,
+                'htmlContent': post,
                 'linkedReports': linked_reports,
                 'zoomLat': zoomLat,
                 'zoomLon': zoomLon,
@@ -110,7 +110,7 @@ def scrape_promed_id(id, lang=None):
                     return {
                         'promedId': id,
                         'title': label,
-                        'content': content,
+                        'htmlContent': content,
                         'linkedReports': linked_reports,
                         'zoomLat': zoomLat,
                         'zoomLon': zoomLon,

@@ -1,4 +1,4 @@
-__version__ = '0.0.2'
+__version__ = '0.0.3'
 import urllib2, httplib
 import chardet
 import httplib2
@@ -70,9 +70,10 @@ def open_url(opener, url):
             detected_encoding = chardet.detect(html)['encoding']
             encoding = detected_encoding if detected_encoding else 'utf-8'
             result['htmlContent'] = unicode(
-                html,
-                encoding=encoding,
-                errors='ignore',
+                html.decode(
+                    encoding=encoding,
+                    errors='replace'
+                )
             )
             result['encoding'] = encoding
             return result
@@ -147,6 +148,15 @@ def scrape_main(url):
             'exception' : "We don't scrape empres-i reports."
             # The reason is that they contain mostly structured data that isn't
             # useful for training text classifiers.
+        }
+    if 'twitter.com' in parsed_url.hostname:
+        return {
+            'sourceUrl' : url,
+            'unscrapable' : True,
+            'exception' : "We don't scrape twitter reports."
+            # Two reasons:
+            # 1. They require using a special API to access the content.
+            # 2. The content requires different NLP techniques to be useful.
         }
     if 'news.google.com' in parsed_url.hostname:
         parsed_qs = urllib2.urlparse.parse_qs(parsed_url.query)
