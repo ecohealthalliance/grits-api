@@ -264,7 +264,7 @@ def process_text(text_obj):
                 if translation.startswith("TranslateApiException:"):
                     raise microsofttranslator.TranslateApiException(
                         translation.split("TranslateApiException:")[1]) 
-                private['englishTranslation'] = {
+                text_obj['englishTranslation'] = {
                     'content' : translation,
                     'translationDate' : datetime.datetime.now(),
                     'translationService' : 'microsoft'
@@ -276,10 +276,10 @@ def process_text(text_obj):
                 logger.error('Exception during translation: ' +\
                     unicode(consecutive_exceptions) + ' total: ' +\
                     unicode(e))
-                private['englishTranslation'] = {
+                text_obj['englishTranslation'] = {
                     'error' : 'Exception during translation.'
                 }
-    return text_obj
+    return make_json_compat(text_obj)
 
 @celery_tasks.task
 def diagnose(text_obj):

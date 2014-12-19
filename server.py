@@ -31,9 +31,10 @@ class DiagnoseHandler(tornado.web.RequestHandler):
         url = self.get_argument('url', params.get('url'))
         if content:
             task = celery.chain(
-                tasks.diagnose.s({
-                    'cleanContent' : dict(content=content)
-                }).set(queue='priority')
+                tasks.process_text.s({
+                    'content' : content
+                }).set(queue='priority'),
+                tasks.diagnose.s().set(queue='priority')
             )()
         elif url:
             hostname = ""
