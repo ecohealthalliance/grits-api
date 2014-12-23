@@ -5,19 +5,20 @@ import pymongo
 import datetime
 
 label_overrides = {
-    '532c9b63f99fe75cf5383521' : ['Gastroenteritis'],
-    '532cc391f99fe75cf5389989' : ['Tuberculosis']
+    'http://healthmap.org/ai.php?1097880' : ['Gastroenteritis'],
+    'http://healthmap.org/ai.php?1220150' : ['Tuberculosis'],
+    'http://healthmap.org/ai.php?2612741' : ['Malaria', 'Diarrhoea', 'Dengue'],
+    'http://healthmap.org/ai.php?2845361' : ['Dengue'],
+    'http://healthmap.org/ai.php?2884661' : ['Echinococcosis'],
+    # Articles to omit have no labels:
+    # All the information is in the video
+    "http://healthmap.org/ai.php?2960401" : [],
 }
-
-misclassified_articles = [
-    "http://healthmap.org/ai.php?2960401"
-    
-    #Should include malaria, diarrhoea and dengue
-    "http://healthmap.org/ai.php?2612741"
-    
-    #Should be Echinococcosis
-    "http://healthmap.org/ai.php?2884661"
-]
+# Switch the urls in label overrides to be names in our mongo database.
+label_overrides = {
+    k.split('?')[1] + '0000' : v
+    for k, v in label_overrides.items()
+}
 
 class DataSet(object):
     """
@@ -30,14 +31,13 @@ class DataSet(object):
             for item in items:
                 self.append(item)
     def append(self, item):
-        if item['_id'] in label_overrides:
-            item['labels'] = label_overrides[r['_id']]
+        if item['name'] in label_overrides:
+            item['labels'] = label_overrides[item['name']]
         else:
             item['labels'] = [
                 disease
                 for event in item['meta']['events']
                 for disease in event['diseases']
-                # TODO: Use disease label table here when it's ready
                 if disease is not None and
                     not disease_label_table.is_not_human_disease( disease ) and
                     # TODO: We should make multiple classifiers
@@ -91,9 +91,13 @@ class DataSet(object):
     def get_labels(self, add_parents=False):
         def get_item_labels(item):
             if add_parents:
-                return list(set(
-                    item['labels'] +\
-                    list(flatten(map(disease_label_table.get_inferred_labels, item['labels'])))))
+                all_labels = set(item['labels'])
+                for label in item['labels']:
+                    for l2 in disease_label_table.get_inferred_labels(label):
+                        if disease_label_table.is_not_human_disease(l2):
+                            continue
+                        all_labels.add(l2)
+                return list(all_labels)
             else:
                 return item['labels']
         return map(get_item_labels, self.items)

@@ -111,9 +111,9 @@ def run_tests(pickle_dir="classifier_conf"):
                     print cl
                     print "precision:",p,"recall",r,"F-score:",f,"support:",s
                     
-                    
+            print ""
             print "Misclassified articles:"
-            print "(Some labels on the pages the links go to were intentionall ommited)"
+            print "(Some labels on the pages the links go to were ommited for not being human diseases)"
             for item, gt, p in zip(
                 data_set.items,
                 data_set.get_labels(add_parents=True),
@@ -121,7 +121,7 @@ def run_tests(pickle_dir="classifier_conf"):
             )[:100]:
                 if set(p) != set(gt):
                     print "http://healthmap.org/ai.php?" + item['name'][:-4]
-                    print p, gt
+                    print "gt:", gt, "prediction:", p
                     print ""
             
 if __name__ == '__main__':
