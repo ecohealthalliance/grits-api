@@ -100,14 +100,14 @@ def train(debug, pickle_dir):
         if keyword_obj['category'] in categories
     ]
     
-    usused_keyword_cats = set([
+    unused_keyword_cats = set([
         keyword_obj['category'] for keyword_obj in keywords
         if keyword_obj['category'] not in categories
     ])
     
-    if len(usused_keyword_cats) > 0:
+    if len(unused_keyword_cats) > 0:
         print "Unused keyword categories:"
-        print usused_keyword_cats
+        print unused_keyword_cats
     
     # Keyword Extraction
     feature_extractor = Pipeline([
