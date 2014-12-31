@@ -13,6 +13,10 @@ label_overrides = {
     # Articles to omit have no labels:
     # All the information is in the video
     "http://healthmap.org/ai.php?2960401" : [],
+    # This article is actually a travel health notice aggregation page with
+    # multiple diseases mentioned.
+    # I think it is best to omit it.
+    "http://healthmap.org/ai.php?1348711" : []
 }
 # Switch the urls in label overrides to be names in our mongo database.
 label_overrides = {
