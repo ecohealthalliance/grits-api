@@ -16,7 +16,7 @@ from scraper.translation import Translator
 
 my_translator = Translator(config)
 
-processor_version = '0.0.2'
+processor_version = '0.1.0'
 
 def make_json_compat(obj):
     """
