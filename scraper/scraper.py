@@ -117,19 +117,20 @@ def open_url(opener, url):
         raise Exception("Unknown error")
 
 def scrape_main(url):
-    if url.endswith('.pdf'):
-        print "Could not scrape url because it is a PDF: " + url
-        return {
-            'sourceUrl' : url,
-            'unscrapable' : True,
-            'exception' : "We can't scrape PDFs yet..."
-        }
     parsed_url = None
     try:
         # Can this handle unicode urls?
         parsed_url = urllib2.urlparse.urlparse(url)
     except:
         raise Exception("urlparse exception")
+    
+    if parsed_url.path.endswith('.pdf'):
+        print "Could not scrape url because it is a PDF: " + url
+        return {
+            'sourceUrl' : url,
+            'unscrapable' : True,
+            'exception' : "We can't scrape PDFs yet..."
+        }
     
     if not parsed_url or not parsed_url.hostname:
         print "Could not parse url: " + url

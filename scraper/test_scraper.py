@@ -10,19 +10,19 @@ logger.setLevel(logging.INFO)
 class TestScraper(unittest.TestCase):
     def test_promed_1(self):
         result = scraper.scrape("http://promedmail.org/direct.php?id=20140919.436908")
-        print process_resources.extract_clean_content(result['htmlContent'])
+        # print process_resources.extract_clean_content(result['htmlContent'])
         self.assertFalse(result.get('unscrapable'))
     def test_promed_2(self):
         result = scraper.scrape("http://www.promedmail.org/direct.php?id=3041400")
-        print process_resources.extract_clean_content(result['htmlContent'])
+        # print process_resources.extract_clean_content(result['htmlContent'])
         self.assertFalse(result.get('unscrapable'))
     def test_link_1(self):
         result = scraper.scrape("http://news.zing.vn/nhip-song-tre/thay-giao-gay-sot-tung-bo-luat-tinh-yeu/a291427.html")
-        print process_resources.extract_clean_content(result['htmlContent'])
+        # print process_resources.extract_clean_content(result['htmlContent'])
         self.assertFalse(result.get('unscrapable'))
     def test_link_2(self):
         result = scraper.scrape("http://news.google.com/news/url?sa=t&fd=R&usg=AFQjCNErKUuDda2EHlPu0LwpUJ0dcdDY4g&url=http://focus.stockstar.com/SS2012101000003737.shtml")
-        print process_resources.extract_clean_content(result['htmlContent'])
+        # print process_resources.extract_clean_content(result['htmlContent'])
         self.assertFalse(result.get('unscrapable'))
     def test_link_3(self):
         result = scraper.scrape("http://www.theargus.co.uk/news/9845086.Screening_follows_new_cases_of_TB_reported_in_Sussex/")
@@ -30,7 +30,7 @@ class TestScraper(unittest.TestCase):
         self.assertFalse(result.get('unscrapable'))
     def test_link_4(self):
         result = scraper.scrape("http://www.foodmate.net/news/yujing/2012/05/206413.html")
-        print process_resources.extract_clean_content(result['htmlContent'])
+        # print process_resources.extract_clean_content(result['htmlContent'])
         self.assertFalse(result.get('unscrapable'))
     def test_link_5(self):
         # This article can be visited in my browser, but the server
@@ -55,3 +55,17 @@ class TestScraper(unittest.TestCase):
         text_obj = process_resources.extract_clean_content(result['htmlContent'])
         translation_obj = my_translator.translate_to_english(text_obj['content'])
         self.assertFalse(translation_obj.get('error'))
+    def test_cutoff(self):
+        # This article is being cut off at "Tochter in die Kita bringen"
+        # Goose is at fault. Using beautiful soup instead seems to avoid the
+        # cutoff, however we need a method to determine which method we should
+        # be using.
+        result = scraper.scrape("http://www.haz.de/Hannover/Aus-der-Region/Wennigsen/Nachrichten/Kita-Kind-an-Ehec-erkrankt")
+        self.assertTrue(
+            process_resources.extract_clean_content(
+                result['htmlContent'])['content']
+                    .strip()
+                    .endswith("Carsten Fricke"))
+    def test_pdf_querystring(self):
+        result = scraper.scrape(
+            "http://apps.who.int/iris/bitstream/10665/136645/1/roadmapupdate17Oct14_eng.pdf?ua=1")
