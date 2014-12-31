@@ -7,7 +7,6 @@ import config
 import diagnosis
 from diagnosis.KeywordExtractor import *
 from diagnosis.Diagnoser import Diagnoser
-from diagnosis.Diagnoser import disease_to_parent
 import numpy as np
 import re
 import sklearn
@@ -17,6 +16,9 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
 from diagnosis.utils import group_by, flatten
 import warnings
+import pymongo
+import test_classifier
+from DataSet import fetch_datasets
 
 def get_pickle(filename):
     """
@@ -50,87 +52,7 @@ def get_pickle(filename):
         print filename, "loaded"
         return result
 
-label_overrides = {
-    # Foot and Mouth disease rarely affects humans.
-    # This sounds like it should be HFM
-    '53303a44f99fe75cf5390a56' : 'Hand, Foot and Mouth Disease',
-    '532c9b63f99fe75cf5383521' : 'Gastroenteritis',
-    '532cc391f99fe75cf5389989' : 'Tuberculosis'
-}
-
-labels_to_omit = [
-    'Not Yet Classified',
-    'Undiagnosed',
-    # Maybe Other Human/Animal/Plant Disease labels could be turned into categories?
-    # The problem is we don't know which are negative examples of them.
-    'Other Human Disease',
-    'Other Animal Disease',
-    'Other Plant Disease',
-    #Pathogen labels:
-    'Food-related toxin',
-    'Free Living Amoeba',
-    'Pests',
-    'Bite',
-    'E. coli',
-    'Algae',
-    #Labels I'm not sure what to make of:
-    'Vaccine Complication',
-    'Environmental',
-    'Conflict',
-    'Animal Die-off',
-    'Poisoning',
-    'Paralytic Shellfish Poisoning',
-    'Cold',
-]
-# Previously I had ommited 'Amoeba' because it is a type of organism rather than
-# a disease. However, now that I've investigated some of the articles labeled
-# with it, I think it should be included because it labels reports about
-# amoeba caused diseases that aren't covered by another label. 
-# E.g. brain eating amoeba causes "primary amoebic meningoencephalitis" 
-# (If we did have articles labeled this way, excluding the amoeba label
-# would help since inconsistent labels confuse the classifier).
-
-# Should we omit these?:
-# Foodborne Illness
-# Parotitis
-# Hospital-Related Infection
-
-def get_features_and_classifications(
-    feature_dicts,
-    my_dict_vectorizer,
-    resources,
-    disease_to_parent_map
-):
-    """
-    Vectorize feature_dicts, filter some out, and add parent labels.
-    """
-    features = []
-    classifications = []
-    resources_used = []
-    for feature_vector, r in zip(
-        my_dict_vectorizer.transform(feature_dicts),
-        resources
-    ):
-        if feature_vector.sum() == 0:
-            #Skip all zero features
-            continue
-        if r['meta']['disease'] in labels_to_omit:
-            continue
-        if r['_id'] in label_overrides:
-            diseases = [label_overrides[r['_id']]]
-        else:
-            diseases = [r['meta']['disease']]
-        while diseases[-1] in disease_to_parent_map:
-            diseases.append(disease_to_parent_map[diseases[-1]])
-        features.append(feature_vector)
-        classifications.append(diseases)
-        resources_used.append(r)
-    return np.array(features), np.array(classifications), resources_used
-
-
-def train(debug):
-    training_set = get_pickle('training.p')
-    validation_set = get_pickle('validation.p')
+def train(debug, pickle_dir):
     keywords = get_pickle('ontologies-0.1.3.p')
     
     categories = set([
@@ -178,72 +100,47 @@ def train(debug):
         if keyword_obj['category'] in categories
     ]
     
-    print "Unused categories:"
-    print set([
+    unused_keyword_cats = set([
         keyword_obj['category'] for keyword_obj in keywords
         if keyword_obj['category'] not in categories
     ])
     
+    if len(unused_keyword_cats) > 0:
+        print "Unused keyword categories:"
+        print unused_keyword_cats
+    
     # Keyword Extraction
-    extract_features = Pipeline([
+    feature_extractor = Pipeline([
         ('kwext', KeywordExtractor(keyword_array)),
         ('link', LinkedKeywordAdder(keyword_array)),
         ('limit', LimitCounts(1)),
     ])
-    train_feature_dicts = extract_features.transform([
-        r['cleanContent'] for r in training_set
-    ])
-    validation_feature_dicts = extract_features.transform([
-        r['cleanContent'] for r in validation_set
-    ])
+    
+    time_offset_test_set, mixed_test_set, training_set = fetch_datasets()
+    
+    time_offset_test_set.feature_extractor =\
+    mixed_test_set.feature_extractor =\
+    training_set.feature_extractor = feature_extractor
+    
     #If we get sparse rows working with the classifier this might yeild some
     #performance improvments.
-    my_dict_vectorizer = DictVectorizer(sparse=False).fit(train_feature_dicts)
+    my_dict_vectorizer = DictVectorizer(sparse=False).fit(training_set.get_feature_dicts())
     print 'Found keywords:', len(my_dict_vectorizer.vocabulary_)
     print "Keywords in the validation set that aren't in the training set:"
     print  (
         set(DictVectorizer(sparse=False).fit(
-            validation_feature_dicts).vocabulary_
+            mixed_test_set.get_feature_dicts()).vocabulary_
         ) -
         set(my_dict_vectorizer.vocabulary_)
     )
+    
+    time_offset_test_set.dict_vectorizer = \
+    mixed_test_set.dict_vectorizer = \
+    training_set.dict_vectorizer = my_dict_vectorizer
 
-    (
-        feature_mat_train,
-        labels_train,
-        resources_train
-    ) = get_features_and_classifications(
-        train_feature_dicts,
-        my_dict_vectorizer,
-        training_set,
-        {}
-    )
-    
-    (
-        feature_mat_validation,
-        labels_validation,
-        resources_validation
-    ) = get_features_and_classifications(
-        validation_feature_dicts,
-        my_dict_vectorizer,
-        validation_set,
-        disease_to_parent
-    )
-    
-    print "articles we could extract keywords from:"
-    print len(resources_validation), '/', len(validation_set)
-
-    print """
-    Articles in the validation set that we are sure to miss
-    because we have no training data for their labels:
-    """
-    
-    not_in_train = [
-        y for y in flatten(labels_validation, 1)
-        if (y not in flatten(labels_train, 1))
-    ]
-    print len(not_in_train),'/',len(labels_validation)
-    print set(not_in_train)
+    time_offset_test_set.remove_zero_feature_vectors()
+    mixed_test_set.remove_zero_feature_vectors()
+    training_set.remove_zero_feature_vectors()
 
     my_classifier = OneVsRestClassifier(LogisticRegression(
         # When fit intercept is False the classifier predicts nothing when
@@ -266,87 +163,31 @@ def train(debug):
         # class_weight='auto',
     ), n_jobs=-1)
     
-    my_classifier.fit(feature_mat_train, labels_train)
+    # Parent labels are not added to the training data because we seem to do
+    # better by adding them after the classification.
+    # This may be due to the parent classification having such a
+    # high confidence that the child labels are pushed below the cutoff.
+    my_classifier.fit(
+        np.array(training_set.get_feature_vectors()),
+        np.array(training_set.get_labels()))
     
     # Pickle everything that will be needed for classification:
-    with open('classifier.p', 'wb') as f:
+    with open(os.path.join(pickle_dir, 'classifier.p'), 'wb') as f:
         pickle.dump(my_classifier, f)
-    with open('dict_vectorizer.p', 'wb') as f:
+    with open(os.path.join(pickle_dir, 'dict_vectorizer.p'), 'wb') as f:
         pickle.dump(my_dict_vectorizer, f)
-    with open('keyword_array.p', 'wb') as f:
+    with open(os.path.join(pickle_dir, 'keyword_array.p'), 'wb') as f:
         pickle.dump(keyword_array, f)
-    # Reload variables from pickles to test them:
-    with open('classifier.p') as f:
-        my_classifier = pickle.load(f)
-    with open('dict_vectorizer.p') as f:
-        my_dict_vectorizer = pickle.load(f)
-    with open('keyword_array.p') as f:
-        keyword_array = pickle.load(f)
     
-    my_diagnoser = Diagnoser(
-        my_classifier,
-        my_dict_vectorizer,
-        keyword_array=keyword_array,
-        cutoff_ratio=.7
-    )
-    with warnings.catch_warnings():
-        # The updated version of scikit will spam warnings here.
-        warnings.simplefilter("ignore")
-        training_predictions = [
-            tuple([
-                my_diagnoser.classifier.classes_[i]
-                for i, p in my_diagnoser.best_guess(X)
-            ])
-            for X in feature_mat_train
-        ]
-        print "Training set (macro avg):\nprecision: %s recall: %s f-score: %s" %\
-            sklearn.metrics.precision_recall_fscore_support(
-                map(tuple, labels_train),
-                training_predictions,
-                average='macro'
-            )[0:3]
-        
-        predictions = [
-            tuple([
-                my_diagnoser.classifier.classes_[i]
-                for i, p in my_diagnoser.best_guess(X)
-            ])
-            for X in feature_mat_validation
-        ]
-    # I've noticed that the macro f-score is not the harmonic mean of the percision
-    # and recall. Perhaps this could be a result of the macro f-score being computed 
-    # as an average of f-scores.
-    # Furthermore, the macro f-scrore can be smaller than the precision and
-    # recall which seems like it shouldn't be possible.
-    print "Validation set (macro avg):\nprecision: %s recall: %s f-score: %s" %\
-        sklearn.metrics.precision_recall_fscore_support(
-            labels_validation,
-            predictions,
-            average='macro')[0:3]
-    print "Validation set (micro avg):\nprecision: %s recall: %s f-score: %s" %\
-        sklearn.metrics.precision_recall_fscore_support(
-            labels_validation,
-            predictions,
-            average='micro')[0:3]
-        
-    if debug:
-        print "Which classes are we performing poorly on?"
-        
-        labels = sorted(
-            list(set(flatten(labels_validation)) | set(flatten(predictions)))
-        )
-        prfs = sklearn.metrics.precision_recall_fscore_support(
-            labels_validation,
-            predictions,
-            labels=labels
-        )
-        for cl,p,r,f,s in sorted(zip(labels, *prfs), key=lambda k:k[3]):
-            print cl
-            print "precision:",p,"recall",r,"F-score:",f,"support:",s
+    test_classifier.run_tests(pickle_dir=pickle_dir)
 
 if __name__ == '__main__':
+    # This will run the classifier and save the output:
+    # mkdir classifier_conf
+    # unbuffer python train.py -pickle_dir classifier_conf | tee classifier_conf/result.txt
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-debug', action='store_true')
+    parser.add_argument('-pickle_dir', default='')
     args = parser.parse_args()
-    train(args.debug)
+    train(args.debug, args.pickle_dir)
