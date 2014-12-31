@@ -79,6 +79,9 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     Run the diagnostic classifiers/feature extractors
     on the girder item with the given id.
     """
+    logger.info("Diagnosing article with girder id: " + item_id)
+    if prev_result == None:
+        logger.error('Processing might have failed.')
     item_id = bson.ObjectId(item_id)
     resource = girder_db.item.find_one(item_id)
     meta = resource['meta']
@@ -132,20 +135,21 @@ def process_girder_resource(item_id=None):
     resource = girder_db.item.find_one(item_id)
     private = resource['private'] = resource.get('private', {})
     
+    meta = resource['meta']
+    rm_key(meta, 'processing')
     
-    if StrictVersion(private['processorVersion']) >=\
+    if StrictVersion(private.get('processorVersion', '0.0.0')) >=\
        StrictVersion(processor_version):
         # Don't reprocess the article if the processor hasn't changed,
         # unless there was an error during translation.
         if private.get('englishTranslation', {}).get('error'):
             pass
         else:
+            girder_db.item.update({'_id': item_id}, resource)
             return make_json_compat(resource)
     
     private['processorVersion'] = processor_version
-    
-    meta = resource['meta']
-    rm_key(meta, 'processing')
+
     # Unset the diagnosis because the content might have changed.
     rm_key(meta, 'diagnosis')
     
@@ -153,7 +157,7 @@ def process_girder_resource(item_id=None):
     if not prev_scraped_data or\
        StrictVersion(prev_scraped_data['scraperVersion']) <\
        StrictVersion(scraper.__version__):
-        logger.info('Scraping:' + resource['meta']['link'])
+        logger.info('Scraping url: ' + resource['meta']['link'])
         private['scrapedData'] = scraper.scrape(resource['meta']['link'])
     if private['scrapedData'].get('unscrapable'):
         girder_db.item.update({'_id': item_id}, resource)
@@ -161,7 +165,12 @@ def process_girder_resource(item_id=None):
     
     content = private['scrapedData']['content']
     clean_content = extract_clean_content(content)
-    prev_clean_content = private.get('cleanContent', {}).get('content')
+    prev_clean_content_obj = private.get('cleanContent')
+    # In some db items cleanContent is a string.
+    if isinstance(prev_clean_content_obj, dict):
+        prev_clean_content = prev_clean_content_obj.get('content')
+    else:
+        prev_clean_content = None
     if not clean_content:
         private['cleanContent'] = { "error" : "Could not clean content." }
         girder_db.item.update({'_id': item_id}, resource)
@@ -207,6 +216,14 @@ def process_girder_resource(item_id=None):
                         consecutive_exceptions += 1
                         private['englishTranslation'] = {
                             'error' : 'Exception during translation.'
+                        }
+                    except ValueError as e:
+                        # Some articles (e.g. 532c9a3af99fe75cf5383290)
+                        # trigger value errors in the microsofttranslator code
+                        # during JSON parsing.
+                        consecutive_exceptions += 1
+                        private['englishTranslation'] = {
+                            'error' : 'Exception during translation. (ValueError)'
                         }
     girder_db.item.update({'_id': item_id}, resource)
     return make_json_compat(resource)
