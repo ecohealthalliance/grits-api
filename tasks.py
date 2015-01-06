@@ -221,9 +221,9 @@ def process_text(text_obj):
     clean_content_obj = extract_clean_content(content)
     text_obj['cleanContent'] = clean_content_obj
     if not my_translator.is_english(clean_content_obj['content']):
-        private['englishTranslation'] = my_translator.translate_to_english(
+        text_obj['englishTranslation'] = my_translator.translate_to_english(
             clean_content_obj['content'])
-    return text_obj
+    return make_json_compat(text_obj)
 
 @celery_tasks.task
 def diagnose(text_obj):
