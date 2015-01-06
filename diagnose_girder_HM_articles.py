@@ -42,6 +42,7 @@ def update():
                 }
             }
         }).limit(300)
+        resources_in_cursor = 0
         for resource in resources:
             item_id = resource['_id']
             girder_db.item.update({'_id':item_id}, {
@@ -57,7 +58,10 @@ def update():
                 tasks.diagnose_girder_resource.s(
                     item_id=str(item_id)).set(queue='diagnose')
             )()
-            resources_queued += 1
+            resources_in_cursor += 1
+        if resources_in_cursor == 0:
+            break
+        resources_queued += resources_in_cursor
         print "Resources queued for processing so far:", resources_queued
 
 if __name__ == "__main__":
