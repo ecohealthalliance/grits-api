@@ -15,29 +15,24 @@ def update():
     # As an aside, the mongo tasks database will continue to have a large 
     # fileSize even after it is cleaned because it is preallocated.
     tasks.celery_tasks.backend.cleanup()
-    # Reset the processing/diagnosing properties.
-    # I think these should be phased out and replaced with processingQueuedOn
-    girder_db.item.update(
-        {}, {
-            '$unset' : {
-                'meta.processing':'',
-                'meta.diagnosing':''
-            }
-        }, multi=True
-    )
-    print "Enqueuing diagnosis of articles with an out of date diagnosis or none at all..."
+    print "Queueing unprocessed and out-of-date HealthMap alerts for processing..."
     print "Current diagnoser version:", Diagnoser.__version__
     print "Current preprocessor version:", tasks.processor_version
+    resources_queued = 0
     while True:
         resources = girder_db.item.find({
             '$or' : [
                 {
                     'meta.diagnosis' : { "$exists": False }
                 }, {
-                    'private.processorVersion' : { '$ne' : tasks.processor_version }
+                    'private.processorVersion' : {
+                        '$ne' : tasks.processor_version
+                    }
                 }, {
                     'meta.diagnosis.error' : { "$exists": False },
-                    'meta.diagnosis.diagnoserVersion' : { '$ne' : Diagnoser.__version__ }
+                    'meta.diagnosis.diagnoserVersion' : {
+                        '$ne' : Diagnoser.__version__
+                    }
                 }
             ],
             # Only enqueue articles if they were not recently enqueued
@@ -46,12 +41,7 @@ def update():
                     '$gt' : datetime.datetime.utcnow() - datetime.timedelta(1)
                 }
             }
-        }).limit(200)
-        remaining_resources = resources.count()
-        if remaining_resources == 0:
-            print "No remaining resources to enqueue."
-            break
-        print "Remaining resources to enqueue:", remaining_resources
+        }).limit(300)
         for resource in resources:
             item_id = resource['_id']
             girder_db.item.update({'_id':item_id}, {
@@ -62,9 +52,13 @@ def update():
                 }
             })
             chain(
-                tasks.process_girder_resource.s(item_id=str(item_id)).set(queue='process'),
-                tasks.diagnose_girder_resource.s(item_id=str(item_id)).set(queue='diagnose')
+                tasks.process_girder_resource.s(
+                    item_id=str(item_id)).set(queue='process'),
+                tasks.diagnose_girder_resource.s(
+                    item_id=str(item_id)).set(queue='diagnose')
             )()
+            resources_queued += 1
+        print "Resources queued for processing so far:", resources_queued
 
 if __name__ == "__main__":
     update()
