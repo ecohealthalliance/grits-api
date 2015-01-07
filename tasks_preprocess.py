@@ -148,12 +148,22 @@ def scrape(url):
 
 @celery_tasks.task(name='tasks.process_text')
 def process_text(text_obj):
+    result = {}
+    # These first conditions are for handling scraper output. They are currently
+    # unnecessairy since we don't allow users to submit URLs.
     if text_obj.get('unscrapable'):
-        return text_obj
-    content = text_obj['htmlContent']
-    clean_content_obj = extract_clean_content(content)
-    text_obj['cleanContent'] = clean_content_obj
-    if not my_translator.is_english(clean_content_obj['content']):
-        private['englishTranslation'] = my_translator.translate_to_english(
-            clean_content_obj['content'])
-    return text_obj
+        result['scrapedData'] = text_obj
+        result['error'] = result['scrapedData']['error']
+        return make_json_compat(result)
+    if 'htmlContent' in text_obj:
+        result['scrapedData'] = text_obj
+        clean_content = extract_clean_content(text_obj['htmlContent'])
+    else:
+        clean_content = text_obj
+    if my_translator.is_english(clean_content['content']):
+        result['cleanContent'] = clean_content
+    else:
+        result['englishTranslation'] = my_translator.translate_to_english(
+            clean_content['content'])
+        result['cleanContent'] = clean_content
+    return make_json_compat(result)

@@ -4,6 +4,7 @@ import config
 
 import celery
 import tasks
+import tasks_preprocess
 
 import bson
 import pymongo
@@ -31,9 +32,10 @@ class DiagnoseHandler(tornado.web.RequestHandler):
         url = self.get_argument('url', params.get('url'))
         if content:
             task = celery.chain(
-                tasks.diagnose.s({
-                    'cleanContent' : dict(content=content)
-                }).set(queue='priority')
+                tasks_preprocess.process_text.s({
+                    'content' : content
+                }).set(queue='priority'),
+                tasks.diagnose.s().set(queue='priority')
             )()
         elif url:
             hostname = ""
@@ -54,8 +56,8 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 return
 
             task = celery.chain(
-                tasks.scrape.s(url).set(queue='priority'),
-                tasks.process_text.s().set(queue='priority'),
+                tasks_preprocess.scrape.s(url).set(queue='priority'),
+                tasks_preprocess.process_text.s().set(queue='priority'),
                 tasks.diagnose.s().set(queue='priority')
             )()
         else:

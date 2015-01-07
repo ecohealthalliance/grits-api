@@ -3,6 +3,7 @@ Check for undiagnosed articles in girder and diagnose them.
 """
 import pymongo
 import tasks
+import tasks
 import datetime
 from celery import chain
 from diagnosis.Diagnoser import Diagnoser
@@ -53,7 +54,7 @@ def update():
                 }
             })
             chain(
-                tasks.process_girder_resource.s(
+                tasks_preprocess.process_girder_resource.s(
                     item_id=str(item_id)).set(queue='process'),
                 tasks.diagnose_girder_resource.s(
                     item_id=str(item_id)).set(queue='diagnose')
