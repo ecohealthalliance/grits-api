@@ -90,8 +90,9 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                     if 'args' in globals() and args.debug:
                         raise e
                     return
-                if not self.public and task.parent:
-                    resp['scrapedData'] = task.parent.get()
+                if self.get_argument('returnSourceContent',
+                    params.get('returnSourceContent', False)):
+                    resp['source'] = task.parent.get()
                 self.write(resp)
                 self.set_header("Content-Type", "application/json")
                 self.finish()
