@@ -3,7 +3,7 @@ import json
 import config
 
 import celery
-import tasks
+import tasks_diagnose
 import tasks_preprocess
 
 import bson
@@ -35,7 +35,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 tasks_preprocess.process_text.s({
                     'content' : content
                 }).set(queue='priority'),
-                tasks.diagnose.s().set(queue='priority')
+                tasks_diagnose.diagnose.s().set(queue='priority')
             )()
         elif url:
             hostname = ""
@@ -58,7 +58,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             task = celery.chain(
                 tasks_preprocess.scrape.s(url).set(queue='priority'),
                 tasks_preprocess.process_text.s().set(queue='priority'),
-                tasks.diagnose.s().set(queue='priority')
+                tasks_diagnose.diagnose.s().set(queue='priority')
             )()
         else:
             self.write({
@@ -141,7 +141,7 @@ if __name__ == "__main__":
     if args.debug:
         # Run tasks in the current process so we don't have to run a worker
         # when debugging.
-        tasks.celery_tasks.conf.update(
+        tasks_diagnose.celery_tasks.conf.update(
             CELERY_ALWAYS_EAGER = True,
         )
     application.listen(5000)

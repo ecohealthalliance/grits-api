@@ -2,8 +2,8 @@
 Check for undiagnosed articles in girder and diagnose them.
 """
 import pymongo
-import tasks
-import tasks
+import tasks_preprocess
+import tasks_diagnose
 import datetime
 from celery import chain
 from diagnosis.Diagnoser import Diagnoser
@@ -15,10 +15,10 @@ def update():
     # Celery beat could do this, but we're not running it at the moment.
     # As an aside, the mongo tasks database will continue to have a large 
     # fileSize even after it is cleaned because it is preallocated.
-    tasks.celery_tasks.backend.cleanup()
+    tasks_preprocess.celery_tasks.backend.cleanup()
     print "Queueing unprocessed and out-of-date HealthMap alerts for processing..."
     print "Current diagnoser version:", Diagnoser.__version__
-    print "Current preprocessor version:", tasks.processor_version
+    print "Current preprocessor version:", tasks_preprocess.processor_version
     resources_queued = 0
     while True:
         resources = girder_db.item.find({
@@ -27,7 +27,7 @@ def update():
                     'meta.diagnosis' : { "$exists": False }
                 }, {
                     'private.processorVersion' : {
-                        '$ne' : tasks.processor_version
+                        '$ne' : tasks_preprocess.processor_version
                     }
                 }, {
                     'meta.diagnosis.error' : { "$exists": False },
@@ -56,7 +56,7 @@ def update():
             chain(
                 tasks_preprocess.process_girder_resource.s(
                     item_id=str(item_id)).set(queue='process'),
-                tasks.diagnose_girder_resource.s(
+                tasks_diagnose.diagnose_girder_resource.s(
                     item_id=str(item_id)).set(queue='diagnose')
             )()
             resources_in_cursor += 1
