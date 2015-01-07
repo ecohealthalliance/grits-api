@@ -14,24 +14,37 @@ from tasks_preprocess import celery_tasks
 from tasks_preprocess import make_json_compat
 
 from diagnosis.Diagnoser import Diagnoser
-with open('current_classifier/classifier.p') as f:
-    my_classifier = pickle.load(f)
-with open('current_classifier/dict_vectorizer.p') as f:
-    my_dict_vectorizer = pickle.load(f)
-with open('current_classifier/keyword_array.p') as f:
-    keyword_array = pickle.load(f)
-my_diagnoser = Diagnoser(
-    my_classifier,
-    my_dict_vectorizer,
-    keyword_array=keyword_array,
-    cutoff_ratio=.7
-)
+class DiagnoserTask(celery.Task):
+    """
+    This abstract base class is used so the diagnoser is only loaded
+    when the tasks start running.
+    There are cases where this file may be imported when the the diagnoser
+    cannot be loaded (because of missing pickles).
+    """
+    abstract = True
+    _diagnoser = None
+    @property
+    def diagnoser(self):
+        if self._diagnoser is None:
+            with open('current_classifier/classifier.p') as f:
+                my_classifier = pickle.load(f)
+            with open('current_classifier/dict_vectorizer.p') as f:
+                my_dict_vectorizer = pickle.load(f)
+            with open('current_classifier/keyword_array.p') as f:
+                keyword_array = pickle.load(f)
+            self._diagnoser = Diagnoser(
+                my_classifier,
+                my_dict_vectorizer,
+                keyword_array=keyword_array,
+                cutoff_ratio=.7
+            )
+        return self._diagnoser
 
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-@celery_tasks.task(name='tasks.diagnose_girder_resource')
+@celery_tasks.task(base=DiagnoserTask, name='tasks.diagnose_girder_resource')
 def diagnose_girder_resource(prev_result=None, item_id=None):
     """
     Run the diagnostic classifiers/feature extractors
@@ -47,7 +60,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     prev_diagnosis = resource.get('meta').get('diagnosis')
     if prev_diagnosis and\
        StrictVersion(prev_diagnosis.get('diagnoserVersion', '0.0.0')) >=\
-       StrictVersion(Diagnoser.__version__):
+       StrictVersion(diagnose_girder_resource.diagnoser.__version__):
         girder_db.item.update({'_id': item_id}, resource)
         return make_json_compat(resource)
     english_translation = resource\
@@ -63,7 +76,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
             .get('content')
     if clean_english_content:
         logger.info('Diagnosing text:\n' + clean_english_content)
-        meta['diagnosis'] = my_diagnoser.diagnose(clean_english_content)
+        meta['diagnosis'] = diagnose_girder_resource.diagnoser.diagnose(clean_english_content)
     else:
         meta['diagnosis'] = { 'error' : 'No content available to diagnose.' }
     girder_db.item.update({'_id': item_id}, resource)
@@ -79,7 +92,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     girder_db['diagnosisLog'].insert(logged_resource)
     return make_json_compat(resource)
 
-@celery_tasks.task(name='tasks.diagnose')
+@celery_tasks.task(base=DiagnoserTask, name='tasks.diagnose')
 def diagnose(text_obj):
     english_translation = text_obj.get('englishTranslation', {}).get('content')
     if english_translation:
@@ -88,6 +101,6 @@ def diagnose(text_obj):
         clean_english_content = text_obj.get('cleanContent', {}).get('content')
     if clean_english_content:
         logger.info('Diagnosing text:\n' + clean_english_content)
-        return make_json_compat(my_diagnoser.diagnose(clean_english_content))
+        return make_json_compat(diagnose.diagnoser.diagnose(clean_english_content))
     else:
         return { 'error' : 'No content available to diagnose.' }
