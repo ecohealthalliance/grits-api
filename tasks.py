@@ -14,11 +14,11 @@ from tasks_preprocess import celery_tasks
 from tasks_preprocess import make_json_compat
 
 from diagnosis.Diagnoser import Diagnoser
-with open('classifier.p') as f:
+with open('current_classifier/classifier.p') as f:
     my_classifier = pickle.load(f)
-with open('dict_vectorizer.p') as f:
+with open('current_classifier/dict_vectorizer.p') as f:
     my_dict_vectorizer = pickle.load(f)
-with open('keyword_array.p') as f:
+with open('current_classifier/keyword_array.p') as f:
     keyword_array = pickle.load(f)
 my_diagnoser = Diagnoser(
     my_classifier,
