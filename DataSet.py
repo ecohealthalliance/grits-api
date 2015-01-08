@@ -175,7 +175,7 @@ def fetch_datasets():
     # If there are too many reports we will run out of memory when training
     # the classifier, so a portion of the reports will not be used if we go
     # over the limit.
-    report_limit = 8000
+    report_limit = 5000
     usable_portion = float(report_limit) / remaining_reports.count()
 
     for report in remaining_reports:
