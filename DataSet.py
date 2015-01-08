@@ -134,8 +134,7 @@ def fetch_datasets():
     # We use the first 6 months rather than the last because we keep adding 
     # new data and want this test set to stay the same.
     girder_db = pymongo.Connection('localhost')['girder']
-    # two years ago
-    start_date = datetime.datetime.utcnow() - datetime.timedelta(730.484)
+    start_date = datetime.datetime(2013, 1, 8, 0, 9, 12)
     time_offset_test_set = DataSet(girder_db.item.find({
         "meta.date" : {
             "$lte" : start_date + datetime.timedelta(180),
@@ -154,7 +153,7 @@ def fetch_datasets():
         # This filters out articles that appear to redirect to a different page.
         "$where" : "this.private.scrapedData.sourceUrl.length < this.private.scrapedData.url.length + 12"
     }))
-    remaining_reports = girder_db.item.find({
+    remaining_reports = list(girder_db.item.find({
         "meta.date" : {
             "$gt" : start_date + datetime.timedelta(210)
         },
@@ -168,17 +167,23 @@ def fetch_datasets():
         "private.scrapedData.url": { "$exists" : True },
         # This filters out articles that appear to redirect to a different page.
         "$where" : "this.private.scrapedData.sourceUrl.length < this.private.scrapedData.url.length + 12"
-    })
+    }))
     training_set = DataSet()
     mixed_test_set = DataSet()
+    
+    # If there are too many reports we will run out of memory when training
+    # the classifier, so a portion of the reports will not be used if we go
+    # over the limit.
+    report_limit = 8000
+    usable_portion = float(report_limit) / len(remaining_reports)
+
     for report in remaining_reports:
         # Choose 1/10 articles for the mixed test set
-        if int(report['name'][:-4]) % 10 == 1:
+        if int(report['name'][:-4]) % 10 == 9:
             mixed_test_set.append(report)
         else:
-            # We have to leave some reports out to avoid memory errors
-            # if int(report['name'][:-4]) % 10 < 7: continue
-            training_set.append(report)
+            if int(report['name'][:-4]) % 10 < int(usable_portion * 10):
+                training_set.append(report)
     
     print "time_offset_test_set size", len(time_offset_test_set), " | rejected items:", time_offset_test_set.rejected_items
     print "mixed_test_set size", len(mixed_test_set), " | rejected items:", mixed_test_set.rejected_items
