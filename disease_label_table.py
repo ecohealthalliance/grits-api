@@ -12,26 +12,31 @@ def get_table():
     __table__ = []
     curdir = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(curdir, "disease_label_table.csv")) as f:
-        header = csv.reader(f, delimiter=',', quoting=csv.QUOTE_NONE).next()
+        header = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL).next()
         reader = csv.DictReader(f,
             fieldnames=header,
             delimiter=',',
-            quoting=csv.QUOTE_NONE)
+            quoting=csv.QUOTE_MINIMAL)
         for row in reader:
+            out_row = {}
             for key, value in row.items():
+                value = value.strip()
                 if value == "TRUE":
-                    row[key] = True
+                    out_row[key] = True
                 elif value == "FALSE":
-                    row[key] = False
-                if value == "":
-                    del row[key]
-            __table__.append(row)
+                    out_row[key] = False
+                elif value == "":
+                    continue
+                else:
+                    out_row[key] = value
+            __table__.append(out_row)
     return __table__
 
 def is_not_human_disease(disease):
     for row in get_table():
         if row['label'] == disease:
             return row.get('is_not_disease') or row.get('not_human_disease')
+    print "WARNING: Unknown disease label:", disease
 
 __disease_to_parents__ = None
 def get_inferred_labels(disease):

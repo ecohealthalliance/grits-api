@@ -34,8 +34,8 @@ Boutonneuse fever,,,Tick-borne disease,,,http://en.wikipedia.org/wiki/Boutonneus
 Bovine Pleuropneumonia,,,,TRUE,,http://en.wikipedia.org/wiki/Contagious_bovine_pleuropneumonia,Contagious bovine pleuropneumonia,,
 Bovine TB,,,Tuberculosis,TRUE,,http://en.wikipedia.org/wiki/Mycobacterium_bovis,,,Mycobacterium bovis
 Brazilian purpuric fever,,,,,,http://en.wikipedia.org/wiki/Brazilian_purpuric_fever,,TRUE,
-Bronchiolitis,,,,,,http://en.wikipedia.org/wiki/Bronchiolitis,,,
-Bronchitis,,,,,,http://en.wikipedia.org/wiki/Bronchitis,,,
+Bronchiolitis,,,,,,http://en.wikipedia.org/wiki/Bronchiolitis,,TRUE,
+Bronchitis/Bronchiolitis,,,,,,http://en.wikipedia.org/wiki/Bronchitis,,,
 Brucellosis,,,,,,http://en.wikipedia.org/wiki/Brucellosis,,,
 BSE,,,,,,http://en.wikipedia.org/wiki/Bovine_spongiform_encephalopathy,Bovine spongiform encephalopathy,,
 Burkholderia cepacia,,TRUE,,,,http://en.wikipedia.org/wiki/Burkholderia_cepacia_complex,,,
@@ -43,7 +43,7 @@ C. difficile,,TRUE,,,,http://en.wikipedia.org/wiki/Clostridium_difficile_colitis
 Campylobacter,,TRUE,,,,http://en.wikipedia.org/wiki/Campylobacter,,,
 Canine distemper,,,,TRUE,,http://en.wikipedia.org/wiki/Canine_distemper,,,
 Canine Influenza,,,Influenza,TRUE,,http://en.wikipedia.org/wiki/Canine_influenza,,,
-Carbapenem-resistant enterobacteriaceae,,TRUE,Antibiotic resistance,,,http://en.wikipedia.org/wiki/Carbapenem_resistant_enterobacteriaceae,,,
+Carbapenem-resistant enterobacteriaceae (CRE),,TRUE,Antibiotic resistance,,,http://en.wikipedia.org/wiki/Carbapenem_resistant_enterobacteriaceae,,,
 Cat Scratch Fever,,,Fever,,,http://en.wikipedia.org/wiki/Cat_scratch_disease,Cat Scratch Disease,,"Cat Scratch Disease, Cat Scratch Fever is the 3rd studio album by Ted Nugent I found out...."
 Chagas,,,,,,http://en.wikipedia.org/wiki/Chagas_disease,Chagas disease,,Chagas disease
 Chicken Pox,,,,,,http://en.wikipedia.org/wiki/Chickenpox,Chickenpox,,Chickenpox
@@ -148,7 +148,7 @@ Klebsiella pneumoniae,,TRUE,,,,http://en.wikipedia.org/wiki/Klebsiella_pneumonia
 Kyasanur forest disease,,,Hemorrhagic Fever,,,http://en.wikipedia.org/wiki/Kyasanur_forest_disease,,TRUE,
 La Crosse Encephalitis,,,Encephalitis,,,http://en.wikipedia.org/wiki/La_Crosse_encephalitis,,,
 Lassa Fever,,,Hemorrhagic Fever,,,http://en.wikipedia.org/wiki/Lassa_fever,Lassa hemorrhagic fever (LHF),,
-Legionnaires' ,,,,,,,Legionnaires' disease,,
+Legionnaires',,,,,,,Legionnaires' disease,,
 Leishmaniasis,,,,,,http://en.wikipedia.org/wiki/Leishmaniasis,leishmaniosis,,
 Leprosy,,,,,,http://en.wikipedia.org/wiki/Leprosy,Hansen's disease,,
 Leptospirosis,,,,,,http://en.wikipedia.org/wiki/Leptospirosis,"field fever, rat catcher's yellows, pretibial fever",,
@@ -167,7 +167,7 @@ Measles,,,,,,http://en.wikipedia.org/wiki/Measles,,,
 Melioidosis,,,,,,http://en.wikipedia.org/wiki/Melioidosis,,,
 Meningitis,,,,,,http://en.wikipedia.org/wiki/Meningitis,,,
 Meningitis - HiB,,,Meningitis,,,http://www.nlm.nih.gov/medlineplus/ency/article/000612.htm,,,non-wiki
-Meningitis Neisseria,,,Bacterial Meningitis,,,http://en.wikipedia.org/wiki/Neisseria_meningitidis,"Neisseria meningitis, meningococcus",,
+Meningitis - Neisseria,,,Bacterial Meningitis,,,http://en.wikipedia.org/wiki/Neisseria_meningitidis,"Neisseria meningitis, meningococcus",,
 Meningitis - Strep/Pneumoccocal,,,Bacterial Meningitis,,,http://en.wikipedia.org/wiki/Meningitis,,,embedded in wiki article on meningitis
 MERS,,TRUE,Coronavirus,,,http://en.wikipedia.org/wiki/Middle_East_respiratory_syndrome,Middle East Respiratory syndrome,,
 Metagonimiasis,,,,,,http://en.wikipedia.org/wiki/Metagonimiasis,,,
@@ -181,8 +181,8 @@ Murray Valley encephalitis,,,Encephalitis,,,http://en.wikipedia.org/wiki/Murray_
 "Mycobacteria, non-TB",,,,,,http://en.wikipedia.org/wiki/Mycobacterium,,,included in mycobacterium wiki article
 Myiasis,,,,,,http://en.wikipedia.org/wiki/Myiasishttp://en.wikipedia.org/wiki/Myiasis,,,
 Newcastle Disease,,,,,,http://en.wikipedia.org/wiki/Newcastle_disease,,,
-Nipah,,TRUE,Hemorrhagic Fever,,,http://en.wikipedia.org/wiki/Henipavirus,,,embedded in Henipavirus article
-Hendra,,TRUE,Hemorrhagic Fever,,,http://en.wikipedia.org/wiki/Henipavirus,,,embedded in Henipavirus article
+Nipah/Hendra Virus,,TRUE,Hemorrhagic Fever,,,http://en.wikipedia.org/wiki/Henipavirus,,,embedded in Henipavirus article
+Hendra,,TRUE,Hemorrhagic Fever,,,http://en.wikipedia.org/wiki/Henipavirus,,TRUE,embedded in Henipavirus article
 Norovirus,,TRUE,Gastroenteritis,,,http://en.wikipedia.org/wiki/Norovirus,,,
 Not Yet Classified,TRUE,,,,TRUE,NAP,,,
 Novel Swine Enteric Coronavirus,,TRUE,,,,NF,,,

@@ -16,7 +16,8 @@ label_overrides = {
     # This article is actually a travel health notice aggregation page with
     # multiple diseases mentioned.
     # I think it is best to omit it.
-    "http://healthmap.org/ai.php?1348711" : []
+    "http://healthmap.org/ai.php?1348711" : [],
+    "http://healthmap.org/ai.php?2882489": ['Dengue', 'Chikungunya']
 }
 # Switch the urls in label overrides to be names in our mongo database.
 label_overrides = {
@@ -153,7 +154,7 @@ def fetch_datasets():
         # This filters out articles that appear to redirect to a different page.
         "$where" : "this.private.scrapedData.sourceUrl.length < this.private.scrapedData.url.length + 12"
     }))
-    remaining_reports = list(girder_db.item.find({
+    remaining_reports = girder_db.item.find({
         "meta.date" : {
             "$gt" : start_date + datetime.timedelta(210)
         },
@@ -167,7 +168,7 @@ def fetch_datasets():
         "private.scrapedData.url": { "$exists" : True },
         # This filters out articles that appear to redirect to a different page.
         "$where" : "this.private.scrapedData.sourceUrl.length < this.private.scrapedData.url.length + 12"
-    }))
+    })
     training_set = DataSet()
     mixed_test_set = DataSet()
     
@@ -175,7 +176,7 @@ def fetch_datasets():
     # the classifier, so a portion of the reports will not be used if we go
     # over the limit.
     report_limit = 8000
-    usable_portion = float(report_limit) / len(remaining_reports)
+    usable_portion = float(report_limit) / remaining_reports.count()
 
     for report in remaining_reports:
         # Choose 1/10 articles for the mixed test set
