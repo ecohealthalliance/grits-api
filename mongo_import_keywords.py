@@ -55,8 +55,9 @@ if __name__ == '__main__':
     for keyword in keyword_array:
         if keyword['category'] in category_labels:
             collection = category_labels[keyword['category']]
+
             db[collection].insert(
-                { '_id': keyword['keyword'].lower(),
+                { '_id': keyword['keyword'],
                   'source': keyword['category'],
                   'linked_keywords': keyword['linked_keywords'],
                   'case_sensitive': keyword['case_sensitive']} )
