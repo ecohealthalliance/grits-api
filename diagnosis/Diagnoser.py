@@ -7,7 +7,6 @@ from sklearn.pipeline import Pipeline
 import datetime
 from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
-from annotator.case_count_annotator import CaseCountAnnotator
 from annotator.patient_info_annotator import PatientInfoAnnotator
 from annotator.jvm_nlp_annotator import JVMNLPAnnotator
 from annotator.keyword_annotator import KeywordAnnotator
@@ -49,7 +48,6 @@ class Diagnoser():
         self.keyword_array = keyword_array
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
-        self.case_count_annotator = CaseCountAnnotator()
         # TODO: Rename patient info annotator
         self.keypoint_annotator = PatientInfoAnnotator()
         self.jvm_nlp_annotator = JVMNLPAnnotator(['times'])
@@ -121,8 +119,6 @@ class Diagnoser():
         anno_doc = AnnoDoc(content)
         anno_doc.add_tier(self.keyword_annotator)
         logger.info('keywords annotated')
-        anno_doc.add_tier(self.case_count_annotator)
-        logger.info('case counts annotated')
         anno_doc.add_tier(self.geoname_annotator)
         logger.info('geonames annotated')
         try:
@@ -180,17 +176,6 @@ class Diagnoser():
                 )
         logger.info(time_sofar.next() + 'Annotated geonames')
 
-        case_counts = []
-        for span in anno_doc.tiers['caseCounts'].spans:
-            case_counts.append({
-                'type': span.type,
-                'text': span.text,
-                'value': span.label,
-                'modifiers': span.modifiers,
-                'cumulative': span.cumulative,
-                'textOffsets': [[span.start, span.end]]
-            })
-        logger.info(time_sofar.next() + 'Extracted case counts')
 
         anno_doc.add_tier(self.keypoint_annotator, keyword_categories={
             'occupation' : [
@@ -222,6 +207,39 @@ class Diagnoser():
                 )
             )
         logger.info(time_sofar.next() + 'Extracted patient info')
+
+        case_counts = []
+        for span in anno_doc.tiers['patientInfo'].spans:
+            if 'count' in span.metadata and 'number' in span.metadata['count']:
+                if 'case' in span.metadata['count']:
+                    count_type = 'caseCount'
+                elif 'death' in span.metadata['count']:
+                    count_type = 'deathCount'
+                elif 'hospitalization' in span.metadata['count']:
+                    count_type = 'hospitalizationCount'
+
+                possible_modifiers = [ 'approximate', 'average', 'annual',
+                                       'monthly', 'weekly', 'cumulative',
+                                       'incremental' ]
+                modifiers = []
+                for possible_modifier in possible_modifiers:
+                    if possible_modifier in span.metadata['count']:
+                        modifiers.append(possible_modifier)
+
+                if 'cumulative' in span.metadata['count']:
+                    cumulative = True
+                else:
+                    cumulative = False
+
+                case_counts.append({
+                    'type': count_type,
+                    'text': span.text,
+                    'value': span.metadata['count']['number'],
+                    'modifiers': modifiers,
+                    'cumulative': cumulative,
+                    'textOffsets': [[span.start, span.end]]
+                })
+        logger.info(time_sofar.next() + 'Extracted case counts')
 
         keyword_types = ['diseases', 'hosts', 'modes', 'pathogens', 'symptoms']
         keyword_groups = {}
