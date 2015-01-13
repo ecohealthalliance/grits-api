@@ -18,7 +18,7 @@ from diagnosis.utils import *
 
 # Specialized helpers
 
-def traverse_hyponyms(synset, depth=3):
+def traverse_hyponyms(synset, depth=3, only_nouns=False):
     all_hyponyms = []
     for syn in synset:
         d_r_lemmas = [syn]
@@ -27,6 +27,7 @@ def traverse_hyponyms(synset, depth=3):
         lemmas = set([
             lemma.name().split('.')[0].replace('_', ' ')
             for lemma in d_r_lemmas
+            if not(only_nouns and unicode(lemma).split('.')[1] != 'n')
         ])
         all_hyponyms.append({
             'synonyms' :  lemmas,
@@ -257,6 +258,8 @@ def wordnet_hostnames():
                           'medusa',
                           'simple',
                           'Neandertal',
+                          'annual',
+                          'tom',
                           'A', 'E', 'C'])
     probably_not_host_names = set([
         'soldier',
@@ -270,7 +273,7 @@ def wordnet_hostnames():
         'young fish'
     ])
     hostnames = exclude_keywords(
-        traverse_hyponyms(synset),
+        traverse_hyponyms(synset, only_nouns=True),
         non_host_names | probably_not_host_names
     )
     print len(hostnames), "wordnet hostnames found"
@@ -670,6 +673,6 @@ if __name__ == "__main__":
     To update the ontology data we use in our deployments use this command:
     aws s3 cp ontologies.p s3://classifier-data/ --region us-west-1
     """
-    with open('ontologies-0.1.3.p', 'wb') as f:
+    with open('ontologies-0.1.4.p', 'wb') as f:
         pickle.dump(keywords, f)
     print "pickle ready"

@@ -53,7 +53,7 @@ def get_pickle(filename):
         return result
 
 def train(debug, pickle_dir):
-    keywords = get_pickle('ontologies-0.1.3.p')
+    keywords = get_pickle('ontologies-0.1.4.p')
     
     categories = set([
         'hm/disease',
