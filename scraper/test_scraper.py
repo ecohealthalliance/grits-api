@@ -1,3 +1,4 @@
+# coding=utf8
 import unittest
 import scraper
 import process_resources
@@ -69,3 +70,10 @@ class TestScraper(unittest.TestCase):
     def test_pdf_querystring(self):
         result = scraper.scrape(
             "http://apps.who.int/iris/bitstream/10665/136645/1/roadmapupdate17Oct14_eng.pdf?ua=1")
+    def test_english_detection(self):
+        import config
+        from translation import Translator
+        my_translator = Translator(config)
+        self.assertFalse(my_translator.is_english("""
+        Bệnh viêm não năm nay đã xuất hiện nhiều dấu hiệu bất thường...
+        """))

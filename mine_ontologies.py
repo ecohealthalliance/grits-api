@@ -671,7 +671,7 @@ if __name__ == "__main__":
     print "creating pickle..."
     print """
     To update the ontology data we use in our deployments use this command:
-    aws s3 cp ontologies.p s3://classifier-data/ --region us-west-1
+    aws s3 cp ontologies-x.x.x.p s3://classifier-data/ --region us-west-1
     """
     with open('ontologies-0.1.4.p', 'wb') as f:
         pickle.dump(keywords, f)

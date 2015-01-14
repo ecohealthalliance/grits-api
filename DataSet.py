@@ -142,6 +142,8 @@ def fetch_datasets():
             "$gte" : start_date
         },
         "private.cleanContent.content": { "$ne" : None },
+        "private.cleanContent.malformed": { "$ne" : True },
+        "private.cleanContent.clearnerVersion" : "0.0.0",
         # There must be no english translation, or the english translation
         # must have content (i.e. no errors occurred when translating).
         "$or" : [
@@ -150,6 +152,10 @@ def fetch_datasets():
         ],
         "meta.events": { "$ne" : None },
         "private.scrapedData.scraperVersion" : "0.0.3",
+        # Some unscrapable articles have content from previous scrapes.
+        # This condition filters them out since they may have been
+        # cleaned/translated by obsolete code.
+        "private.scrapedData.unscrapable" : { "$ne" : True },
         "private.scrapedData.url": { "$exists" : True },
         # This filters out articles that appear to redirect to a different page.
         "$where" : "this.private.scrapedData.sourceUrl.length < this.private.scrapedData.url.length + 12"
@@ -159,12 +165,20 @@ def fetch_datasets():
             "$gt" : start_date + datetime.timedelta(210)
         },
         "private.cleanContent.content": { "$ne" : None },
+        "private.cleanContent.malformed": { "$ne" : True },
+        "private.cleanContent.clearnerVersion" : "0.0.0",
+        # There must be no english translation, or the english translation
+        # must have content (i.e. no errors occurred when translating).
         "$or" : [
             { "private.englishTranslation": { "$exists" : False } },
             { "private.englishTranslation.content": { "$ne" : None } },
         ],
         "meta.events": { "$ne" : None },
         "private.scrapedData.scraperVersion" : "0.0.3",
+        # Some unscrapable articles have content from previous scrapes.
+        # This condition filters them out since they may have been
+        # cleaned/translated by obsolete code.
+        "private.scrapedData.unscrapable" : { "$ne" : True },
         "private.scrapedData.url": { "$exists" : True },
         # This filters out articles that appear to redirect to a different page.
         "$where" : "this.private.scrapedData.sourceUrl.length < this.private.scrapedData.url.length + 12"
@@ -174,8 +188,10 @@ def fetch_datasets():
     
     # If there are too many reports we will run out of memory when training
     # the classifier, so a portion of the reports will not be used if we go
-    # over the limit.
-    report_limit = 5000
+    # over this limit.
+    # It could probably be higher, but when I tried 20000 I ran into an 
+    # OutOfMemeory exception (even though `top` showed 5GB of free swap memory).
+    report_limit = 18000
     usable_portion = float(report_limit) / remaining_reports.count()
 
     for report in remaining_reports:
