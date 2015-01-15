@@ -8,6 +8,7 @@ import json
 import logging
 import microsofttranslator
 import datetime
+import time
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -112,9 +113,12 @@ common_english_re = re.compile('\\b(' + '|'.join(most_common_english_words) + ')
 
 class Translator(object):
     def __init__(self, config):
-        self.config = config
         self.stored_translations = None
         self.consecutive_exceptions = 0
+        self.translation_api = microsofttranslator.Translator(
+            config.bing_translate_id,
+            config.bing_translate_secret
+        )
         
     def is_english(self, text):
         unique_matches = set()
@@ -156,7 +160,7 @@ class Translator(object):
                 os.path.join(os.path.dirname(__file__), 'translations'))
         return self.stored_translations.get(id)
 
-    def translate_to_english(self, content):
+    def translate_to_english(self, content, dont_retry=False):
         if self.consecutive_exceptions > 4:
             # Back off when we reach more than 4 consecutive exceptions
             # because we probably hit the api limit.
@@ -165,10 +169,7 @@ class Translator(object):
             }
 
         try:
-            translation_api = microsofttranslator.Translator(
-                self.config.bing_translate_id,
-                self.config.bing_translate_secret)
-            translation = translation_api.translate(content, 'en')
+            translation = self.translation_api.translate(content, 'en')
             if translation.startswith("TranslateApiException:"):
                 raise microsofttranslator.TranslateApiException(
                     translation.split("TranslateApiException:")[1])
@@ -179,6 +180,10 @@ class Translator(object):
             }
             self.consecutive_exceptions = 0
         except microsofttranslator.TranslateApiException as e:
+            if unicode(e).startswith(u'ACS50012: Authentication') and dont_retry == False:
+                logger.warn("Waiting for translation API to stop returning auth errors.")
+                time.sleep(8)
+                return self.translate_to_english(content, dont_retry=True)
             self.consecutive_exceptions += 1
             return {
                 'error' : unicode(e),
