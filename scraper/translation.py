@@ -173,12 +173,12 @@ class Translator(object):
             if translation.startswith("TranslateApiException:"):
                 raise microsofttranslator.TranslateApiException(
                     translation.split("TranslateApiException:")[1])
+            self.consecutive_exceptions = 0
             return {
                 'content' : translation,
                 'translationDate' : datetime.datetime.now(),
                 'translationService' : 'microsoft'
             }
-            self.consecutive_exceptions = 0
         except microsofttranslator.TranslateApiException as e:
             if unicode(e).startswith(u'ACS50012: Authentication') and dont_retry == False:
                 logger.warn("Waiting for translation API to stop returning auth errors.")
