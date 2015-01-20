@@ -13,6 +13,7 @@ class OpenURLHandler(urllib2.HTTPRedirectHandler):
     def http_error_301(self, req, fp, code, msg, headers):  
         result = urllib2.HTTPRedirectHandler.http_error_301(
             self, req, fp, code, msg, headers)
+        if result is None: return result
         if not hasattr(result, 'redirects'):
             result.redirects = []
         result.redirects.append({
@@ -23,6 +24,7 @@ class OpenURLHandler(urllib2.HTTPRedirectHandler):
     def http_error_302(self, req, fp, code, msg, headers):
         result = urllib2.HTTPRedirectHandler.http_error_302(
             self, req, fp, code, msg, headers)
+        if result is None: return result
         if not hasattr(result, 'redirects'):
             result.redirects = []
         result.redirects.append({

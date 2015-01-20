@@ -30,6 +30,8 @@ def update():
                         '$ne' : tasks_preprocess.processor_version
                     }
                 }, {
+                    'private.englishTranslation.error' : { "$exists": True }
+                }, {
                     'meta.diagnosis.error' : { "$exists": False },
                     'meta.diagnosis.diagnoserVersion' : {
                         '$ne' : Diagnoser.__version__
