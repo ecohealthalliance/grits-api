@@ -115,25 +115,15 @@ def process_girder_resource(item_id=None):
     
     if not my_translator.is_english(clean_content_obj['content']):
         prev_translation = resource.get('private', {}).get('englishTranslation')
-        if not prev_translation or prev_clean_content != clean_content_obj['content']:
-            # The stored translation code can be removed eventually
-            # We have some tranlations for specific documents saved in json files.
-            # Once they are in the database there is no reason to keep those files
-            # or this code.
-            stored_translation = my_translator.get_translation(str(item_id))
-            if stored_translation:
-                private['englishTranslation'] = {
-                    'content' : stored_translation,
-                    'translationDate' : datetime.datetime.now(),
-                    'translationService' : 'stored translation'
-                }
-            else:
-                private['englishTranslation'] =\
-                    my_translator.translate_to_english(
-                        clean_content_obj['content'])
-                logger.info('Article translated: ' + resource['meta']['link'])
-                if private['englishTranslation'].get('error'):
-                    logger.warn('Translation Error: ' + private['englishTranslation'].get('error'))
+        if( not prev_translation or
+            prev_clean_content != clean_content_obj['content'] or
+            prev_translation.get('error')):
+            private['englishTranslation'] =\
+                my_translator.translate_to_english(
+                    clean_content_obj['content'])
+            logger.info('Article translated: ' + resource['meta']['link'])
+            if private['englishTranslation'].get('error'):
+                logger.warn('Translation Error: ' + private['englishTranslation'].get('error'))
     girder_db.item.update({'_id': item_id}, resource)
     return make_json_compat(resource)
 
