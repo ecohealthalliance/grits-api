@@ -71,6 +71,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
         .get('private', {})\
         .get('englishTranslation', {})\
         .get('error')
+    clean_english_content = None
     if english_translation:
         clean_english_content = english_translation
     elif not english_translation_error:
