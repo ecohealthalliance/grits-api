@@ -14,9 +14,16 @@ import datetime
 
 import tornado.ioloop
 import tornado.web
+import tornado.httpclient
 
 import urlparse
 import re
+
+import hmac
+import hashlib
+import time
+import random
+import json
 
 class DiagnoseHandler(tornado.web.RequestHandler):
     public = False
@@ -127,10 +134,78 @@ class TestHandler(tornado.web.RequestHandler):
     def post(self):
         return self.get()
 
+class BSVEHandler(tornado.web.RequestHandler):
+    @tornado.web.asynchronous
+    def post(self):
+        endpoint = "http://search.bsvecosystem.net"
+        timestamp = str(int(time.time() * 1e3))
+        nonce = random.randint(0,100)
+        hmac_key = "%s:%s" % (config.bsve_api_key, config.bsve_secret_key)
+        hmac_message = "%s%s%s%s" % (config.bsve_api_key, timestamp, nonce, config.bsve_user_name)
+        auth_header = "apikey=%s;timestamp=%s;nonce=%s;signature=%s" % (
+            config.bsve_api_key,
+            timestamp,
+            nonce,
+            hmac.new(hmac_key, msg=hmac_message, digestmod=hashlib.sha1).hexdigest())
+        client = tornado.httpclient.AsyncHTTPClient()
+        def make_search_result_cb(request_id):
+            def search_result_cb(resp):
+                if resp.error:
+                    self.set_status(500)
+                    self.write('Result Error:\n' + str(resp.error))
+                    self.finish()
+                    return
+                parsed_resp = json.loads(resp.body)
+                if parsed_resp['status'] == 0:
+                    tornado.ioloop.IOLoop.instance().add_timeout(
+                        datetime.timedelta(0,1),
+                        lambda: client.fetch(tornado.httpclient.HTTPRequest(
+                            endpoint + "/api/search/v1/result?requestId=%s" % request_id,
+                            headers={
+                                "harbinger-authentication": auth_header
+                            },
+                            method="GET"), search_result_cb))
+                elif parsed_resp['status'] == -1:
+                    self.set_status(500)
+                    self.write('Result Error:\n' + resp.body)
+                    self.finish()
+                else:
+                    self.write(resp.body)
+                    self.set_header("Content-Type", "application/json")
+                    self.finish()
+            return search_result_cb
+        def search_request_cb(resp):
+            if resp.error:
+                self.set_status(500)
+                self.write('Request Error:\n' + str(resp.error))
+                self.finish()
+            else:
+                client.fetch(tornado.httpclient.HTTPRequest(
+                    endpoint + "/api/search/v1/result?requestId=%s" % resp.body,
+                    headers={
+                        "harbinger-authentication": auth_header
+                    },
+                    method="GET"), make_search_result_cb(resp.body))
+        bsve_path = self.request.path.split('/bsve')[1]
+        if bsve_path == "/search":
+            client.fetch(tornado.httpclient.HTTPRequest(
+                endpoint + "/api/search/v1/request",
+                headers={
+                    "harbinger-authentication": auth_header,
+                    "Content-Type": "application/json; charset=utf8"
+                },
+                method="POST",
+                body=self.request.body), search_request_cb)
+        else:
+            self.set_status(500)
+            self.write('Error:\nBad Path')
+            self.finish()
+
 application = tornado.web.Application([
     (r"/test", TestHandler),
     (r"/diagnose", DiagnoseHandler),
-    (r"/public_diagnose", PublicDiagnoseHandler)
+    (r"/public_diagnose", PublicDiagnoseHandler),
+    (r"/bsve/.*", BSVEHandler)
 ])
 
 if __name__ == "__main__":
