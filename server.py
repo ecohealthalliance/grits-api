@@ -135,9 +135,14 @@ class TestHandler(tornado.web.RequestHandler):
         return self.get()
 
 class BSVEHandler(tornado.web.RequestHandler):
+    def get(self):
+        return self.post()
     @tornado.web.asynchronous
     def post(self):
-        endpoint = "http://search.bsvecosystem.net"
+        if self.request.headers.get('Origin', "").endswith(".bsvecosystem.net"):
+            self.set_header("Access-Control-Allow-Origin", "*")
+        else:
+            self.set_header("Access-Control-Allow-Origin", "https://bsvecosystem.net")
         timestamp = str(int(time.time() * 1e3))
         nonce = random.randint(0,100)
         hmac_key = "%s:%s" % (config.bsve_api_key, config.bsve_secret_key)
@@ -160,7 +165,7 @@ class BSVEHandler(tornado.web.RequestHandler):
                     tornado.ioloop.IOLoop.instance().add_timeout(
                         datetime.timedelta(0,1),
                         lambda: client.fetch(tornado.httpclient.HTTPRequest(
-                            endpoint + "/api/search/v1/result?requestId=%s" % request_id,
+                            config.bsve_endpoint + "/api/search/v1/result?requestId=%s" % request_id,
                             headers={
                                 "harbinger-authentication": auth_header
                             },
@@ -181,7 +186,7 @@ class BSVEHandler(tornado.web.RequestHandler):
                 self.finish()
             else:
                 client.fetch(tornado.httpclient.HTTPRequest(
-                    endpoint + "/api/search/v1/result?requestId=%s" % resp.body,
+                    config.bsve_endpoint + "/api/search/v1/result?requestId=%s" % resp.body,
                     headers={
                         "harbinger-authentication": auth_header
                     },
@@ -189,13 +194,31 @@ class BSVEHandler(tornado.web.RequestHandler):
         bsve_path = self.request.path.split('/bsve')[1]
         if bsve_path == "/search":
             client.fetch(tornado.httpclient.HTTPRequest(
-                endpoint + "/api/search/v1/request",
+                config.bsve_endpoint + "/api/search/v1/request",
                 headers={
                     "harbinger-authentication": auth_header,
                     "Content-Type": "application/json; charset=utf8"
                 },
                 method="POST",
                 body=self.request.body), search_request_cb)
+        elif bsve_path == "/feeds":
+            def feeds_cb(resp):
+                if resp.error:
+                    self.set_status(500)
+                    self.write('Feeds Error:\n' + str(resp.error))
+                    self.finish()
+                    return
+                else:
+                    self.write(resp.body)
+                    self.set_header("Content-Type", "application/json")
+                    self.finish()
+            client.fetch(tornado.httpclient.HTTPRequest(
+                config.bsve_endpoint + "/api/data/list/rss/feeds",
+                headers={
+                    "harbinger-authentication": auth_header,
+                    "Content-Type": "application/json; charset=utf8"
+                },
+                method="GET"), feeds_cb)
         else:
             self.set_status(500)
             self.write('Error:\nBad Path')

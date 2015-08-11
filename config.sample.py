@@ -7,3 +7,4 @@ mongo_url = 'localhost'
 bsve_user_name = "a@b.c"
 bsve_api_key = "asdf"
 bsve_secret_key = "qwerty"
+bsve_endpoint = "http://search.bsvecosystem.net"
