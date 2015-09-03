@@ -1,0 +1,8 @@
+argparse==1.2.1
+backports.ssl-match-hostname==3.4.0.2
+certifi==2015.04.28
+numpy==1.9.2
+scikit-learn==0.16.1
+scipy==0.16.0
+tornado==4.2.1
+wsgiref==0.1.2
