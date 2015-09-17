@@ -50,7 +50,7 @@ if __name__ == '__main__':
     for collection in collection_labels:
         db[collection].drop()
 
-    keyword_array = load_keyword_array('keyword_array.p')
+    keyword_array = load_keyword_array('current_classifier/keyword_array.p')
 
     for keyword in keyword_array:
         if keyword['category'] in category_labels:

@@ -23,3 +23,5 @@ flower
 microsofttranslator
 threadpool
 nose
+chardet
+httplib2
