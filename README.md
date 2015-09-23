@@ -10,6 +10,85 @@ Aside from the requirments noted in [requirements.txt](requirements.txt) which m
 
 # Installation and set-up
 
+## Full setup with virtualenv
+
+These instructions will get `grits-api` working under a Python virtualenv.
+
+First, get a copy of the Girder data (backed up in S3 - the bucket is girder-data/proddump/girder). This will give you the file item.bson.
+
+Next, start mongo on port 27017 by running `mongod` and restore the girder database:
+
+    mongorestore --host=127.0.0.1 --port=27017 -d girder PATH/TO/item.bson
+
+Clone grits-api
+
+    git clone git@github.com:ecohealthalliance/grits-api.git
+    cd grits-api
+
+Create a file called `config.py` that contains the following:
+
+    aws_access_key = 'AKIAJCUHF3G7PGECFHOQ'
+    aws_secret_key = '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'
+
+    BROKER_URL = 'mongodb://localhost:27017/tasks'
+    mongo_url = 'localhost'
+
+    bing_translate_id = "grits_api_test"
+    bing_translate_secret = "+TPASOfHj+G8oEkS8IeKD4dkjeey8p6b5WKBYSnmMxM="
+
+If you do not have `virtualenv`, first install it globally.
+
+    sudo pip install virtualenv
+
+Now create and enter the virtual environment. All `pip` and `python` commands from here should be run from within the environment. Leave the environment with the `deactivate` command.
+
+    virtualenv venv
+    source venv/bin/activate
+
+Install `grits-api` dependencies and `nose`.
+
+    pip install -r requirements.txt
+    pip install nose
+
+If lxml fails to install, run (in bash) `STATIC_DEPS=true pip install lxml`
+
+Clone and install `annie`.
+
+    cd ../
+    git clone git@github.com:ecohealthalliance/annie.git
+    cd annie
+    pip install -r requirements.txt
+    python setup.py install
+
+Clone other required repos:
+
+    cd ../
+    git clone https://github.com/ecohealthalliance/jvm-nlp.git
+    git clone https://github.com/ecohealthalliance/diagnostic-dashboard.git
+
+Train the GRITS api:
+
+    cd grits-api
+    mkdir current_classifier
+    python train.py -pickle_dir current_classifier
+
+Download NLTK data (within a python interpreter):
+
+    import nltk
+    nltk.download()
+
+A window will prompt you to choose what to download; download everything.
+
+Start the server:
+
+    python server.py -debug
+
+Start the diagnostic dashboard:
+
+    cd ../diagnostic-dashboard
+    meteor
+
+
 ## As part of total GRITS deployment
 
 You may elect to install all GRITS components at once (this backend, the front-end [diagnostic-dashboard](https://github.com/ecohealthalliance/diagnostic-dashboard), and the [girder](https://github.com/ecohealthalliance/girder) database) by following the instructions in the [grits-deploy-scripts](https://github.com/ecohealthalliance/grits-deploy-scripts) project.
@@ -43,57 +122,6 @@ Start the server:
 	# The -debug flag will run a celery worker synchronously in the same process,
 	# so you can debug without starting a separate worker process.
 	$ python server.py
-
-## Full setup with virtualenv
-
-These instructions will get `grits-api` working under a Python virtualenv.
-
-First, choose a `WORKSPACE` for your Git checkouts.
-
-    export WORKSPACE=~
-
-Checkout grits-api and copy the default configuration.
-
-    cd $WORKSPACE
-    git clone git@github.com:ecohealthalliance/grits-api.git
-    cd grits-api
-    cp config.sample.py config.py
-
-If you do not have `virtualenv`, first install it globally.
-
-    sudo pip install virtualenv
-
-Now create and enter the virtual environment. All `pip` and `python` commands from here should be run from within the environment. Leave the environment with the `deactivate` command.
-
-    virtualenv venv
-    source venv/bin/activate
-
-Install `grits-api` dependencies and `nose`.
-
-    pip install -r requirements.txt
-    pip install nose
-
-Checkout and install `annie`.
-
-    cd $WORKSPACE
-    git clone git@github.com:ecohealthalliance/annie.git
-    cd annie
-    pip install -r requirements.txt
-    python setup.py install
-
-Import Geonames data into Mongo and prepare the training data.
-
-    cd $WORKSPACE/grits-api
-    ./import_geonames.sh
-    python train.py
-    
-Start a celery worker.
-
-    celery worker -A tasks -Q priority --loglevel=INFO --concurrency=2
-
-Start the server.
-
-    python server.py
 
 # Testing
 
