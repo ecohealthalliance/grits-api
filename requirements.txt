@@ -1,6 +1,6 @@
 nltk
 lxml
-pymongo
+pymongo==2.7.2
 pyyaml
 beautifulsoup
 goose-extractor
