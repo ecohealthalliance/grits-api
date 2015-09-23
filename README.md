@@ -25,16 +25,7 @@ Clone grits-api
     git clone git@github.com:ecohealthalliance/grits-api.git
     cd grits-api
 
-Create a file called `config.py` that contains the following:
-
-    aws_access_key = 'AKIAJCUHF3G7PGECFHOQ'
-    aws_secret_key = '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'
-
-    BROKER_URL = 'mongodb://localhost:27017/tasks'
-    mongo_url = 'localhost'
-
-    bing_translate_id = "grits_api_test"
-    bing_translate_secret = "+TPASOfHj+G8oEkS8IeKD4dkjeey8p6b5WKBYSnmMxM="
+Get a copy of `config.py` from someone at EHA (this contains sensitive AWS authentication information).
 
 If you do not have `virtualenv`, first install it globally.
 
