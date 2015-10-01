@@ -170,10 +170,6 @@ class BSVEHandler(tornado.web.RequestHandler):
                                 "harbinger-authentication": auth_header
                             },
                             method="GET"), search_result_cb))
-                elif parsed_resp['status'] == -1:
-                    self.set_status(500)
-                    self.write('Result Error:\n' + resp.body)
-                    self.finish()
                 else:
                     self.write(resp.body)
                     self.set_header("Content-Type", "application/json")
