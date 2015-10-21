@@ -141,7 +141,7 @@ def scrape_main(url):
             'unscrapable' : True
         }
     if 'promed' in parsed_url.hostname:
-        return_value = scrape_promed.scrape_promed(url)
+        return_value = scrape_promed.scrape_promed_url(url)
         return_value['sourceUrl'] = url
         return return_value
     if 'empres-i.fao.org' in parsed_url.hostname:
