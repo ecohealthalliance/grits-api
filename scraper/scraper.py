@@ -54,7 +54,13 @@ def open_url(opener, url):
     try:
         resp = opener.open(url, timeout=60)
         if hasattr(resp, 'redirects'):
+            # The recursive call to scrape_main here is inefficient because two
+            # requests could be sent to the page we are redirected to. Recursive
+            # calls before redirection would require a major refactoring.
+            result = scrape_main(resp.url)
             result['redirects'] = resp.redirects
+            result['sourceUrl'] = url
+            return result
         result['code'] = resp.code
         result['msg'] = resp.msg
         result['url'] = resp.url
