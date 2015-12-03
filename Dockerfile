@@ -10,8 +10,10 @@ ADD . .
 RUN wget https://s3-us-west-2.amazonaws.com/grits-classifiers/current_classifier.tar.gz
 RUN tar -zxf current_classifier.tar.gz
 
+#Install pip dependencies for grits-api and annie
 RUN pip install -r requirements.txt
+RUN pip install -r annie/requirements.txt 
 
+EXPOSE 5000
 ENV PYTHONPATH="/annie"
-
 CMD bash run.sh
