@@ -9,6 +9,7 @@ ADD . .
 #Download trained classifier data
 RUN wget https://s3-us-west-2.amazonaws.com/grits-classifiers/current_classifier.tar.gz
 RUN tar -zxf current_classifier.tar.gz
+RUN cp -r current_classifier simple_api/
 
 #Install pip dependencies for grits-api and annie
 RUN pip install -r requirements.txt
