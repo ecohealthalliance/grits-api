@@ -11,9 +11,8 @@ RUN wget https://s3-us-west-2.amazonaws.com/grits-classifiers/current_classifier
 RUN tar -zxf current_classifier.tar.gz
 RUN cp -r current_classifier simple_api/
 
-#Install pip dependencies for grits-api and annie
-RUN pip install -r requirements.txt
-RUN pip install -r annie/requirements.txt 
+#Install pip dependencies for simple API
+RUN pip install -r simple-api/requirements.txt 
 
 EXPOSE 5000
 ENV PYTHONPATH="/annie"
