@@ -13,11 +13,12 @@ synsets = wordnet.wordnet.synsets
 import rdflib
 import urlparse
 import yaml, os
+import urllib2
+import sys
 
 from diagnosis.utils import *
 
 # Specialized helpers
-
 def traverse_hyponyms(synset, depth=3, only_nouns=False):
     all_hyponyms = []
     for syn in synset:
@@ -570,29 +571,37 @@ def mine_usgs_ontology():
     # This keyword set is used to capure environmental factors. For example,
     # a disease might be related to swamps or cities with high populations density.
     terrain_ontology = rdflib.Graph()
-    terrain_ontology.parse(
-        "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Event.n3",
-        format="n3"
-    )
-    terrain_ontology.parse(
-        "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Division.n3",
-        format="n3"
-    )
-    #Not sure why I can't parse this.
-    #It might be RDFLib: https://github.com/RDFLib/rdflib/issues/379
-    #terrain_ontology.parse("http://usgs-ybother.srv.mst.edu/ontology/vocabulary/BuiltUpArea.n3", format="n3")
-    terrain_ontology.parse(
-        "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/EcologicalRegime.n3",
-        format="n3"
-    )
-    terrain_ontology.parse(
-        "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/SurfaceWater.n3",
-        format="n3"
-    )
-    terrain_ontology.parse(
-        "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Terrain.n3",
-        format="n3"
-    )
+
+    # files = [   "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Event.n3", 
+    #             "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Division.n3", 
+    #             "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/EcologicalRegime.n3", 
+    #             "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/SurfaceWater.n3",
+    #             "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Terrain.n3"]
+    # for n3File in files:
+    #     try:
+    #         terrain_ontology.parse( 
+    #             n3File,
+    #             format="n3"
+    #         )
+    #     except urllib2.HTTPError:
+    #         print "*********Problem downloading terrain_ontology file:", n3File, "*********" 
+
+    files = [   "http://cegis.usgs.gov/docs/Event.ttl", 
+            "http://cegis.usgs.gov/docs/Division.ttl", 
+            "http://cegis.usgs.gov/docs/BuiltUpArea.ttl", 
+            "http://cegis.usgs.gov/docs/EcologicalRegime.ttl",
+            "http://cegis.usgs.gov/docs/SurfaceWater.ttl",
+            "http://cegis.usgs.gov/docs/Terrain.ttl"]
+
+    for ttlFile in files:
+        try:
+            terrain_ontology.parse( 
+                ttlFile,
+                format="n3"
+            )
+        except urllib2.HTTPError:
+            print "*********Problem downloading terrain_ontology file:", ttlFile, "*********" 
+
     usgs_keywords = []
     for keyword_object in get_linked_keywords(
         terrain_ontology,
@@ -634,8 +643,9 @@ def create_keyword_object_array(synset_object_array):
             if len(kw) == 0:
                 print "Empty keyword in", synset_object
                 continue
-            if ')' == kw[-1]:
-                print "Parenthetical keyword:", kw, 'in', unicode(synset_object)
+            # commenting this out to cleanup script output
+            # if ')' == kw[-1]:
+            #     print "Parenthetical keyword:", kw, 'in', unicode(synset_object)
 
             keywords_sofar[kw] = synset_object
             keyword_object_array.append({
