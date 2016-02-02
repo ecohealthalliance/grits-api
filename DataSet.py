@@ -122,23 +122,41 @@ def fetch_promed_datasets():
             .sort("promedDate", pymongo.ASCENDING))
         print diseaseName, "has", len(articles), "articles"
         for article in articles:
-            article["plantDisease"] = diseaseName
+            article["plantDisease"] = [diseaseName]
         return articles
     
     # this could be updated to be a dictionary containing the display name and the search regex
-    diseases = ["Downy Mildew", "Red Blotch", "Ralstonia Solanacearum",
-                "Annual Ryegrass Toxicity", "Brown Stripe", "Wart Disease", 
-                "Xanthomonas Leaf Blight", "Green Mottle Mosaic Virus"]
+    diseases = disease_label_table.get_promed_labels()
+    # diseases = ["Downy Mildew", "Red Blotch", "Ralstonia Solanacearum",
+    #             "Annual Ryegrass Toxicity", "Brown Stripe", "Wart Disease", 
+    #             "Xanthomonas Leaf Blight", "Green Mottle Mosaic Virus"]
     training_set = []
     time_offset_test_set = []
     for disease in diseases:
         results = processDisease(disease)
         if len(results) < 10:
-            print "Warning", disease, "has fewer than 10 articles. Skipping..."
-            continue
-        time_offset_test_set.extend(results[0:5])
-        training_set.extend(results[5:])
-    return training_set, time_offset_test_set
+            training_set.extend(results)
+        else:
+            time_offset_test_set.extend(results[0:5])
+            training_set.extend(results[5:])
+    training_set = clear_duplicates(training_set)
+    time_offset_test_set = clear_duplicates(time_offset_test_set)
+    #remove items in the test set that are also in teh training set
+    deduped_test = []
+    for test in time_offset_test_set:
+        if all([x["promedId"] != test["promedId"] for x in training_set]):
+            deduped_test.append(test)
+    return training_set, deduped_test
+
+def clear_duplicates(data_set):
+    #foreach dictionary in array of dictionaries (training_set)
+    data_dict = {}
+    for item in data_set:
+        if not (item["promedId"] in data_dict):
+            data_dict[item["promedId"]] = item
+        else:
+            data_dict[item["promedId"]]["plantDisease"].extend(item["plantDisease"])
+    return data_dict.values()
 
 datasets = tuple()
 def fetch_datasets():
@@ -230,8 +248,8 @@ def fetch_datasets():
             "meta" : {
                 "events" : [
                     {
-                        "diseases" : [report["plantDisease"]]
-                    }
+                        "diseases" : report["plantDisease"] 
+                    } 
                 ]
             },
             "private" : {
