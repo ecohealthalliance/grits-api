@@ -94,6 +94,8 @@ def get_subject_to_ancestor_dict(subject_to_parents):
     def get_ancestors(subject):
         # The root's parent will not appear in subject_to_parents
         parents = subject_to_parents.get(subject, [])
+        if subject in parents:
+            parents.remove(subject)
         return set(parents + list(flatten(
             [get_ancestors(p) for p in parents], 1
         )))
@@ -571,20 +573,6 @@ def mine_usgs_ontology():
     # This keyword set is used to capure environmental factors. For example,
     # a disease might be related to swamps or cities with high populations density.
     terrain_ontology = rdflib.Graph()
-
-    # files = [   "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Event.n3", 
-    #             "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Division.n3", 
-    #             "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/EcologicalRegime.n3", 
-    #             "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/SurfaceWater.n3",
-    #             "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Terrain.n3"]
-    # for n3File in files:
-    #     try:
-    #         terrain_ontology.parse( 
-    #             n3File,
-    #             format="n3"
-    #         )
-    #     except urllib2.HTTPError:
-    #         print "*********Problem downloading terrain_ontology file:", n3File, "*********" 
 
     files = [   "http://cegis.usgs.gov/docs/Event.ttl", 
             "http://cegis.usgs.gov/docs/Division.ttl", 
