@@ -16,7 +16,9 @@ import yaml, os
 import urllib2
 import sys
 
+
 from diagnosis.utils import *
+import ontology_file_helpers
 
 # Specialized helpers
 def traverse_hyponyms(synset, depth=3, only_nouns=False):
@@ -654,6 +656,13 @@ def create_keyword_object_array(synset_object_array):
     print "Total keywords:", len(keyword_object_array)
     return keyword_object_array
 
+def compare_last_two_pickles():
+    new, previous = ontology_file_helpers.get_ontologies_to_compare()
+    previousPickle = set([k['keyword'].lower() for k in pickle.load(open(previous))])
+    currentPickle = set([k['keyword'].lower() for k in pickle.load(open(new))])
+    print "New keywords:", len(currentPickle - previousPickle)
+    print "Removed keywords:", len(previousPickle - currentPickle)
+
 if __name__ == "__main__":
     print "gathering keywords..."
     disease_kws = mine_disease_ontology() +\
@@ -667,10 +676,17 @@ if __name__ == "__main__":
         healthmap_labels(disease_kws)
     )
     print "creating pickle..."
-    print """
-    To update the ontology data we use in our deployments use this command:
-    aws s3 cp ontologies-x.x.x.p s3://classifier-data/ --region us-west-1
-    """
-    with open('ontologies-0.1.4.p', 'wb') as f:
+    # print """
+    # To update the ontology data we use in our deployments use this command:
+    # aws s3 cp ontologies-x.x.x.p s3://classifier-data/ --region us-west-1
+    # """
+    newPickle = ontology_file_helpers.get_next_ontology_file_name();
+    with open(newPickle, 'wb') as f:
         pickle.dump(keywords, f)
-    print "pickle ready"
+    try:
+        ontology_file_helpers.push_latest_ontology_file(f)
+    except:
+        print "There was a problem uploading the new pickle!:", f.name
+        print "Please upload manually and try again!"
+    print "new pickle created.  Comparing to previous version..."
+    compare_last_two_pickles()
