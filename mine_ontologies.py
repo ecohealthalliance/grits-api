@@ -685,8 +685,13 @@ if __name__ == "__main__":
         pickle.dump(keywords, f)
     try:
         ontology_file_helpers.push_latest_ontology_file(f)
-    except:
-        print "There was a problem uploading the new pickle!:", f.name
+    except Exception, e:
+        print "There was a problem uploading the new pickle:", f.name
+        print """
+************ERROR************"""
+        print str(e)
+        print """*****************************
+        """
         print "Please upload manually and try again!"
     print "new pickle created.  Comparing to previous version..."
     compare_last_two_pickles()

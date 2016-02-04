@@ -25,12 +25,12 @@ def get_ontologies_to_compare():
     return ontologies[-1].name, ontologies[-2].name
 
 def push_latest_ontology_file(ontologyFile):
-    print "uploading new pickle to S3: ", ontologyFile.name + ".p"
+    print "uploading new pickle to S3: ", ontologyFile.name
     # conn = boto.s3.connect_to_region('us-east-1', aws_access_key_id=config.aws_access_key, aws_secret_access_key=config.aws_secret_key)
     # conn = S3Connection(config.aws_access_key, config.aws_secret_key)
     conn = S3Connection(config.aws_access_key, config.aws_secret_key, host="s3.amazonaws.com")
     bucket = conn.get_bucket('classifier-data')
-    key = boto.s3.key.Key(bucket, ontologyFile.name + ".p")
+    key = boto.s3.key.Key(bucket, ontologyFile.name )
     with open(ontologyFile.name) as f:
         key.send_file(f)
     print "done uploading new pickle!"
@@ -44,4 +44,4 @@ def get_next_ontology_file_name():
         version = get_minor_version(ontology.name)
         if version.isdigit():
             versionNumbers.append(version)
-    return fileNamePrefix + "." + `(max(int(s) for s in versionNumbers) + 1)`
+    return fileNamePrefix + "." + `(max(int(s) for s in versionNumbers) + 1)` + ".p"
