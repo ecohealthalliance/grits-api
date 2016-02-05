@@ -28,7 +28,6 @@ Bacterial Meningitis,,,,Meningitis,,,http://en.wikipedia.org/wiki/Meningitis,,,
 Bartonella,,TRUE,,,,,http://en.wikipedia.org/wiki/Bartonella,,,
 Bite,TRUE,,,,,,http://en.wikipedia.org/wiki/Animal_bite,,,NAP
 Blastomycosis,,,,,,,http://en.wikipedia.org/wiki/Blastomycosis,,,
-Blight,,,TRUE,,,,,,,
 Blotch,,,TRUE,,,,,,,
 Blue Ear,,,,,TRUE,,http://en.wikipedia.org/wiki/Porcine_reproductive_and_respiratory_syndrome_virus,,,Porcine reproductive and respiratory syndrome virus
 Bluetongue,,TRUE,,,TRUE,,http://en.wikipedia.org/wiki/Bluetongue_disease,,,
@@ -300,7 +299,7 @@ Wart Disease,,,TRUE,,,,,,,
 Whipple's disease,,,,,,,http://en.wikipedia.org/wiki/Whipple%27s_disease,,TRUE,
 White nose syndrome,,,,,TRUE,,http://en.wikipedia.org/wiki/White_nose_syndrome,,,
 Whooping Cough,,,,,,,http://en.wikipedia.org/wiki/Pertussis,pertussis,,
-Xanthomonas Leaf Blight,,,TRUE,Blight,,,,,,
+Xanthomonas Leaf Blight,,,TRUE,,,,,,,
 Yellow Fever,,,,Fever,,,http://en.wikipedia.org/wiki/Yellow_fever,"yellow jack, yellow plague",,
 yersiniosis,,,,,,,http://en.wikipedia.org/wiki/Yersiniosis,,TRUE,"Can be plague if Yersinia pestis infection, but more general term"
 Zika virus,,TRUE,,,,,http://en.wikipedia.org/wiki/Zika_virus,,,

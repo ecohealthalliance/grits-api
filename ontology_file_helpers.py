@@ -1,6 +1,7 @@
 from boto.s3.connection import S3Connection, Location
 import boto
 import config
+import glob
 
 
 def get_minor_version(fileName):
@@ -21,8 +22,8 @@ def get_ontology_files():
 
 #this returns the two most recent pickles.  Can we rely on same return order every time?
 def get_ontologies_to_compare():
-    ontologies = list(get_ontology_files())
-    return ontologies[-1].name, ontologies[-2].name
+    ontologies = glob.glob("ontologies-*.p")
+    return ontologies[-1], ontologies[-2]
 
 def push_latest_ontology_file(ontologyFile):
     print "uploading new pickle to S3: ", ontologyFile.name
@@ -44,4 +45,6 @@ def get_next_ontology_file_name():
         version = get_minor_version(ontology.name)
         if version.isdigit():
             versionNumbers.append(version)
-    return fileNamePrefix + "." + `(max(int(s) for s in versionNumbers) + 1)` + ".p"
+    # need to figure out how to increment when we want to create a new pickle (not just update another one)
+    return fileNamePrefix + "." + `(max(int(s) for s in versionNumbers))` + ".p"
+    # return fileNamePrefix + "." + `(max(int(s) for s in versionNumbers) + 1)` + ".p"
