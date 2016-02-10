@@ -55,8 +55,6 @@ def get_pickle(filename):
         return result
 
 def train(debug, pickle_dir):
-
-    # keywords = get_pickle('ontologies-0.1.4.p')
     latestPickle = list(ontology_file_helpers.get_ontology_files())[-1].name
     keywords = get_pickle(latestPickle)
     

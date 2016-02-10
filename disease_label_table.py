@@ -39,6 +39,12 @@ def get_promed_labels():
             labels.append(row['label'])
     return labels
 
+def is_in_table(disease):
+    for row in get_table():
+        if row['label'] == disease:
+            return True
+    return False
+
 def is_not_human_disease(disease):
     for row in get_table():
         if row['label'] == disease:

@@ -46,7 +46,13 @@ class DataSet(object):
                 for disease in event['diseases']
                 if disease is not None
             ]
-        #TODO: check disease_label_table.disease is_in_table 
+            if any([
+                not disease_label_table.is_in_table(disease)
+                for event in item['meta']['events']
+                for disease in event['diseases']
+            ]):
+                self.rejected_items += 1
+                return
         if len(item['labels']) == 0:
             self.rejected_items += 1
             # There are too many to list:
@@ -127,9 +133,6 @@ def fetch_promed_datasets():
     
     # this could be updated to be a dictionary containing the display name and the search regex
     diseases = disease_label_table.get_promed_labels()
-    # diseases = ["Downy Mildew", "Red Blotch", "Ralstonia Solanacearum",
-    #             "Annual Ryegrass Toxicity", "Brown Stripe", "Wart Disease", 
-    #             "Xanthomonas Leaf Blight", "Green Mottle Mosaic Virus"]
     training_set = []
     time_offset_test_set = []
     for disease in diseases:
@@ -141,7 +144,7 @@ def fetch_promed_datasets():
             training_set.extend(results[5:])
     training_set = clear_duplicates(training_set)
     time_offset_test_set = clear_duplicates(time_offset_test_set)
-    #remove items in the test set that are also in teh training set
+    #remove items in the test set that are also in the training set
     deduped_test = []
     for test in time_offset_test_set:
         if all([x["promedId"] != test["promedId"] for x in training_set]):
@@ -149,7 +152,6 @@ def fetch_promed_datasets():
     return training_set, deduped_test
 
 def clear_duplicates(data_set):
-    #foreach dictionary in array of dictionaries (training_set)
     data_dict = {}
     for item in data_set:
         if not (item["promedId"] in data_dict):
@@ -268,9 +270,11 @@ def fetch_datasets():
     print "time_offset_test_set size", len(time_offset_test_set), " | rejected items:", time_offset_test_set.rejected_items
     print "mixed_test_set size", len(mixed_test_set), " | rejected items:", mixed_test_set.rejected_items
     print "training_set size", len(training_set), " | rejected items:", training_set.rejected_items
-
+    
+    # Check that plant disease aritcles are in test set.
+    time_offset_test_set_labels = flatten(time_offset_test_set.get_labels())
     for d in ["Downy Mildew", "Wart Disease"]:
-        assert (d in flatten(time_offset_test_set.get_labels()))
+        assert (d in time_offset_test_set_labels)
 
     datasets = (
         time_offset_test_set,
