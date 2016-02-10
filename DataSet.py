@@ -3,6 +3,7 @@ import numpy as np
 from diagnosis.utils import group_by, flatten
 import pymongo
 import datetime
+import re
 
 label_overrides = {
     'http://healthmap.org/ai.php?1097880' : ['Gastroenteritis'],
@@ -43,16 +44,15 @@ class DataSet(object):
                 disease
                 for event in item['meta']['events']
                 for disease in event['diseases']
-                if disease is not None and
-                    not disease_label_table.is_not_human_disease( disease ) and
-                    # TODO: We should make multiple classifiers
-                    # if we want to also diagnose plant and animal diseases. 
-                    not (
-                        event.get('species') and
-                        len(event.get('species')) > 0 and
-                        event.get('species').lower() != "humans"
-                    )
+                if disease is not None
             ]
+            if any([
+                not disease_label_table.is_in_table(disease)
+                for event in item['meta']['events']
+                for disease in event['diseases']
+            ]):
+                self.rejected_items += 1
+                return
         if len(item['labels']) == 0:
             self.rejected_items += 1
             # There are too many to list:
@@ -99,8 +99,6 @@ class DataSet(object):
                 all_labels = set(item['labels'])
                 for label in item['labels']:
                     for l2 in disease_label_table.get_inferred_labels(label):
-                        if disease_label_table.is_not_human_disease(l2):
-                            continue
                         all_labels.add(l2)
                 return list(all_labels)
             else:
@@ -119,6 +117,48 @@ class DataSet(object):
                 self._feature_vectors.append(f_vec)
         print "Articles removed because of zero feature vectors:"
         print len(original_items) - len(self.items), '/', len(original_items)
+
+def fetch_promed_datasets():
+    client = pymongo.MongoClient()
+    db = client.promed
+    posts = db.posts
+    def processDisease(diseaseName):
+        matchRE = re.compile(diseaseName, re.IGNORECASE)
+        articles = list(posts.find({"subject.description": matchRE})
+            .sort("promedDate", pymongo.ASCENDING))
+        print diseaseName, "has", len(articles), "articles"
+        for article in articles:
+            article["plantDisease"] = [diseaseName]
+        return articles
+    
+    # this could be updated to be a dictionary containing the display name and the search regex
+    diseases = disease_label_table.get_promed_labels()
+    training_set = []
+    time_offset_test_set = []
+    for disease in diseases:
+        results = processDisease(disease)
+        if len(results) < 10:
+            training_set.extend(results)
+        else:
+            time_offset_test_set.extend(results[0:5])
+            training_set.extend(results[5:])
+    training_set = clear_duplicates(training_set)
+    time_offset_test_set = clear_duplicates(time_offset_test_set)
+    #remove items in the test set that are also in the training set
+    deduped_test = []
+    for test in time_offset_test_set:
+        if all([x["promedId"] != test["promedId"] for x in training_set]):
+            deduped_test.append(test)
+    return training_set, deduped_test
+
+def clear_duplicates(data_set):
+    data_dict = {}
+    for item in data_set:
+        if not (item["promedId"] in data_dict):
+            data_dict[item["promedId"]] = item
+        else:
+            data_dict[item["promedId"]]["plantDisease"].extend(item["plantDisease"])
+    return data_dict.values()
 
 datasets = tuple()
 def fetch_datasets():
@@ -201,11 +241,41 @@ def fetch_datasets():
         else:
             if int(report['name'][:-4]) % 10 < int(usable_portion * 10):
                 training_set.append(report)
+
+    promed_training_set, promed_time_offset_test_set = fetch_promed_datasets()
+
+    def promed_to_girder_format(report):
+        return {
+            "name" : "123",
+            "meta" : {
+                "events" : [
+                    {
+                        "diseases" : report["plantDisease"] 
+                    } 
+                ]
+            },
+            "private" : {
+                "cleanContent" : {
+                    "content" : report["articles"][0]["content"]
+                }
+            }
+        }
+    
+    for report in promed_training_set:
+        training_set.append(promed_to_girder_format(report))
+    
+    for report in promed_time_offset_test_set:
+        time_offset_test_set.append(promed_to_girder_format(report))
     
     print "time_offset_test_set size", len(time_offset_test_set), " | rejected items:", time_offset_test_set.rejected_items
     print "mixed_test_set size", len(mixed_test_set), " | rejected items:", mixed_test_set.rejected_items
     print "training_set size", len(training_set), " | rejected items:", training_set.rejected_items
     
+    # Check that plant disease aritcles are in test set.
+    time_offset_test_set_labels = flatten(time_offset_test_set.get_labels())
+    for d in ["Downy Mildew", "Wart Disease"]:
+        assert (d in time_offset_test_set_labels)
+
     datasets = (
         time_offset_test_set,
         mixed_test_set,

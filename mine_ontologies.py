@@ -13,11 +13,14 @@ synsets = wordnet.wordnet.synsets
 import rdflib
 import urlparse
 import yaml, os
+import urllib2
+import sys
+
 
 from diagnosis.utils import *
+import ontology_file_helpers
 
 # Specialized helpers
-
 def traverse_hyponyms(synset, depth=3, only_nouns=False):
     all_hyponyms = []
     for syn in synset:
@@ -93,6 +96,8 @@ def get_subject_to_ancestor_dict(subject_to_parents):
     def get_ancestors(subject):
         # The root's parent will not appear in subject_to_parents
         parents = subject_to_parents.get(subject, [])
+        if subject in parents:
+            parents.remove(subject)
         return set(parents + list(flatten(
             [get_ancestors(p) for p in parents], 1
         )))
@@ -570,29 +575,23 @@ def mine_usgs_ontology():
     # This keyword set is used to capure environmental factors. For example,
     # a disease might be related to swamps or cities with high populations density.
     terrain_ontology = rdflib.Graph()
-    terrain_ontology.parse(
-        "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Event.n3",
-        format="n3"
-    )
-    terrain_ontology.parse(
-        "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Division.n3",
-        format="n3"
-    )
-    #Not sure why I can't parse this.
-    #It might be RDFLib: https://github.com/RDFLib/rdflib/issues/379
-    #terrain_ontology.parse("http://usgs-ybother.srv.mst.edu/ontology/vocabulary/BuiltUpArea.n3", format="n3")
-    terrain_ontology.parse(
-        "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/EcologicalRegime.n3",
-        format="n3"
-    )
-    terrain_ontology.parse(
-        "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/SurfaceWater.n3",
-        format="n3"
-    )
-    terrain_ontology.parse(
-        "http://usgs-ybother.srv.mst.edu/ontology/vocabulary/Terrain.n3",
-        format="n3"
-    )
+
+    files = [   "http://cegis.usgs.gov/docs/Event.ttl", 
+            "http://cegis.usgs.gov/docs/Division.ttl", 
+            "http://cegis.usgs.gov/docs/BuiltUpArea.ttl", 
+            "http://cegis.usgs.gov/docs/EcologicalRegime.ttl",
+            "http://cegis.usgs.gov/docs/SurfaceWater.ttl",
+            "http://cegis.usgs.gov/docs/Terrain.ttl"]
+
+    for ttlFile in files:
+        try:
+            terrain_ontology.parse( 
+                ttlFile,
+                format="n3"
+            )
+        except urllib2.HTTPError:
+            print "*********Problem downloading terrain_ontology file:", ttlFile, "*********" 
+
     usgs_keywords = []
     for keyword_object in get_linked_keywords(
         terrain_ontology,
@@ -634,8 +633,9 @@ def create_keyword_object_array(synset_object_array):
             if len(kw) == 0:
                 print "Empty keyword in", synset_object
                 continue
-            if ')' == kw[-1]:
-                print "Parenthetical keyword:", kw, 'in', unicode(synset_object)
+            # commenting this out to cleanup script output
+            # if ')' == kw[-1]:
+            #     print "Parenthetical keyword:", kw, 'in', unicode(synset_object)
 
             keywords_sofar[kw] = synset_object
             keyword_object_array.append({
@@ -656,6 +656,13 @@ def create_keyword_object_array(synset_object_array):
     print "Total keywords:", len(keyword_object_array)
     return keyword_object_array
 
+def compare_last_two_pickles():
+    new, previous = ontology_file_helpers.get_ontologies_to_compare()
+    previousPickle = set([k['keyword'].lower() for k in pickle.load(open(previous))])
+    currentPickle = set([k['keyword'].lower() for k in pickle.load(open(new))])
+    print "New keywords:", len(currentPickle - previousPickle)
+    print "Removed keywords:", len(previousPickle - currentPickle)
+
 if __name__ == "__main__":
     print "gathering keywords..."
     disease_kws = mine_disease_ontology() +\
@@ -673,6 +680,8 @@ if __name__ == "__main__":
     To update the ontology data we use in our deployments use this command:
     aws s3 cp ontologies-x.x.x.p s3://classifier-data/ --region us-west-1
     """
-    with open('ontologies-0.1.4.p', 'wb') as f:
+    newPickle = ontology_file_helpers.get_next_ontology_file_name();
+    with open(newPickle, 'wb') as f:
         pickle.dump(keywords, f)
-    print "pickle ready"
+    print "new pickle created.  Comparing to previous version..."
+    compare_last_two_pickles()
