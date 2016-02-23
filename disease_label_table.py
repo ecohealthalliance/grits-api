@@ -29,7 +29,8 @@ def get_table():
                     continue
                 else:
                     out_row[key] = value
-            __table__.append(out_row)
+            if 'label' in out_row:
+                __table__.append(out_row)
     return __table__
 
 def get_promed_labels():
@@ -37,6 +38,12 @@ def get_promed_labels():
     for row in get_table():
         if row.get('is_promed_label'):
             labels.append(row['label'])
+    return labels
+
+def get_labels():
+    labels = []
+    for row in get_table():
+        labels.append(row['label'])
     return labels
 
 def is_in_table(disease):

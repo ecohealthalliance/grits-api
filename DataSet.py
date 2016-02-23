@@ -4,6 +4,8 @@ from diagnosis.utils import group_by, flatten
 import pymongo
 import datetime
 import re
+import requests
+import config
 
 label_overrides = {
     'http://healthmap.org/ai.php?1097880' : ['Gastroenteritis'],
@@ -118,6 +120,15 @@ class DataSet(object):
         print "Articles removed because of zero feature vectors:"
         print len(original_items) - len(self.items), '/', len(original_items)
 
+def clear_duplicates(data_set):
+    data_dict = {}
+    for item in data_set:
+        if not (item["promedId"] in data_dict):
+            data_dict[item["promedId"]] = item
+        else:
+            data_dict[item["promedId"]]["plantDisease"].extend(item["plantDisease"])
+    return data_dict.values()
+
 def fetch_promed_datasets():
     client = pymongo.MongoClient()
     db = client.promed
@@ -151,14 +162,13 @@ def fetch_promed_datasets():
             deduped_test.append(test)
     return training_set, deduped_test
 
-def clear_duplicates(data_set):
-    data_dict = {}
-    for item in data_set:
-        if not (item["promedId"] in data_dict):
-            data_dict[item["promedId"]] = item
-        else:
-            data_dict[item["promedId"]]["plantDisease"].extend(item["plantDisease"])
-    return data_dict.values()
+def fetch_eha_curated_datasets():
+    resp = requests.get("https://grits.ecohealthalliance.org/trainingData",
+      data={
+        "email": config.grits_curator_email,
+        "password": config.grits_curator_password
+      })
+    return resp.json()
 
 datasets = tuple()
 def fetch_datasets():
@@ -267,15 +277,35 @@ def fetch_datasets():
     for report in promed_time_offset_test_set:
         time_offset_test_set.append(promed_to_girder_format(report))
     
+    eha_training_set = fetch_eha_curated_datasets()
+    
+    def eha_to_girder_format(report):
+        return {
+            "name" : "123",
+            "meta" : {
+                "events" : [
+                    {
+                        "diseases" : report["labels"]
+                    }
+                ]
+            },
+            "private" : {
+                "cleanContent" : {
+                    "content" : report["content"]
+                }
+            }
+        }
+    
+    for report in eha_training_set:
+        training_set.append(eha_to_girder_format(report))
+    
     print "time_offset_test_set size", len(time_offset_test_set), " | rejected items:", time_offset_test_set.rejected_items
     print "mixed_test_set size", len(mixed_test_set), " | rejected items:", mixed_test_set.rejected_items
     print "training_set size", len(training_set), " | rejected items:", training_set.rejected_items
     
     # Check that plant disease aritcles are in test set.
-    time_offset_test_set_labels = flatten(time_offset_test_set.get_labels())
-    for d in ["Downy Mildew", "Wart Disease"]:
-        assert (d in time_offset_test_set_labels)
-
+    assert "Downy Mildew" in flatten(time_offset_test_set.get_labels())
+    
     datasets = (
         time_offset_test_set,
         mixed_test_set,
