@@ -8,3 +8,6 @@ bsve_user_name = "a@b.c"
 bsve_api_key = "asdf"
 bsve_secret_key = "qwerty"
 bsve_endpoint = "http://search.bsvecosystem.net"
+
+grits_curator_email = "a@b.c"
+grits_curator_password = "123"
