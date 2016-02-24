@@ -6,6 +6,7 @@ import datetime
 import re
 import requests
 import config
+from dateutil import parser
 
 label_overrides = {
     'http://healthmap.org/ai.php?1097880' : ['Gastroenteritis'],
@@ -62,6 +63,9 @@ class DataSet(object):
             #     "http://healthmap.org/ai.php?" + item['name'][:-4]
             return
         return self.items.append(item)
+    def extend(self, array):
+        for item in array:
+            self.append(item)
     def __len__(self):
         return len(self.items)
     def get_feature_dicts(self):
@@ -123,31 +127,49 @@ class DataSet(object):
 def clear_duplicates(data_set):
     data_dict = {}
     for item in data_set:
-        if not (item["promedId"] in data_dict):
-            data_dict[item["promedId"]] = item
+        if not (item["name"] in data_dict):
+            data_dict[item["name"]] = item
         else:
-            data_dict[item["promedId"]]["plantDisease"].extend(item["plantDisease"])
+            data_dict[item["name"]]["meta"]["events"][0]["diseases"].extend(
+                item["meta"]["events"][0]["diseases"])
     return data_dict.values()
 
 def fetch_promed_datasets():
+    def promed_to_girder_format(report):
+        return {
+            "name" : "promed" + report["promedId"],
+            "meta" : {
+                "events" : [
+                    {
+                        "diseases" : report["plantDisease"] 
+                    } 
+                ]
+            },
+            "private" : {
+                "cleanContent" : {
+                    "content" : report["articles"][0]["content"]
+                }
+            }
+        }
     client = pymongo.MongoClient()
     db = client.promed
     posts = db.posts
     def processDisease(diseaseName):
         matchRE = re.compile(diseaseName, re.IGNORECASE)
-        articles = list(posts.find({"subject.description": matchRE})
-            .sort("promedDate", pymongo.ASCENDING))
-        print diseaseName, "has", len(articles), "articles"
-        for article in articles:
+        post_list = list(posts.find({
+            "subject.description": matchRE,
+            "articles": { "$ne": [] }
+        }).sort("promedDate", pymongo.ASCENDING))
+        print diseaseName, "has", len(post_list), "posts"
+        for article in post_list:
             article["plantDisease"] = [diseaseName]
-        return articles
-    
+        return post_list
     # this could be updated to be a dictionary containing the display name and the search regex
     diseases = disease_label_table.get_promed_labels()
     training_set = []
     time_offset_test_set = []
     for disease in diseases:
-        results = processDisease(disease)
+        results = map(promed_to_girder_format, processDisease(disease))
         if len(results) < 10:
             training_set.extend(results)
         else:
@@ -158,17 +180,55 @@ def fetch_promed_datasets():
     #remove items in the test set that are also in the training set
     deduped_test = []
     for test in time_offset_test_set:
-        if all([x["promedId"] != test["promedId"] for x in training_set]):
+        if all([x["name"] != test["name"] for x in training_set]):
             deduped_test.append(test)
     return training_set, deduped_test
 
 def fetch_eha_curated_datasets():
+    def eha_to_girder_format(report):
+        return {
+            "name" : "eha" + report['id'],
+            "meta" : {
+                "events" : [
+                    {
+                        "diseases" : report["labels"]
+                    }
+                ]
+            },
+            "private" : {
+                "cleanContent" : {
+                    "content" : report["content"]
+                }
+            }
+        }
     resp = requests.get("https://grits.ecohealthalliance.org/trainingData",
       data={
         "email": config.grits_curator_email,
         "password": config.grits_curator_password
       })
-    return resp.json()
+    training_set = []
+    time_offset_test_set = []
+    label_to_articles = {}
+    for item in resp.json():
+        item['created'] = parser.parse(item['created'].replace("+00:00", "Z"))
+        for label in item['labels']:
+            label_to_articles[label] = label_to_articles.get(label, []) + [item]
+    for label, articles in label_to_articles.items():
+        articles = sorted(articles, key=lambda a: a['created'])
+        articles = map(eha_to_girder_format, articles)
+        if len(articles) < 10:
+            training_set.extend(articles)
+        else:
+            time_offset_test_set.extend(articles[0:5])
+            training_set.extend(articles[5:])
+    training_set = clear_duplicates(training_set)
+    time_offset_test_set = clear_duplicates(time_offset_test_set)
+    #remove items in the test set that are also in the training set
+    deduped_test = []
+    for test in time_offset_test_set:
+        if all([x["name"] != test["name"] for x in training_set]):
+            deduped_test.append(test)
+    return training_set, deduped_test
 
 datasets = tuple()
 def fetch_datasets():
@@ -253,51 +313,12 @@ def fetch_datasets():
                 training_set.append(report)
 
     promed_training_set, promed_time_offset_test_set = fetch_promed_datasets()
-
-    def promed_to_girder_format(report):
-        return {
-            "name" : "123",
-            "meta" : {
-                "events" : [
-                    {
-                        "diseases" : report["plantDisease"] 
-                    } 
-                ]
-            },
-            "private" : {
-                "cleanContent" : {
-                    "content" : report["articles"][0]["content"]
-                }
-            }
-        }
+    training_set.extend(promed_training_set)
+    time_offset_test_set.extend(promed_time_offset_test_set)
     
-    for report in promed_training_set:
-        training_set.append(promed_to_girder_format(report))
-    
-    for report in promed_time_offset_test_set:
-        time_offset_test_set.append(promed_to_girder_format(report))
-    
-    eha_training_set = fetch_eha_curated_datasets()
-    
-    def eha_to_girder_format(report):
-        return {
-            "name" : "123",
-            "meta" : {
-                "events" : [
-                    {
-                        "diseases" : report["labels"]
-                    }
-                ]
-            },
-            "private" : {
-                "cleanContent" : {
-                    "content" : report["content"]
-                }
-            }
-        }
-    
-    for report in eha_training_set:
-        training_set.append(eha_to_girder_format(report))
+    eha_training_set, eha_test_set = fetch_eha_curated_datasets()
+    training_set.extend(eha_training_set)
+    time_offset_test_set.extend(eha_test_set)
     
     print "time_offset_test_set size", len(time_offset_test_set), " | rejected items:", time_offset_test_set.rejected_items
     print "mixed_test_set size", len(mixed_test_set), " | rejected items:", mixed_test_set.rejected_items
