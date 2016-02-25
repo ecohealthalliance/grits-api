@@ -324,6 +324,14 @@ def fetch_datasets():
     print "mixed_test_set size", len(mixed_test_set), " | rejected items:", mixed_test_set.rejected_items
     print "training_set size", len(training_set), " | rejected items:", training_set.rejected_items
     
+    print "Label counts:"
+    label_counts = {}
+    all_labels = training_set.get_labels(True) + time_offset_test_set.get_labels(True) + mixed_test_set.get_labels(True)
+    for label in flatten(all_labels):
+        label_counts[label] = label_counts.get(label, 0) + 1
+    for label, count in sorted(label_counts.items(), key=lambda k: k[1]):
+        print "    " + label, ":", count
+    
     # Check that plant disease aritcles are in test set.
     assert "Downy Mildew" in flatten(time_offset_test_set.get_labels())
     
