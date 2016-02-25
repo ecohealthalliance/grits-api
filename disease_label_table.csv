@@ -1,8 +1,8 @@
 label,is_not_disease,is_pathogen,is_promed_label,parent_label,not_human_disease,is_category,wiki_link,synonym,Non-HM disease label,comments
 Acinetobacter baumannii,,TRUE,,,,,http://en.wikipedia.org/wiki/Acinetobacter_baumannii,,,
 Adenovirus,,TRUE,,,,,http://en.wikipedia.org/wiki/Adenoviridae,,,
-African Horse Sickness,,,,,TRUE,,http://en.wikipedia.org/wiki/African_horse_sickness,,,
-African Swine Fever,,TRUE,,Fever,TRUE,,http://en.wikipedia.org/wiki/African_swine_fever_virus,,,
+African Horse Sickness,,,TRUE,,TRUE,,http://en.wikipedia.org/wiki/African_horse_sickness,,,
+African Swine Fever,,TRUE,TRUE,Fever,TRUE,,http://en.wikipedia.org/wiki/African_swine_fever_virus,,,
 African Trypanosomiasis,,,,,,,http://en.wikipedia.org/wiki/African_trypanosomiasis,,,
 Algae,TRUE,,,Environmental,TRUE,?,http://en.wikipedia.org/wiki/Algae,,,NAP
 Amebiasis,,,,,,,http://en.wikipedia.org/wiki/Amoebiasis,,,
@@ -54,7 +54,7 @@ Chronic Wasting Disease,,,,,TRUE,,http://en.wikipedia.org/wiki/Chronic_wasting_d
 Chronic/Non-Infectious Disease,TRUE,,,,,,NAP,,,
 Citrobacter freundii,,TRUE,,,,,http://en.wikipedia.org/wiki/Citrobacter_freundii,,,
 CJD,,,,,,,http://en.wikipedia.org/wiki/Creutzfeldt%E2%80%93Jakob_disease,Creutzfeldt-Jacobs disease,,Creutzfeldt-Jacobs disease
-Classical Swine Fever,,TRUE,,Fever,TRUE,,http://en.wikipedia.org/wiki/Classical_swine_fever,"Hog cholera, pig plague",,"Hog cholera, pig plague"
+Classical Swine Fever,,TRUE,TRUE,Fever,TRUE,,http://en.wikipedia.org/wiki/Classical_swine_fever,"Hog cholera, pig plague",,"Hog cholera, pig plague"
 Clostridium perfringens enterotoxin (CPE),,TRUE,,,,,http://en.wikipedia.org/wiki/Clostridium_enterotoxin,,,
 Clostridium perfringens,,TRUE,,,,,http://en.wikipedia.org/wiki/Clostridium_perfringens,,,
 Cold,,,,,,,http://en.wikipedia.org/wiki/Common_cold,Common cold,,
@@ -180,7 +180,7 @@ Murine typhus,,,,Typhus,,,http://en.wikipedia.org/wiki/Murine_typhus,endemic typ
 Murray Valley encephalitis,,,,Encephalitis,,,http://en.wikipedia.org/wiki/Murray_Valley_encephalitis_virus,,,
 "Mycobacteria, non-TB",,,,,,,http://en.wikipedia.org/wiki/Mycobacterium,,,included in mycobacterium wiki article
 Myiasis,,,,,,,http://en.wikipedia.org/wiki/Myiasishttp://en.wikipedia.org/wiki/Myiasis,,,
-Newcastle Disease,,,,,,,http://en.wikipedia.org/wiki/Newcastle_disease,,,
+Newcastle Disease,,,TRUE,,,,http://en.wikipedia.org/wiki/Newcastle_disease,,,
 Nipah/Hendra Virus,,TRUE,,Hemorrhagic Fever,,,http://en.wikipedia.org/wiki/Henipavirus,,,embedded in Henipavirus article
 Hendra,,TRUE,,Hemorrhagic Fever,,,http://en.wikipedia.org/wiki/Henipavirus,,TRUE,embedded in Henipavirus article
 Norovirus,,TRUE,,Gastroenteritis,,,http://en.wikipedia.org/wiki/Norovirus,,,
@@ -201,7 +201,7 @@ Parotitis,,,,,,,http://en.wikipedia.org/wiki/Parotitis,,,
 Parvovirus,,TRUE,,,,,http://en.wikipedia.org/wiki/Parvovirus,,,
 Pasteurellosis,,,,,,,http://en.wikipedia.org/wiki/Pasteurellosis,,,
 Pelvic Inflammatory Disease,,,,,,,http://en.wikipedia.org/wiki/Pelvic_inflammatory_disease,PID,,
-Peste des petits ruminants,,,,,TRUE,,http://en.wikipedia.org/wiki/Ovine_rinderpest,Ovine rinderpest,,
+Peste des petits ruminants,,,TRUE,Rinderpest,TRUE,,http://en.wikipedia.org/wiki/Ovine_rinderpest,Ovine rinderpest,,
 Pests,TRUE,,,,TRUE,,NAP,,,
 Pinworm,,TRUE,,,,,http://en.wikipedia.org/wiki/Pinworm,"threadworm, seatworm",,
 Plague,,,,yersiniosis,,,http://en.wikipedia.org/wiki/Plague_(disease),,,
@@ -244,7 +244,7 @@ Sepsis,,,,,,,http://en.wikipedia.org/wiki/Sepsis,,,
 Serratia marcescens,,TRUE,,,,,http://en.wikipedia.org/wiki/Serratia_marcescens,,,
 Severe fever with thrombocytopenia syndrome,,TRUE,,,,,http://en.wikipedia.org/wiki/Severe_fever_with_thrombocytopenia_syndrome,SFTS,TRUE,
 Sexually Transmitted Infection,,,,,,,http://en.wikipedia.org/wiki/Sexually_transmitted_disease,,,
-Sheep/Goat Pox,,,,,TRUE,,http://en.wikipedia.org/wiki/Variola_caprina,Variola caprina,,
+Sheep/Goat Pox,,,TRUE,,TRUE,,http://en.wikipedia.org/wiki/Variola_caprina,Variola caprina,,
 Shigellosis,,,,,,,http://en.wikipedia.org/wiki/Shigellosis,"bacillary dysentery, marlow syndrome",,
 Shingles,,,,,,,http://en.wikipedia.org/wiki/Herpes_zoster,Herpes zoster,,
 Smallpox-Related,TRUE,,,,,,http://en.wikipedia.org/wiki/Smallpox,smallpox,,
@@ -306,3 +306,8 @@ Philippine Downy Mildew,,,,Downy Mildew,TRUE,,,Peronosclerospora Philippinensis,
 Red Leaf Blotch,,,,Blotch,TRUE,,,Red Blotch,,
 Brown Stripe Downy Mildew,,,,Downy Mildew,TRUE,,,Sclerophthora Rayssiae,,
 Potato Wart Disease,,,,,TRUE,,,Synchytrium Endobioticum,,
+,,,,,,,,,,
+Contagious Caprine Pleuropneumonia,,,TRUE,,,,,Mycoplasma capricolum 3,,
+Contagious Bovine Pleuropneumonia,,,TRUE,,,,,Mycoplasma mycoides 3,,
+Rinderpest,,,TRUE,,,,,,,
+Swine Vesicular Disease,,,TRUE,,,,,Swine vesicular disease virus,,
