@@ -94,7 +94,6 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
             logged_resource['itemId'] = v
         else:
             logged_resource[k] = v
-    girder_db['diagnosisLog'].insert(logged_resource)
     return make_json_compat(resource)
 
 @celery_tasks.task(base=DiagnoserTask, name='tasks.diagnose')
