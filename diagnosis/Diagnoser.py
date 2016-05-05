@@ -62,7 +62,7 @@ class Diagnoser():
                     if label in parents:
                         result[i2] = max(p, probs[i2], result.get(i2, 0))
         return result.items()
-    def diagnose(self, content):
+    def diagnose(self, content, diseases_only=False):
         time_sofar = time_sofar_gen(datetime.datetime.now())
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
         feature_dict = self.keyword_processor.transform([base_keyword_dict])
@@ -103,6 +103,10 @@ class Diagnoser():
                     if score > 0 and kwd not in base_keyword_dict]
             }
         diseases = [diagnosis(i,p) for i,p in self.best_guess(X)]
+        if diseases_only:
+            return {
+                'diseases': diseases
+            }
         logger.info(time_sofar.next() + 'Diagnosed diseases')
 
         anno_doc = AnnoDoc(content)

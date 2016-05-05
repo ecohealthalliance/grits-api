@@ -25,6 +25,27 @@ import time
 import random
 import json
 
+def on_task_complete(task, callback):
+    if hasattr(task, 'subtasks'):
+        res_set = celery.result.ResultSet(task.subtasks)
+    else:
+        res_set = celery.result.ResultSet([task])
+
+    def check_celery_task():
+        if res_set.ready() or res_set.failed():
+            try:
+                resp = task.get()
+            except Exception as e:
+                if 'args' in globals() and args.debug:
+                    raise e
+                return callback(unicode(e), None)
+            return callback(None, resp)
+        else:
+            tornado.ioloop.IOLoop.instance().add_timeout(
+                datetime.timedelta(0,1), check_celery_task
+            )
+    check_celery_task()
+
 class DiagnoseHandler(tornado.web.RequestHandler):
     public = False
     @tornado.web.asynchronous
@@ -75,40 +96,20 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             self.finish()
             return
 
-        # Create a result set so we can check all the tasks in the chain for
-        # failure status.
-        r = task
-        results = [r]
-        while r.parent:
-            results.append(r.parent)
-            r = r.parent
-        res_set = celery.result.ResultSet(results)
-
-        def check_celery_task():
-            if res_set.ready() or res_set.failed():
-                try:
-                    resp = task.get()
-                except Exception as e:
-                    self.write({
-                        'error' : unicode(e)
-                    })
-                    self.set_header("Content-Type", "application/json")
-                    self.finish()
-                    if 'args' in globals() and args.debug:
-                        raise e
-                    return
+        def callback(err, resp):
+            if err:
+                resp = {
+                    'error': err
+                }
+            else:
                 if self.get_argument('returnSourceContent',
                     params.get('returnSourceContent', False)):
                     resp['source'] = task.parent.get()
-                self.write(resp)
-                self.set_header("Content-Type", "application/json")
-                self.finish()
-            else:
-                tornado.ioloop.IOLoop.instance().add_timeout(
-                    datetime.timedelta(0,1), check_celery_task
-                )
+            self.set_header("Content-Type", "application/json")
+            self.write(resp)
+            self.finish()
+        on_task_complete(task, callback)
 
-        check_celery_task()
 
     @tornado.web.asynchronous
     def post(self):
@@ -153,7 +154,8 @@ class BSVEHandler(tornado.web.RequestHandler):
             nonce,
             hmac.new(hmac_key, msg=hmac_message, digestmod=hashlib.sha1).hexdigest())
         client = tornado.httpclient.AsyncHTTPClient()
-        def make_search_result_cb(request_id):
+        def bsve_search(callback):
+            state = {'request_id' : None}
             def search_result_cb(resp):
                 if resp.error:
                     self.set_status(500)
@@ -165,30 +167,26 @@ class BSVEHandler(tornado.web.RequestHandler):
                     tornado.ioloop.IOLoop.instance().add_timeout(
                         datetime.timedelta(0,1),
                         lambda: client.fetch(tornado.httpclient.HTTPRequest(
-                            config.bsve_endpoint + "/api/search/v1/result?requestId=%s" % request_id,
+                            config.bsve_endpoint + "/api/search/v1/result?requestId=%s" % state['request_id'],
                             headers={
                                 "harbinger-authentication": auth_header
                             },
                             method="GET"), search_result_cb))
                 else:
-                    self.write(resp.body)
-                    self.set_header("Content-Type", "application/json")
+                    callback(parsed_resp)
+            def search_request_cb(resp):
+                if resp.error:
+                    self.set_status(500)
+                    self.write('Request Error:\n' + str(resp.error))
                     self.finish()
-            return search_result_cb
-        def search_request_cb(resp):
-            if resp.error:
-                self.set_status(500)
-                self.write('Request Error:\n' + str(resp.error))
-                self.finish()
-            else:
-                client.fetch(tornado.httpclient.HTTPRequest(
-                    config.bsve_endpoint + "/api/search/v1/result?requestId=%s" % resp.body,
-                    headers={
-                        "harbinger-authentication": auth_header
-                    },
-                    method="GET"), make_search_result_cb(resp.body))
-        bsve_path = self.request.path.split('/bsve')[1]
-        if bsve_path == "/search":
+                else:
+                    state['request_id'] = resp.body
+                    client.fetch(tornado.httpclient.HTTPRequest(
+                        config.bsve_endpoint + "/api/search/v1/result?requestId=%s" % resp.body,
+                        headers={
+                            "harbinger-authentication": auth_header
+                        },
+                        method="GET"), search_result_cb)
             client.fetch(tornado.httpclient.HTTPRequest(
                 config.bsve_endpoint + "/api/search/v1/request",
                 headers={
@@ -197,6 +195,41 @@ class BSVEHandler(tornado.web.RequestHandler):
                 },
                 method="POST",
                 body=self.request.body), search_request_cb)
+        bsve_path = self.request.path.split('/bsve')[1]
+        if bsve_path == "/search":
+            def search_finished(resp):
+                self.write(resp)
+                self.set_header("Content-Type", "application/json")
+                self.finish()
+            bsve_search(search_finished)
+        elif bsve_path == "/search_and_diagnose":
+            # The number of diagnoses are limited to prevent these requests
+            # from taking too long.
+            MAX_DIAGNOSES = 200
+            def search_finished(search_resp):
+                def task_finished(err, diagnoses):
+                    self.set_header("Content-Type", "application/json")
+                    if err:
+                        print "ERROR:", err
+                        self.write({
+                            'error': err
+                        })
+                        self.finish()
+                    else:
+                        for result, diagnosis in zip(search_resp['results'], diagnoses):
+                            result['diagnosis'] = diagnosis
+                        self.write(search_resp)
+                        self.finish()
+                task = celery.group(celery.chain(
+                    tasks_preprocess.process_text.s({
+                        'content': item['data']['Title'] + '\n' + item['data']['Content']
+                    }).set(queue='priority'),
+                    tasks_diagnose.diagnose.s(
+                        diseases_only=True
+                    ).set(queue='priority')
+                ) for item in search_resp['results'][0:MAX_DIAGNOSES])()
+                on_task_complete(task, task_finished)
+            bsve_search(search_finished)
         elif bsve_path == "/feeds":
             def feeds_cb(resp):
                 if resp.error:

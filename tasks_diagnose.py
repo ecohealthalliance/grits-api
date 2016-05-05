@@ -97,7 +97,7 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
     return make_json_compat(resource)
 
 @celery_tasks.task(base=DiagnoserTask, name='tasks.diagnose')
-def diagnose(text_obj):
+def diagnose(text_obj, diseases_only=False):
     english_translation = text_obj.get('englishTranslation', {}).get('content')
     if english_translation:
         clean_english_content = english_translation
@@ -105,6 +105,7 @@ def diagnose(text_obj):
         clean_english_content = text_obj.get('cleanContent', {}).get('content')
     if clean_english_content:
         logger.info('Diagnosing text:\n' + clean_english_content)
-        return make_json_compat(diagnose.diagnoser.diagnose(clean_english_content))
+        return make_json_compat(diagnose.diagnoser.diagnose(
+            clean_english_content, diseases_only))
     else:
         return { 'error' : 'No content available to diagnose.' }
