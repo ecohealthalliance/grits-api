@@ -26,6 +26,7 @@ import random
 import json
 
 def on_task_complete(task, callback):
+    # if the task is a celery group with subtasks add them to the result set
     if hasattr(task, 'subtasks'):
         res_set = celery.result.ResultSet(task.subtasks)
     else:
@@ -36,6 +37,8 @@ def on_task_complete(task, callback):
             try:
                 resp = task.get()
             except Exception as e:
+                # When the debug parameter is passed in raise exceptions
+                # instead of returning the error message.
                 if 'args' in globals() and args.debug:
                     raise e
                 return callback(unicode(e), None)
@@ -104,6 +107,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             else:
                 if self.get_argument('returnSourceContent',
                     params.get('returnSourceContent', False)):
+                    # The parent task returns the processed text.
                     resp['source'] = task.parent.get()
             self.set_header("Content-Type", "application/json")
             self.write(resp)
@@ -216,15 +220,26 @@ class BSVEHandler(tornado.web.RequestHandler):
                         })
                         self.finish()
                     else:
+                        # Attach a diagnosis to each of the search results
+                        # that one was computed for.
                         for result, diagnosis in zip(search_resp['results'], diagnoses):
                             result['diagnosis'] = diagnosis
                         self.write(search_resp)
                         self.finish()
+                # Run a task chain that processes then diagnoses a search result
+                # for each result in parallel.
                 task = celery.group(celery.chain(
                     tasks_preprocess.process_text.s({
+                        # The article title and content are classified.
+                        # Unfortunately, the content returned in most search results in truncated
+                        # to only a few sentences long. Links are included as well,
+                        # however scraping the original sources would take several minutes.
                         'content': item['data']['Title'] + '\n' + item['data']['Content']
                     }).set(queue='priority'),
                     tasks_diagnose.diagnose.s(
+                        # The diseases_only flag tells the diagnoser to only do classification
+                        # (skipping location/date/case-count feature extraction) for speed.
+                        # Classifications only take a fraction of a second.
                         diseases_only=True
                     ).set(queue='priority')
                 ) for item in search_resp['results'][0:MAX_DIAGNOSES])()
