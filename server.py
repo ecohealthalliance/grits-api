@@ -8,6 +8,7 @@ import tasks_preprocess
 
 import bson
 import pymongo
+print "Connecting to mongoDB at", config.mongo_url
 girder_db = pymongo.Connection(config.mongo_url)['girder']
 
 import datetime
@@ -53,6 +54,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
     public = False
     @tornado.web.asynchronous
     def get(self):
+        print "Diagnose request received"
         # Try to parse the json bodies submitted by the diagnostic dash:
         try:
             params = json.loads(self.request.body)
@@ -276,6 +278,7 @@ application = tornado.web.Application([
 ])
 
 if __name__ == "__main__":
+    print "Starting grits-api server..."
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-debug', action='store_true')
