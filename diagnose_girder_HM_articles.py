@@ -1,7 +1,7 @@
 """
 Check for undiagnosed articles in girder and diagnose them.
 """
-import pymongo
+from pymongo import MongoClient
 import tasks_preprocess
 import tasks_diagnose
 import datetime
@@ -10,7 +10,7 @@ from diagnosis.Diagnoser import Diagnoser
 
 def update():
     print "Cleaning up old tasks..."
-    girder_db = pymongo.Connection('localhost')['girder']
+    girder_db = MongoClient('mongodb://localhost:27017/girder')
     # Cleans up completed task metadata older than a day.
     # Celery beat could do this, but we're not running it at the moment.
     # As an aside, the mongo tasks database will continue to have a large 

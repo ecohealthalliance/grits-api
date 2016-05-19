@@ -3,7 +3,6 @@ import json
 import bson
 import pickle
 import diagnosis
-import pymongo
 import datetime
 from distutils.version import StrictVersion
 import datetime

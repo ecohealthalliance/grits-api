@@ -7,7 +7,7 @@ import sys, csv
 import re
 import pickle
 import config
-import pymongo
+from pymongo import MongoClient
 
 
 def load_keyword_array(file_path):
@@ -24,7 +24,7 @@ def insert_set(names_set, collection):
 
 if __name__ == '__main__':
 
-    db = pymongo.Connection(config.mongo_url)['annotation']
+    db = MongoClient('%s/annotation' % config.mongo_url)
 
     category_labels = {
         'doid/diseases': 'diseases',

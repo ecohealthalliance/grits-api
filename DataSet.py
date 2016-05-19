@@ -1,7 +1,7 @@
 import disease_label_table
 import numpy as np
 from diagnosis.utils import group_by, flatten
-import pymongo
+from pymongo import MongoClient
 import datetime
 import re
 import requests
@@ -151,7 +151,7 @@ def fetch_promed_datasets():
                 }
             }
         }
-    client = pymongo.MongoClient()
+    client = MongoClient()
     db = client.promed
     posts = db.posts
     def processDisease(diseaseName):
@@ -244,7 +244,7 @@ def fetch_datasets():
     # to avoid overlapping events.
     # We use the first 6 months rather than the last because we keep adding 
     # new data and want this test set to stay the same.
-    girder_db = pymongo.Connection('localhost')['girder']
+    girder_db = MongoClient('mongodb://localhost:27017/girder']
     start_date = datetime.datetime(2013, 1, 8, 0, 9, 12)
     time_offset_test_set = DataSet(girder_db.item.find({
         "meta.date" : {

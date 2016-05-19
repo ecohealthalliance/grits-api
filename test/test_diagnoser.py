@@ -88,11 +88,11 @@ class TestDiagnoser(unittest.TestCase):
             set(disease_label_table.get_inferred_labels('Avian Influenza H7N9')))
 
     # def test_db_article(self):
-    #     import pymongo
+    #     from pymongo import MongoClient
     #     from bson.objectid import ObjectId
     #     import logging
     #     logger = logging.getLogger('annotator.geoname_annotator')
     #     logger.setLevel(logging.INFO)
-    #     girder_db = pymongo.Connection('localhost')['girder']
+    #     girder_db = MongoClient('mongodb://localhost:27017/girder')
     #     x = girder_db.item.find_one(ObjectId("532cca61f99fe75cf538aa7e"))['private']['cleanContent']['content']
     #     diagnosis = self.my_diagnoser.diagnose(x)

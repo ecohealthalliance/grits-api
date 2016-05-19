@@ -16,7 +16,6 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.linear_model import LogisticRegression
 from diagnosis.utils import group_by, flatten
 import warnings
-import pymongo
 import test_classifier
 from DataSet import fetch_datasets
 import ontology_file_helpers
