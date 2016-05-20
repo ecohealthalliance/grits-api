@@ -10,7 +10,8 @@ from diagnosis.Diagnoser import Diagnoser
 
 def update():
     print "Cleaning up old tasks..."
-    girder_db = MongoClient('mongodb://localhost:27017/girder')
+    client = MongoClient(config.mongo_url)
+    girder_db = client.girder
     # Cleans up completed task metadata older than a day.
     # Celery beat could do this, but we're not running it at the moment.
     # As an aside, the mongo tasks database will continue to have a large 
