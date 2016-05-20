@@ -244,7 +244,7 @@ def fetch_datasets():
     # to avoid overlapping events.
     # We use the first 6 months rather than the last because we keep adding 
     # new data and want this test set to stay the same.
-    girder_db = MongoClient('mongodb://localhost:27017/girder']
+    girder_db = client.girder
     start_date = datetime.datetime(2013, 1, 8, 0, 9, 12)
     time_offset_test_set = DataSet(girder_db.item.find({
         "meta.date" : {
