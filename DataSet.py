@@ -151,7 +151,7 @@ def fetch_promed_datasets():
                 }
             }
         }
-    client = MongoClient()
+    client = MongoClient(config.mongo_url)
     db = client.promed
     posts = db.posts
     def processDisease(diseaseName):
