@@ -93,6 +93,7 @@ class TestDiagnoser(unittest.TestCase):
     #     import logging
     #     logger = logging.getLogger('annotator.geoname_annotator')
     #     logger.setLevel(logging.INFO)
-    #     girder_db = MongoClient('mongodb://localhost:27017/girder')
+    #     client = MongoClient(config.mongo_url)
+    #     girder_db = client.girder
     #     x = girder_db.item.find_one(ObjectId("532cca61f99fe75cf538aa7e"))['private']['cleanContent']['content']
     #     diagnosis = self.my_diagnoser.diagnose(x)
