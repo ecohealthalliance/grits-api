@@ -4,7 +4,7 @@
 import celery
 import json
 import bson
-import pymongo
+from pymongo import MongoClient
 from celery import Celery
 import datetime
 from distutils.version import StrictVersion
@@ -53,7 +53,7 @@ celery_tasks.conf.update(
     }
 )
 
-db_handle = pymongo.Connection(config.mongo_url)
+db_handle = MongoClient(config.mongo_url)
 girder_db = db_handle['girder']
 
 @celery_tasks.task(name='tasks.process_girder_resource')

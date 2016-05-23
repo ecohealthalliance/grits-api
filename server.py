@@ -7,9 +7,10 @@ import tasks_diagnose
 import tasks_preprocess
 
 import bson
-import pymongo
+from pymongo import MongoClient
 print "Connecting to mongoDB at", config.mongo_url
-girder_db = pymongo.Connection(config.mongo_url)['girder']
+client = MongoClient(config.mongo_url)
+girder_db = client.girder
 
 import datetime
 
