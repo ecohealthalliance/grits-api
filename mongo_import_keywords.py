@@ -24,7 +24,7 @@ def insert_set(names_set, collection):
 
 if __name__ == '__main__':
 
-    db = MongoClient(config.mongo_url)
+    client = MongoClient(config.mongo_url)
     db = client.annotation
 
     category_labels = {
