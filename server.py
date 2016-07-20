@@ -33,6 +33,12 @@ def on_task_complete(task, callback):
         res_set = celery.result.ResultSet(task.subtasks)
     else:
         res_set = celery.result.ResultSet([task])
+        # If the task is a chain, the parent tasks need to be added to the result set
+        # to catch failures in them.
+        task_ptr = task
+        while task_ptr.parent:
+            task_ptr = task_ptr.parent
+            res_set.add(task_ptr)
 
     def check_celery_task():
         if res_set.ready() or res_set.failed():
@@ -43,7 +49,9 @@ def on_task_complete(task, callback):
                 # instead of returning the error message.
                 if 'args' in globals() and args.debug:
                     raise e
-                return callback(unicode(e), None)
+                # There is a bug in celery where exceptions are not properly marshaled
+                # so the message is always "exceptions must be old-style classes or derived from BaseException, not dict"
+                return callback("Error when processing article", None)
             return callback(None, resp)
         else:
             tornado.ioloop.IOLoop.instance().add_timeout(
