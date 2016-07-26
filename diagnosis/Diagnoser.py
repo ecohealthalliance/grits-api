@@ -26,7 +26,7 @@ def time_sofar_gen(start_time):
 
 class Diagnoser():
 
-    __version__ = '0.1.3'
+    __version__ = '0.1.4'
 
     def __init__(
         self, classifier, dict_vectorizer,
@@ -233,9 +233,10 @@ class Diagnoser():
         logger.info(time_sofar.next() + 'Extracted dates')
 
         return {
-            'diagnoserVersion' : self.__version__,
-            'dateOfDiagnosis' : datetime.datetime.now(),
+            'diagnoserVersion': self.__version__,
+            'dateOfDiagnosis': datetime.datetime.now(),
             'diseases': diseases,
+            'keypoints': keypoints,
             'features': case_counts +\
                         geonames_grouped.values() +\
                         times_grouped.values() +\

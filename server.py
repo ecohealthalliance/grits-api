@@ -69,7 +69,17 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             params = json.loads(self.request.body)
         except ValueError as e:
             params = {}
-
+        def get_bool_arg(key):
+            val = self.get_argument(key, params.get(key, False))
+            if isinstance(val, basestring):
+                if val.lower() == "true":
+                    return True
+                elif val.lower() == "false":
+                    return False
+                else:
+                    raise ValueError("Could not parse ", val)
+            else:
+                return val
         content = self.get_argument('content', params.get('content'))
         url = self.get_argument('url', params.get('url'))
         if content:
@@ -116,10 +126,12 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                     'error': err
                 }
             else:
-                if self.get_argument('returnSourceContent',
-                    params.get('returnSourceContent', False)):
+                if get_bool_arg('returnSourceContent'):
                     # The parent task returns the processed text.
                     resp['source'] = task.parent.get()
+                if not get_bool_arg('showKeypoints'):
+                    if 'keypoints' in resp:
+                        del resp['keypoints']
             self.set_header("Content-Type", "application/json")
             self.write(resp)
             self.finish()
