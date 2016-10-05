@@ -34,6 +34,8 @@ def make_json_compat(obj):
         return obj.isoformat()
     elif isinstance(obj, bson.ObjectId):
         return str(obj)
+    elif isinstance(obj, bson.int64.Int64):
+        return int(obj)
     else:
         raise TypeError(type(obj))
 
