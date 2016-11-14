@@ -7,7 +7,7 @@ from sklearn.pipeline import Pipeline
 import datetime
 from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
-from annotator.case_count_annotator import CaseCountAnnotator
+from annotator.count_annotator import CountAnnotator
 from annotator.patient_info_annotator import PatientInfoAnnotator
 from annotator.jvm_nlp_annotator import JVMNLPAnnotator
 import disease_label_table
@@ -36,7 +36,7 @@ class Diagnoser():
         self.keyword_array = keyword_array
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
-        self.case_count_annotator = CaseCountAnnotator()
+        self.count_annotator = CountAnnotator()
         # TODO: Rename patient info annotator
         self.keypoint_annotator = PatientInfoAnnotator()
         self.jvm_nlp_annotator = JVMNLPAnnotator(['times'])
@@ -112,10 +112,6 @@ class Diagnoser():
         anno_doc = AnnoDoc(content)
         anno_doc.add_tier(self.keyword_annotator)
         logger.info('keywords annotated')
-        anno_doc.add_tier(self.case_count_annotator)
-        logger.info('case counts annotated')
-        anno_doc.add_tier(self.geoname_annotator)
-        logger.info('geonames annotated')
         try:
             anno_doc.add_tier(self.jvm_nlp_annotator)
         except Exception as e:
@@ -125,7 +121,11 @@ class Diagnoser():
                 'the JVM time extraction server might not be running.' +
                 '\nException:\n' + str(e)
             )
-
+        logger.info('times annotated')
+        anno_doc.add_tier(self.count_annotator)
+        logger.info('counts annotated')
+        anno_doc.add_tier(self.geoname_annotator)
+        logger.info('geonames annotated')
         anno_doc.filter_overlapping_spans(
             tier_names=[ 'times', 'geonames', 'diseases', 'hosts', 'modes',
                          'pathogens', 'symptoms' ]
@@ -171,35 +171,23 @@ class Diagnoser():
                 )
         logger.info(time_sofar.next() + 'Annotated geonames')
 
-        case_counts = []
-        for span in anno_doc.tiers['caseCounts'].spans:
-            case_counts.append({
-                'type': span.type,
-                'text': span.text,
-                'value': span.label,
-                'modifiers': span.modifiers,
-                'cumulative': span.cumulative,
-                'textOffsets': [[span.start, span.end]]
-            })
-        logger.info(time_sofar.next() + 'Extracted case counts')
-
+        counts = []
+        for span in anno_doc.tiers['counts'].spans:
+            count_dict = span.to_dict()
+            count_dict['type'] = 'count'
+            counts.append(count_dict)
+            # Include legacy case counts so the diagnositic dashboard
+            # doesn't break.
+            if "case" in count_dict['attributes']:
+                counts.append({
+                    'type': "caseCount",
+                    'text': count_dict['text'],
+                    'value': count_dict['label'],
+                    'modifiers': count_dict['attributes'],
+                    'cumulative': "cumulative" in count_dict['attributes'],
+                    'textOffsets': count_dict['textOffsets']
+                })
         anno_doc.add_tier(self.keypoint_annotator, keyword_categories={
-            'occupation' : [
-                kw['keyword'] for kw in self.keyword_array
-                if 'occupation' in kw['category']
-            ],
-            'host' : [
-                kw['keyword'] for kw in self.keyword_array
-                if 'host' in kw['category']
-            ],
-            'risk' : [
-                kw['keyword'] for kw in self.keyword_array
-                if 'risk' in kw['category']
-            ],
-            'symptom' : [
-                kw['keyword'] for kw in self.keyword_array
-                if 'symptom' in kw['category']
-            ],
             'location' : anno_doc.tiers['geonames'].spans,
             'time' : anno_doc.tiers['times'].spans if 'times' in anno_doc.tiers else [],
         })
@@ -229,15 +217,12 @@ class Diagnoser():
                     keyword_groups[keyword_type][span.label]['textOffsets'].append(
                         [span.start, span.end]
                     )
-
-        logger.info(time_sofar.next() + 'Extracted dates')
-
         return {
             'diagnoserVersion': self.__version__,
             'dateOfDiagnosis': datetime.datetime.now(),
             'diseases': diseases,
             'keypoints': keypoints,
-            'features': case_counts +\
+            'features': counts +\
                         geonames_grouped.values() +\
                         times_grouped.values() +\
                         keyword_groups['diseases'].values() +\
