@@ -26,7 +26,7 @@ def time_sofar_gen(start_time):
 
 class Diagnoser():
 
-    __version__ = '0.1.4'
+    __version__ = '0.1.5'
 
     def __init__(
         self, classifier, dict_vectorizer,
