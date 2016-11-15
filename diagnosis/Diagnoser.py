@@ -139,14 +139,16 @@ class Diagnoser():
                 # TODO -- how should we handle DURATION and other exotice date types?
                 if span.type == 'DATE':
                     if not span.label in times_grouped:
-                        times_grouped[span.label] = {
+                        time_dict = span.to_dict()
+                        time_dict.update({
                             'type': 'datetime',
                             'name': span.label,
                             'value': span.label,
                             'textOffsets': [
                                 [span.start, span.end]
                             ]
-                        }
+                        })
+                        times_grouped[span.label] = time_dict
                     else:
                         times_grouped[span.label]['textOffsets'].append(
                             [span.start, span.end]
