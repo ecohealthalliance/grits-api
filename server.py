@@ -129,9 +129,6 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 if get_bool_arg('returnSourceContent'):
                     # The parent task returns the processed text.
                     resp['source'] = task.parent.get()
-                if not get_bool_arg('showKeypoints'):
-                    if 'keypoints' in resp:
-                        del resp['keypoints']
             self.set_header("Content-Type", "application/json")
             self.write(resp)
             self.finish()

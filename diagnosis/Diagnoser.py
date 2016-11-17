@@ -8,7 +8,6 @@ import datetime
 from annotator.annotator import AnnoDoc
 from annotator.geoname_annotator import GeonameAnnotator
 from annotator.count_annotator import CountAnnotator
-from annotator.patient_info_annotator import PatientInfoAnnotator
 from annotator.jvm_nlp_annotator import JVMNLPAnnotator
 import disease_label_table
 from annotator.keyword_annotator import KeywordAnnotator
@@ -26,7 +25,7 @@ def time_sofar_gen(start_time):
 
 class Diagnoser():
 
-    __version__ = '0.1.5'
+    __version__ = '0.2.0'
 
     def __init__(
         self, classifier, dict_vectorizer,
@@ -37,8 +36,6 @@ class Diagnoser():
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.count_annotator = CountAnnotator()
-        # TODO: Rename patient info annotator
-        self.keypoint_annotator = PatientInfoAnnotator()
         self.jvm_nlp_annotator = JVMNLPAnnotator(['times'])
         self.keyword_annotator = KeywordAnnotator()
         processing_pipeline = []
@@ -189,21 +186,6 @@ class Diagnoser():
                     'cumulative': "cumulative" in count_dict['attributes'],
                     'textOffsets': count_dict['textOffsets']
                 })
-        anno_doc.add_tier(self.keypoint_annotator, keyword_categories={
-            'location' : anno_doc.tiers['geonames'].spans,
-            'time' : anno_doc.tiers['times'].spans if 'times' in anno_doc.tiers else [],
-        })
-        keypoints = []
-        for span in anno_doc.tiers['patientInfo'].spans:
-            keypoints.append(
-                dict(
-                    span.metadata,
-                    type='patientInfo',
-                    textOffsets=[[span.start, span.end]]
-                )
-            )
-        logger.info(time_sofar.next() + 'Extracted patient info')
-
         keyword_types = ['diseases', 'hosts', 'modes', 'pathogens', 'symptoms']
         keyword_groups = {}
         for keyword_type in keyword_types:
@@ -223,7 +205,6 @@ class Diagnoser():
             'diagnoserVersion': self.__version__,
             'dateOfDiagnosis': datetime.datetime.now(),
             'diseases': diseases,
-            'keypoints': keypoints,
             'features': counts +\
                         geonames_grouped.values() +\
                         times_grouped.values() +\
