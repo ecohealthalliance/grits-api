@@ -48,12 +48,12 @@ celery_tasks.conf.update(
     CELERY_TASK_SERIALIZER='json',
     CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
     CELERY_RESULT_SERIALIZER='json',
-    CELERY_RESULT_BACKEND = config.BROKER_URL,
-    CELERY_MONGODB_BACKEND_SETTINGS = {
-        'database': 'tasks',
-        'taskmeta_collection': 'taskmeta',
-    }
+    CELERY_RESULT_BACKEND = config.BROKER_URL
 )
+
+celery_tasks.conf.broker_transport_options = {'visibility_timeout': 3600}  # 1 hour.
+#Option below to store results of tasks in redis as well
+#celery_tasks.conf.result_backend = config.BROKER_URL
 
 db_handle = MongoClient(config.mongo_url)
 girder_db = db_handle['girder']
