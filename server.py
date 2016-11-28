@@ -26,6 +26,7 @@ import hashlib
 import time
 import random
 import json
+import dateutil.parser
 
 def on_task_complete(task, callback):
     # if the task is a celery group with subtasks add them to the result set
@@ -51,7 +52,7 @@ def on_task_complete(task, callback):
                     raise e
                 # There is a bug in celery where exceptions are not properly marshaled
                 # so the message is always "exceptions must be old-style classes or derived from BaseException, not dict"
-                return callback("Error when processing article", None)
+                return callback(e, None)
             return callback(None, resp)
         else:
             tornado.ioloop.IOLoop.instance().add_timeout(
@@ -82,12 +83,24 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 return val
         content = self.get_argument('content', params.get('content'))
         url = self.get_argument('url', params.get('url'))
+        extra_args = {}
+        content_date = self.get_argument('content_date', params.get('content_date'))
+        if content_date:
+            try:
+                extra_args['content_date'] = dateutil.parser.parse(content_date)
+            except ValueError:
+                self.write({
+                    'error' : "Could not parse content date"
+                })
+                self.set_header("Content-Type", "application/json")
+                self.finish()
+                return
         if content:
             task = celery.chain(
                 tasks_preprocess.process_text.s({
                     'content' : content
                 }).set(queue='priority'),
-                tasks_diagnose.diagnose.s().set(queue='priority')
+                tasks_diagnose.diagnose.s(extra_args).set(queue='priority')
             )()
         elif url:
             hostname = ""
@@ -110,7 +123,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             task = celery.chain(
                 tasks_preprocess.scrape.s(url).set(queue='priority'),
                 tasks_preprocess.process_text.s().set(queue='priority'),
-                tasks_diagnose.diagnose.s().set(queue='priority')
+                tasks_diagnose.diagnose.s(extra_args).set(queue='priority')
             )()
         else:
             self.write({
@@ -123,7 +136,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
         def callback(err, resp):
             if err:
                 resp = {
-                    'error': err
+                    'error': repr(err)
                 }
             else:
                 if get_bool_arg('returnSourceContent'):
@@ -236,7 +249,7 @@ class BSVEHandler(tornado.web.RequestHandler):
                     if err:
                         print "ERROR:", err
                         self.write({
-                            'error': err
+                            'error': repr(err)
                         })
                         self.finish()
                     else:
@@ -260,7 +273,7 @@ class BSVEHandler(tornado.web.RequestHandler):
                         # The diseases_only flag tells the diagnoser to only do classification
                         # (skipping location/date/case-count feature extraction) for speed.
                         # Classifications only take a fraction of a second.
-                        diseases_only=True
+                        dict(diseases_only=True)
                     ).set(queue='priority')
                 ) for item in search_resp['results'][0:MAX_DIAGNOSES])()
                 on_task_complete(task, task_finished)

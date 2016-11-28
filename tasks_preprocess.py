@@ -45,9 +45,9 @@ logger = logging.getLogger(__name__)
 celery_tasks = Celery('tasks', broker=config.BROKER_URL)
 
 celery_tasks.conf.update(
-    CELERY_TASK_SERIALIZER='json',
-    CELERY_ACCEPT_CONTENT=['json'],  # Ignore other content
-    CELERY_RESULT_SERIALIZER='json',
+    CELERY_TASK_SERIALIZER='pickle',
+    CELERY_ACCEPT_CONTENT=['pickle'],  # Ignore other content
+    CELERY_RESULT_SERIALIZER='pickle',
     CELERY_RESULT_BACKEND = config.BROKER_URL
 )
 
