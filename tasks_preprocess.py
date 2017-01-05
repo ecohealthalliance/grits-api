@@ -145,7 +145,7 @@ def process_text(text_obj):
     # unnecessairy since we don't allow users to submit URLs.
     if text_obj.get('unscrapable'):
         result['scrapedData'] = text_obj
-        result['error'] = result['scrapedData']['error']
+        result['error'] = text_obj.get('error', text_obj.get('exception'))
         return make_json_compat(result)
     if 'htmlContent' in text_obj:
         result['scrapedData'] = text_obj
