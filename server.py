@@ -21,7 +21,6 @@ import tornado.httpclient
 import urlparse
 import re
 
-import hmac
 import hashlib
 import time
 import random
@@ -183,13 +182,17 @@ class BSVEHandler(tornado.web.RequestHandler):
             self.set_header("Access-Control-Allow-Origin", "https://bsvecosystem.net")
         timestamp = str(int(time.time() * 1e3))
         nonce = random.randint(0,100)
-        hmac_key = "%s:%s" % (config.bsve_api_key, config.bsve_secret_key)
-        hmac_message = "%s%s%s%s" % (config.bsve_api_key, timestamp, nonce, config.bsve_user_name)
-        auth_header = "apikey=%s;timestamp=%s;nonce=%s;signature=%s" % (
-            config.bsve_api_key,
-            timestamp,
-            nonce,
-            hmac.new(hmac_key, msg=hmac_message, digestmod=hashlib.sha1).hexdigest())
+        try:
+            request_body_dict = tornado.escape.json_decode(self.request.body)
+        except ValueError:
+            request_body_dict = {
+                key: value[0]
+                for key, value in self.request.arguments.items()}
+        auth_ticket = request_body_dict['auth_ticket']
+        bsve_body = tornado.escape.json_encode({
+            key: value
+            for key, value in request_body_dict.items()
+            if key != 'auth_ticket'})
         client = tornado.httpclient.AsyncHTTPClient()
         def bsve_search(callback):
             state = {'request_id' : None}
@@ -206,7 +209,7 @@ class BSVEHandler(tornado.web.RequestHandler):
                         lambda: client.fetch(tornado.httpclient.HTTPRequest(
                             config.bsve_endpoint + "/api/search/v1/result?requestId=%s" % state['request_id'],
                             headers={
-                                "harbinger-authentication": auth_header
+                                "harbinger-auth-ticket": auth_ticket
                             },
                             method="GET"), search_result_cb))
                 else:
@@ -221,17 +224,17 @@ class BSVEHandler(tornado.web.RequestHandler):
                     client.fetch(tornado.httpclient.HTTPRequest(
                         config.bsve_endpoint + "/api/search/v1/result?requestId=%s" % resp.body,
                         headers={
-                            "harbinger-authentication": auth_header
+                            "harbinger-auth-ticket": auth_ticket
                         },
                         method="GET"), search_result_cb)
             client.fetch(tornado.httpclient.HTTPRequest(
                 config.bsve_endpoint + "/api/search/v1/request",
                 headers={
-                    "harbinger-authentication": auth_header,
+                    "harbinger-auth-ticket": auth_ticket,
                     "Content-Type": "application/json; charset=utf8"
                 },
                 method="POST",
-                body=self.request.body), search_request_cb)
+                body=bsve_body), search_request_cb)
         bsve_path = self.request.path.split('/bsve')[1]
         if bsve_path == "/search":
             def search_finished(resp):
@@ -292,7 +295,7 @@ class BSVEHandler(tornado.web.RequestHandler):
             client.fetch(tornado.httpclient.HTTPRequest(
                 config.bsve_endpoint + "/api/data/list/rss/feeds",
                 headers={
-                    "harbinger-authentication": auth_header,
+                    "harbinger-auth-ticket": auth_ticket,
                     "Content-Type": "application/json; charset=utf8"
                 },
                 method="GET"), feeds_cb)
