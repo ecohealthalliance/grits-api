@@ -26,6 +26,7 @@ import time
 import random
 import json
 import dateutil.parser
+from diagnosis.Diagnoser import Diagnoser
 
 def on_task_complete(task, callback):
     # if the task is a celery group with subtasks add them to the result set
@@ -164,9 +165,9 @@ class PublicDiagnoseHandler(DiagnoseHandler):
     def post(self):
         return self.get()
 
-class TestHandler(tornado.web.RequestHandler):
+class VersionHandler(tornado.web.RequestHandler):
     def get(self):
-        self.write(self.get_argument("url"))
+        self.write("API:1.0.1\nDiagnoser:" + Diagnoser.__version__)
         self.finish()
     def post(self):
         return self.get()
@@ -305,7 +306,7 @@ class BSVEHandler(tornado.web.RequestHandler):
             self.finish()
 
 application = tornado.web.Application([
-    (r"/test", TestHandler),
+    (r"/version", VersionHandler),
     (r"/diagnose", DiagnoseHandler),
     (r"/public_diagnose", PublicDiagnoseHandler),
     (r"/bsve/.*", BSVEHandler)
