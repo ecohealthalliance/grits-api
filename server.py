@@ -27,6 +27,7 @@ import random
 import json
 import dateutil.parser
 from diagnosis.Diagnoser import Diagnoser
+import annotator
 
 def on_task_complete(task, callback):
     # if the task is a celery group with subtasks add them to the result set
@@ -167,7 +168,10 @@ class PublicDiagnoseHandler(DiagnoseHandler):
 
 class VersionHandler(tornado.web.RequestHandler):
     def get(self):
-        self.write("API:1.0.1\nDiagnoser:" + Diagnoser.__version__)
+        self.write("\n".join([
+            "API:1.0.2",
+            "Diagnoser:" + Diagnoser.__version__,
+            "Annotator:" + annotator.__version__]) + "\n")
         self.finish()
     def post(self):
         return self.get()
