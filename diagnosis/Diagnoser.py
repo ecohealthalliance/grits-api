@@ -25,7 +25,7 @@ def time_sofar_gen(start_time):
 
 class Diagnoser():
 
-    __version__ = '0.2.1'
+    __version__ = '0.2.2'
 
     def __init__(
         self, classifier, dict_vectorizer,
@@ -36,7 +36,8 @@ class Diagnoser():
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.count_annotator = CountAnnotator()
-        self.jvm_nlp_annotator = JVMNLPAnnotator(['times'])
+        self.jvm_nlp_annotator = JVMNLPAnnotator([
+            'times', 'nes', 'sentences', 'tokens'])
         self.keyword_annotator = KeywordAnnotator()
         processing_pipeline = []
         processing_pipeline.append(('link', LinkedKeywordAdder(keyword_array)))
@@ -157,7 +158,7 @@ class Diagnoser():
                 geonames_grouped[span.geoname['geonameid']] = {
                     'type': 'location',
                     'name': span.label,
-                    'geoname': span.geoname,
+                    'geoname': span.geoname.to_dict(),
                     'textOffsets': [
                         [span.start, span.end]
                     ]
