@@ -11,6 +11,7 @@ from annotator.count_annotator import CountAnnotator
 from annotator.jvm_nlp_annotator import JVMNLPAnnotator
 import disease_label_table
 from annotator.keyword_annotator import KeywordAnnotator
+from annotator.resolved_keyword_annotator import ResolvedKeywordAnnotator
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -30,8 +31,7 @@ class Diagnoser():
     def __init__(
         self, classifier, dict_vectorizer,
         cutoff_ratio=0.65,
-        keyword_array=None
-    ):
+        keyword_array=None):
         self.keyword_array = keyword_array
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
@@ -39,6 +39,7 @@ class Diagnoser():
         self.jvm_nlp_annotator = JVMNLPAnnotator([
             'times', 'nes', 'sentences', 'tokens'])
         self.keyword_annotator = KeywordAnnotator()
+        self.resolved_keyword_annotator = ResolvedKeywordAnnotator()
         processing_pipeline = []
         processing_pipeline.append(('link', LinkedKeywordAdder(keyword_array)))
         processing_pipeline.append(('limit', LimitCounts(1)))
@@ -110,6 +111,8 @@ class Diagnoser():
         anno_doc = AnnoDoc(content, date=content_date)
         anno_doc.add_tier(self.keyword_annotator)
         logger.info('keywords annotated')
+        anno_doc.add_tier(self.resolved_keyword_annotator)
+        logger.info('resolved keywords annotated')
         try:
             anno_doc.add_tier(self.jvm_nlp_annotator)
         except Exception as e:
@@ -202,6 +205,13 @@ class Diagnoser():
                     keyword_groups[keyword_type][span.label]['textOffsets'].append(
                         [span.start, span.end]
                     )
+        resolved_keywords = []
+        for span in anno_doc.tiers['resolved_keywords'].spans:
+            resolved_keywords.append({
+                'type': 'resolvedKeyword',
+                'value': span.label,
+                'uris': span.uris,
+                'textOffsets': [[span.start, span.end]]})
         return {
             'diagnoserVersion': self.__version__,
             'dateOfDiagnosis': datetime.datetime.now(),
@@ -213,8 +223,8 @@ class Diagnoser():
                         keyword_groups['hosts'].values() +\
                         keyword_groups['modes'].values() +\
                         keyword_groups['pathogens'].values() +\
-                        keyword_groups['symptoms'].values()
-        }
+                        keyword_groups['symptoms'].values() +\
+                        resolved_keywords}
 
 if __name__ == '__main__':
     import Diagnoser
