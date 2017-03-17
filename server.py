@@ -28,6 +28,17 @@ import json
 import dateutil.parser
 from diagnosis.Diagnoser import Diagnoser
 import annotator
+from annotator.get_database_connection import get_database_connection
+
+annie_db_connection = get_database_connection()
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+annie_db_connection.row_factory = dict_factory
+
+API_VERSION = "1.0.3"
 
 def on_task_complete(task, callback):
     # if the task is a celery group with subtasks add them to the result set
@@ -148,7 +159,6 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             self.finish()
         on_task_complete(task, callback)
 
-
     @tornado.web.asynchronous
     def post(self):
         return self.get()
@@ -169,7 +179,7 @@ class PublicDiagnoseHandler(DiagnoseHandler):
 class VersionHandler(tornado.web.RequestHandler):
     def get(self):
         self.write("\n".join([
-            "API:1.0.2",
+            "API:" + API_VERSION,
             "Diagnoser:" + Diagnoser.__version__,
             "Annotator:" + annotator.__version__]) + "\n")
         self.finish()
@@ -309,11 +319,51 @@ class BSVEHandler(tornado.web.RequestHandler):
             self.write('Error:\nBad Path')
             self.finish()
 
+class DiseaseOntologyHandler(tornado.web.RequestHandler):
+    def get(self):
+        return self.post()
+    def post(self):
+        self.set_header("Access-Control-Allow-Origin", "*")
+        if not self.get_argument('q'):
+            self.set_status(500)
+            self.write('Error:\nA query "q" parameter is required.')
+            self.finish()
+            return
+        path = self.request.path.split('/')[2]
+        cursor = annie_db_connection.cursor()
+        # Lookup diseases that match the query
+        if path == "lookup":
+            results  = cursor.execute('''
+            SELECT uri, label, synonym, max(weight) AS weight
+            FROM synonyms
+            JOIN entity_labels USING ( uri )
+            WHERE synonym LIKE ?
+            GROUP BY uri
+            ORDER BY weight DESC, length(synonym) ASC
+            LIMIT 20
+            ''', ['%' + self.get_argument('q') + '%'])
+            self.write(dict(result=list(results)))
+            self.finish()
+        # Find a specific do disease by id
+        elif path == "doid":
+            results  = cursor.execute('''
+            SELECT *
+            FROM entity_labels
+            WHERE uri = ?
+            ''', [self.get_argument('q')])
+            self.write(dict(result=next(results, None)))
+            self.finish()
+        else:
+            self.set_status(500)
+            self.write('Error:\nBad Path')
+            self.finish()
+
 application = tornado.web.Application([
     (r"/version", VersionHandler),
     (r"/diagnose", DiagnoseHandler),
     (r"/public_diagnose", PublicDiagnoseHandler),
-    (r"/bsve/.*", BSVEHandler)
+    (r"/bsve/.*", BSVEHandler),
+    (r"/disease_ontology/.*", DiseaseOntologyHandler)
 ])
 
 if __name__ == "__main__":

@@ -209,8 +209,8 @@ class Diagnoser():
         for span in anno_doc.tiers['resolved_keywords'].spans:
             resolved_keywords.append({
                 'type': 'resolvedKeyword',
-                'value': span.label,
-                'uris': span.uris,
+                'resolutions': span.resolutions,
+                'text': span.text,
                 'textOffsets': [[span.start, span.end]]})
         return {
             'diagnoserVersion': self.__version__,
