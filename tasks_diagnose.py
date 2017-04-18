@@ -11,6 +11,7 @@ import tasks_preprocess
 from tasks_preprocess import girder_db
 from tasks_preprocess import celery_tasks
 from tasks_preprocess import make_json_compat
+from celery.exceptions import SoftTimeLimitExceeded
 
 from diagnosis.Diagnoser import Diagnoser
 class DiagnoserTask(celery.Task):
@@ -97,14 +98,17 @@ def diagnose_girder_resource(prev_result=None, item_id=None):
 
 @celery_tasks.task(base=DiagnoserTask, name='tasks.diagnose')
 def diagnose(text_obj, extra_args):
-    english_translation = text_obj.get('englishTranslation', {}).get('content')
-    if english_translation:
-        clean_english_content = english_translation
-    else:
-        clean_english_content = text_obj.get('cleanContent', {}).get('content')
-    if clean_english_content:
-        logger.info('Diagnosing text:\n' + clean_english_content)
-        return make_json_compat(diagnose.diagnoser.diagnose(
-            clean_english_content, **extra_args))
-    else:
-        return { 'error' : 'No content available to diagnose.' }
+    try:
+        english_translation = text_obj.get('englishTranslation', {}).get('content')
+        if english_translation:
+            clean_english_content = english_translation
+        else:
+            clean_english_content = text_obj.get('cleanContent', {}).get('content')
+        if clean_english_content:
+            logger.info('Diagnosing text:\n' + clean_english_content)
+            return make_json_compat(diagnose.diagnoser.diagnose(
+                clean_english_content, **extra_args))
+        else:
+            return { 'error' : 'No content available to diagnose.' }
+    except SoftTimeLimitExceeded:
+        return { 'error' : 'Timelimit exceeded.' }

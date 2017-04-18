@@ -38,7 +38,7 @@ def dict_factory(cursor, row):
     return d
 annie_db_connection.row_factory = dict_factory
 
-API_VERSION = "1.0.3"
+API_VERSION = "1.1.0"
 
 def on_task_complete(task, callback):
     # if the task is a celery group with subtasks add them to the result set
@@ -82,8 +82,8 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             params = json.loads(self.request.body)
         except ValueError as e:
             params = {}
-        def get_bool_arg(key):
-            val = self.get_argument(key, params.get(key, False))
+        def get_bool_arg(key, default=False):
+            val = self.get_argument(key, params.get(key, default))
             if isinstance(val, basestring):
                 if val.lower() == "true":
                     return True
@@ -107,12 +107,15 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 self.set_header("Content-Type", "application/json")
                 self.finish()
                 return
+        is_priority = get_bool_arg('priority', True)
         if content:
             task = celery.chain(
                 tasks_preprocess.process_text.s({
                     'content' : content
-                }).set(queue='priority'),
-                tasks_diagnose.diagnose.s(extra_args).set(queue='priority')
+                }).set(queue='priority' if is_priority else 'process'),
+                tasks_diagnose.diagnose.s(extra_args).set(
+                    queue='priority' if is_priority else 'diagnose',
+                    expires=60)
             )()
         elif url:
             hostname = ""
@@ -133,10 +136,11 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 return
 
             task = celery.chain(
-                tasks_preprocess.scrape.s(url).set(queue='priority'),
-                tasks_preprocess.process_text.s().set(queue='priority'),
-                tasks_diagnose.diagnose.s(extra_args).set(queue='priority')
-            )()
+                tasks_preprocess.scrape.s(url).set(queue='priority' if is_priority else 'process'),
+                tasks_preprocess.process_text.s().set(queue='priority' if is_priority else 'process'),
+                tasks_diagnose.diagnose.s(extra_args).set(
+                    queue='priority' if is_priority else 'diagnose',
+                    expires=60))()
         else:
             self.write({
                 'error' : "Please provide a url or content to diagnose."
@@ -292,7 +296,7 @@ class BSVEHandler(tornado.web.RequestHandler):
                         # (skipping location/date/case-count feature extraction) for speed.
                         # Classifications only take a fraction of a second.
                         dict(diseases_only=True)
-                    ).set(queue='priority')
+                    ).set(queue='priority', expires=60)
                 ) for item in search_resp['results'][0:MAX_DIAGNOSES])()
                 on_task_complete(task, task_finished)
             bsve_search(search_finished)

@@ -48,7 +48,9 @@ celery_tasks.conf.update(
     CELERY_TASK_SERIALIZER='pickle',
     CELERY_ACCEPT_CONTENT=['pickle'],  # Ignore other content
     CELERY_RESULT_SERIALIZER='pickle',
-    CELERY_RESULT_BACKEND = config.BROKER_URL
+    CELERY_RESULT_BACKEND=config.BROKER_URL,
+    CELERYD_TASK_SOFT_TIME_LIMIT=60,
+    CELERYD_TASK_TIME_LIMIT=65,
 )
 
 celery_tasks.conf.broker_transport_options = {'visibility_timeout': 3600}  # 1 hour.
