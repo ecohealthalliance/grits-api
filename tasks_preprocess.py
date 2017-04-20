@@ -13,6 +13,7 @@ import datetime
 from scraper.process_resources import extract_clean_content
 from scraper import scraper
 from scraper.translation import Translator
+import os
 
 my_translator = Translator(config)
 
@@ -41,13 +42,13 @@ def make_json_compat(obj):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-celery_tasks = Celery('tasks', broker=config.BROKER_URL)
+celery_tasks = Celery('tasks', broker=os.environ.get('BROKER_URL') or config.BROKER_URL)
 
 celery_tasks.conf.update(
     CELERY_TASK_SERIALIZER='pickle',
     CELERY_ACCEPT_CONTENT=['pickle'],  # Ignore other content
     CELERY_RESULT_SERIALIZER='pickle',
-    CELERY_RESULT_BACKEND=config.BROKER_URL,
+    CELERY_RESULT_BACKEND=os.environ.get('BROKER_URL') or config.BROKER_URL,
     CELERYD_TASK_SOFT_TIME_LIMIT=60,
     CELERYD_TASK_TIME_LIMIT=65,
 )
