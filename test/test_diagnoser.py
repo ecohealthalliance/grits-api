@@ -86,14 +86,3 @@ class TestDiagnoser(unittest.TestCase):
         import disease_label_table
         self.assertSetEqual(set(['Avian Influenza', 'Influenza']),
             set(disease_label_table.get_inferred_labels('Avian Influenza H7N9')))
-
-    # def test_db_article(self):
-    #     from pymongo import MongoClient
-    #     from bson.objectid import ObjectId
-    #     import logging
-    #     logger = logging.getLogger('annotator.geoname_annotator')
-    #     logger.setLevel(logging.INFO)
-    #     client = MongoClient(config.mongo_url)
-    #     girder_db = client.girder
-    #     x = girder_db.item.find_one(ObjectId("532cca61f99fe75cf538aa7e"))['private']['cleanContent']['content']
-    #     diagnosis = self.my_diagnoser.diagnose(x)

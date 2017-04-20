@@ -4,7 +4,6 @@
 import celery
 import json
 import bson
-from pymongo import MongoClient
 from celery import Celery
 import datetime
 from distutils.version import StrictVersion
@@ -54,82 +53,6 @@ celery_tasks.conf.update(
 )
 
 celery_tasks.conf.broker_transport_options = {'visibility_timeout': 3600}  # 1 hour.
-#Option below to store results of tasks in redis as well
-#celery_tasks.conf.result_backend = config.BROKER_URL
-
-db_handle = MongoClient(config.mongo_url)
-girder_db = db_handle['girder']
-
-@celery_tasks.task(name='tasks.process_girder_resource')
-def process_girder_resource(item_id=None):
-    """
-    Scrape the meta.link of the girder item with the given id.
-    Update the entry with the results, then update it with cleaned and 
-    translated versions of the scraped content.
-    """
-    logger.info('Processing girder resource:' + item_id)
-    item_id = bson.ObjectId(item_id)
-    global processor_version
-    resource = girder_db.item.find_one(item_id)
-    private = resource['private'] = resource.get('private', {})
-    
-    meta = resource['meta']
-    
-    if StrictVersion(private.get('processorVersion', '0.0.0')) >=\
-       StrictVersion(processor_version):
-        # Don't reprocess the article if the processor hasn't changed,
-        # unless there was an error during translation.
-        if private.get('englishTranslation', {}).get('error'):
-            pass
-        else:
-            girder_db.item.update({'_id': item_id}, resource)
-            return make_json_compat(resource)
-    
-    private['processorVersion'] = processor_version
-
-    # Remove any existing diagnosis because the content might have changed.
-    if 'diagnosis' in  meta:
-        del meta['diagnosis']
-    
-    prev_scraped_data = private.get('scrapedData')
-    if not prev_scraped_data or\
-       StrictVersion(prev_scraped_data['scraperVersion']) <\
-       StrictVersion(scraper.__version__):
-        logger.info('Scraping url: ' + resource['meta']['link'])
-        private['scrapedData'] = scraper.scrape(resource['meta']['link'])
-    if private['scrapedData'].get('unscrapable'):
-        girder_db.item.update({'_id': item_id}, resource)
-        return make_json_compat(resource)
-    try:
-        content = private['scrapedData']['htmlContent']
-    except KeyError as e:
-        print resource
-        raise e
-    clean_content_obj = extract_clean_content(content)
-    prev_clean_content_obj = private.get('cleanContent')
-    # In some db items cleanContent is a string.
-    if isinstance(prev_clean_content_obj, dict):
-        prev_clean_content = prev_clean_content_obj.get('content')
-    else:
-        prev_clean_content = None
-    private['cleanContent'] = clean_content_obj
-    if clean_content_obj.get('malformed'):
-        girder_db.item.update({'_id': item_id}, resource)
-        return make_json_compat(resource)
-    
-    if not my_translator.is_english(clean_content_obj['content']):
-        prev_translation = resource.get('private', {}).get('englishTranslation')
-        if( not prev_translation or
-            prev_clean_content != clean_content_obj['content'] or
-            prev_translation.get('error')):
-            private['englishTranslation'] =\
-                my_translator.translate_to_english(
-                    clean_content_obj['content'])
-            logger.info('Article translated: ' + resource['meta']['link'])
-            if private['englishTranslation'].get('error'):
-                logger.warn('Translation Error: ' + private['englishTranslation'].get('error'))
-    girder_db.item.update({'_id': item_id}, resource)
-    return make_json_compat(resource)
 
 @celery_tasks.task(name='tasks.scrape')
 def scrape(url):
