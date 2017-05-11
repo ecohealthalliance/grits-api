@@ -5,13 +5,13 @@ from KeywordExtractor import *
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import Pipeline
 import datetime
-from annotator.annotator import AnnoDoc
-from annotator.geoname_annotator import GeonameAnnotator
-from annotator.count_annotator import CountAnnotator
-from annotator.jvm_nlp_annotator import JVMNLPAnnotator
+from epitator.annotator import AnnoDoc
+from epitator.geoname_annotator import GeonameAnnotator
+from epitator.count_annotator import CountAnnotator
+from epitator.jvm_nlp_annotator import JVMNLPAnnotator
 import disease_label_table
-from annotator.keyword_annotator import KeywordAnnotator
-from annotator.resolved_keyword_annotator import ResolvedKeywordAnnotator
+from epitator.keyword_annotator import KeywordAnnotator
+from epitator.resolved_keyword_annotator import ResolvedKeywordAnnotator
 
 import logging
 logging.basicConfig(level=logging.INFO)

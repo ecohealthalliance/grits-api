@@ -21,8 +21,8 @@ import random
 import json
 import dateutil.parser
 from diagnosis.Diagnoser import Diagnoser
-import annotator
-from annotator.get_database_connection import get_database_connection
+import epitator
+from epitator.get_database_connection import get_database_connection
 
 annie_db_connection = get_database_connection()
 def dict_factory(cursor, row):
@@ -179,7 +179,7 @@ class VersionHandler(tornado.web.RequestHandler):
         self.write("\n".join([
             "API:" + API_VERSION,
             "Diagnoser:" + Diagnoser.__version__,
-            "Annotator:" + annotator.__version__]) + "\n")
+            "Annotator:" + epitator.__version__]) + "\n")
         self.finish()
     def post(self):
         return self.get()
