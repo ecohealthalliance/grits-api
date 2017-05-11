@@ -32,7 +32,7 @@ def dict_factory(cursor, row):
     return d
 annie_db_connection.row_factory = dict_factory
 
-API_VERSION = "1.1.0"
+API_VERSION = "1.1.1"
 
 def on_task_complete(task, callback):
     # if the task is a celery group with subtasks add them to the result set
@@ -179,7 +179,7 @@ class VersionHandler(tornado.web.RequestHandler):
         self.write("\n".join([
             "API:" + API_VERSION,
             "Diagnoser:" + Diagnoser.__version__,
-            "Annotator:" + epitator.__version__]) + "\n")
+            "EpiTator:" + epitator.__version__]) + "\n")
         self.finish()
     def post(self):
         return self.get()
