@@ -161,6 +161,9 @@ class Translator(object):
         return self.stored_translations.get(id)
 
     def translate_to_english(self, content, dont_retry=False):
+        return {
+            'error' : 'Translation has been disabled.'
+        }
         if self.consecutive_exceptions > 4:
             # Back off when we reach more than 4 consecutive exceptions
             # because we probably hit the api limit.
