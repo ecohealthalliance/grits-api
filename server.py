@@ -87,7 +87,10 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                     raise ValueError("Could not parse ", val)
             else:
                 return val
-        content = self.get_argument('content', params.get('content'))
+        # If the byte offsets from the response are used for things like
+        # highlights, the default get_argument behavior of stripping the content
+        # will cause misalignment.
+        content = self.get_argument('content', params.get('content'), strip=False)
         url = self.get_argument('url', params.get('url'))
         extra_args = {}
         content_date = self.get_argument('content_date', params.get('content_date'))
