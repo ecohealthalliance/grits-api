@@ -15,7 +15,7 @@ from scraper import scraper
 from scraper.translation import Translator
 import os
 
-my_translator = Translator(config)
+my_translator = Translator()
 
 processor_version = '0.1.0'
 

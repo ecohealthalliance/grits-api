@@ -1,16 +1,12 @@
 """
-This script has functions for detecting english text and
-reading translations stored in csv files.
+This script has functions for detecting english text and translating
+text to english using a translation service.
 """
 import re
 import os
-import json
-import logging
-import microsofttranslator
 import datetime
-import time
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+from googleapiclient.errors import Error as GoogleAPIError
+from googleapiclient.discovery import build
 
 most_common_english_words = [
 'the','be','to','of','and',
@@ -109,17 +105,17 @@ most_common_english_words = [
 'day',
 'most',
 'us']
+
 common_english_re = re.compile('\\b(' + '|'.join(most_common_english_words) + ')\\b', re.I)
 
+translate_key = os.environ.get('GOOGLE_TRANSLATE_KEY')
+
 class Translator(object):
-    def __init__(self, config):
-        self.stored_translations = None
+    def __init__(self):
         self.consecutive_exceptions = 0
-        self.translation_api = microsofttranslator.Translator(
-            config.bing_translate_id,
-            config.bing_translate_secret
-        )
-        
+        if translate_key:
+            self.t_service = build('translate', 'v2', developerKey=translate_key)
+
     def is_english(self, text):
         unique_matches = set()
         total_matches = 0
@@ -134,68 +130,40 @@ class Translator(object):
             if len(unique_matches) > required_unique_matches and total_matches > required_matches:
                 return True
         return False
-        
-    def __translations_to_dict(self, translation_roa):
-        translations = {}
-        for translation in translation_roa:
-            translations[translation['id']] = translation['translation']
-        return translations
 
-    def __fetch_translations(self, path):
-        translations = []
-        if os.path.exists(path):
-            for root, dirs, files in os.walk(path):
-                for file_name in files:
-                    if not file_name.endswith('.json'): continue 
-                    file_path = os.path.join(root, file_name)
-                    with open(file_path) as f:
-                        translations.extend(json.load(f))
-        if len(translations) == 0:
-            logger.warn("No translations were fetched!")
-        return self.__translations_to_dict(translations)
-
-    def get_translation(self, id):
-        if not self.stored_translations:
-            self.stored_translations = self.__fetch_translations(
-                os.path.join(os.path.dirname(__file__), 'translations'))
-        return self.stored_translations.get(id)
-
-    def translate_to_english(self, content, dont_retry=False):
-        return {
-            'error' : 'Translation has been disabled.'
-        }
-        if self.consecutive_exceptions > 4:
-            # Back off when we reach more than 4 consecutive exceptions
-            # because we probably hit the api limit.
+    def translate_to_english(self, content):
+        if not translate_key:
             return {
-                'error' : 'Too many consecutive exceptions'
+                'error' : 'The translation service is not configured.'
             }
-
+        if self.consecutive_exceptions > 4:
+            # Stop using the API after several consecutive exceptions because
+            # we probably hit the api limit or something is misconfigured.
+            return {
+                'error' : 'Translation has been disabled due to errors when attempting to access the tranlation service.'
+            }
         try:
-            translation = self.translation_api.translate(content, 'en')
-            if translation.startswith("TranslateApiException:"):
-                raise microsofttranslator.TranslateApiException(
-                    translation.split("TranslateApiException:")[1])
+            result = self.t_service.translations().list(
+              target='en',
+              q=content
+            ).execute()
+            if ('translations' not in result or
+                len(result['translations']) < 1 or
+                'translatedText' not in result['translations'][0]):
+                self.consecutive_exceptions += 1
+                print "Unexpected Translation API response:", result
+                return {
+                    'error' : 'Unexpected response from translation API.',
+                    'consecutive_exceptions' : self.consecutive_exceptions
+                }
+            translation = result['translations'][0]['translatedText']
             self.consecutive_exceptions = 0
             return {
                 'content' : translation,
                 'translationDate' : datetime.datetime.now(),
-                'translationService' : 'microsoft'
+                'translationService' : 'google'
             }
-        except microsofttranslator.TranslateApiException as e:
-            if unicode(e).startswith(u'ACS50012: Authentication') and dont_retry == False:
-                logger.warn("Waiting for translation API to stop returning auth errors.")
-                time.sleep(8)
-                return self.translate_to_english(content, dont_retry=True)
-            self.consecutive_exceptions += 1
-            return {
-                'error' : unicode(e),
-                'consecutive_exceptions' : self.consecutive_exceptions
-            }
-        except ValueError as e:
-            # Some articles (e.g. 532c9a3af99fe75cf5383290)
-            # trigger value errors in the microsofttranslator code
-            # during JSON parsing.
+        except GoogleAPIError as e:
             self.consecutive_exceptions += 1
             return {
                 'error' : unicode(e),
