@@ -8,7 +8,7 @@ import datetime
 from epitator.annotator import AnnoDoc
 from epitator.geoname_annotator import GeonameAnnotator
 from epitator.count_annotator import CountAnnotator
-from epitator.jvm_nlp_annotator import JVMNLPAnnotator
+from epitator.date_annotator import DateAnnotator
 import disease_label_table
 from epitator.keyword_annotator import KeywordAnnotator
 from epitator.resolved_keyword_annotator import ResolvedKeywordAnnotator
@@ -26,7 +26,7 @@ def time_sofar_gen(start_time):
 
 class Diagnoser():
 
-    __version__ = '0.2.2'
+    __version__ = '0.3.0'
 
     def __init__(
         self, classifier, dict_vectorizer,
@@ -36,8 +36,7 @@ class Diagnoser():
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.count_annotator = CountAnnotator()
-        self.jvm_nlp_annotator = JVMNLPAnnotator([
-            'times', 'nes', 'sentences', 'tokens'])
+        self.date_annotator = DateAnnotator()
         self.keyword_annotator = KeywordAnnotator()
         self.resolved_keyword_annotator = ResolvedKeywordAnnotator()
         processing_pipeline = []
@@ -113,47 +112,42 @@ class Diagnoser():
         logger.info('keywords annotated')
         anno_doc.add_tier(self.resolved_keyword_annotator)
         logger.info('resolved keywords annotated')
-        try:
-            anno_doc.add_tier(self.jvm_nlp_annotator)
-        except Exception as e:
-            logger.error(
-                time_sofar.next() +
-                'Could not annotate times, ' +
-                'the JVM time extraction server might not be running.' +
-                '\nException:\n' + str(e)
-            )
-        logger.info('times annotated')
+        anno_doc.add_tier(self.date_annotator)
+        logger.info('dates annotated')
         anno_doc.add_tier(self.count_annotator)
         logger.info('counts annotated')
         anno_doc.add_tier(self.geoname_annotator)
         logger.info('geonames annotated')
         anno_doc.filter_overlapping_spans(
-            tier_names=[ 'times', 'geonames', 'diseases', 'hosts', 'modes',
+            tier_names=[ 'dates', 'geonames', 'diseases', 'hosts', 'modes',
                          'pathogens', 'symptoms' ]
         )
 
         logger.info('filtering overlapping spans done')
 
-        times_grouped = {}
-        if 'times' in anno_doc.tiers:
-            for span in anno_doc.tiers['times'].spans:
-                # TODO -- how should we handle DURATION and other exotice date types?
-                if span.type == 'DATE':
-                    if not span.label in times_grouped:
-                        time_dict = span.to_dict()
-                        time_dict.update({
-                            'type': 'datetime',
-                            'name': span.label,
-                            'value': span.label,
-                            'textOffsets': [
-                                [span.start, span.end]
-                            ]
-                        })
-                        times_grouped[span.label] = time_dict
-                    else:
-                        times_grouped[span.label]['textOffsets'].append(
-                            [span.start, span.end]
-                        )
+        dates = []
+        for span in anno_doc.tiers['dates'].spans:
+            range_start, range_end = span.datetime_range
+            dates.append({
+                'type': 'datetime',
+                'name': span.label,
+                'value': span.label,
+                'textOffsets': [
+                    [span.start, span.end]
+                ],
+                'timeRange': {
+                    'begin': {
+                        'year': range_start.year,
+                        'month': range_start.month,
+                        'date': range_start.day
+                    },
+                    'end': {
+                        'year': range_end.year,
+                        'month': range_end.month,
+                        'date': range_end.day
+                    },
+                }
+            })
 
         geonames_grouped = {}
         for span in anno_doc.tiers['geonames'].spans:
@@ -218,7 +212,7 @@ class Diagnoser():
             'diseases': diseases,
             'features': counts +\
                         geonames_grouped.values() +\
-                        times_grouped.values() +\
+                        dates +\
                         keyword_groups['diseases'].values() +\
                         keyword_groups['hosts'].values() +\
                         keyword_groups['modes'].values() +\
