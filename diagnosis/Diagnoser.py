@@ -26,7 +26,7 @@ def time_sofar_gen(start_time):
 
 class Diagnoser():
 
-    __version__ = '0.3.0'
+    __version__ = '0.4.0'
 
     def __init__(
         self, classifier, dict_vectorizer,
@@ -203,7 +203,7 @@ class Diagnoser():
         for span in anno_doc.tiers['resolved_keywords'].spans:
             resolved_keywords.append({
                 'type': 'resolvedKeyword',
-                'resolutions': span.resolutions,
+                'resolutions': span.to_dict()['resolutions'],
                 'text': span.text,
                 'textOffsets': [[span.start, span.end]]})
         return {

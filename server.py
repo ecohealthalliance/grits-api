@@ -22,17 +22,12 @@ import json
 import dateutil.parser
 from diagnosis.Diagnoser import Diagnoser
 import epitator
-from epitator.get_database_connection import get_database_connection
+from epitator.database_interface import DatabaseInterface
 
-annie_db_connection = get_database_connection()
-def dict_factory(cursor, row):
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
-annie_db_connection.row_factory = dict_factory
 
-API_VERSION = "1.1.1"
+epitator_db_interface = DatabaseInterface()
+
+API_VERSION = "1.2.0"
 
 def on_task_complete(task, callback):
     # if the task is a celery group with subtasks add them to the result set
@@ -331,28 +326,16 @@ class DiseaseOntologyHandler(tornado.web.RequestHandler):
             self.finish()
             return
         path = self.request.path.split('/')[2]
-        cursor = annie_db_connection.cursor()
         # Lookup diseases that match the query
         if path == "lookup":
-            results  = cursor.execute('''
-            SELECT uri, label, synonym, max(weight) AS weight
-            FROM synonyms
-            JOIN entity_labels USING ( uri )
-            WHERE synonym LIKE ?
-            GROUP BY uri
-            ORDER BY weight DESC, length(synonym) ASC
-            LIMIT 20
-            ''', ['%' + self.get_argument('q') + '%'])
+            results = epitator_db_interface.lookup_synonym(
+                self.get_argument('q'), self.get_argument('type', "disease"))
             self.write(dict(result=list(results)))
             self.finish()
         # Find a specific do disease by id
         elif path == "doid":
-            results  = cursor.execute('''
-            SELECT *
-            FROM entity_labels
-            WHERE uri = ?
-            ''', [self.get_argument('q')])
-            self.write(dict(result=next(results, None)))
+            result = epitator_db_interface.get_entity(self.get_argument('q'))
+            self.write(dict(result=result))
             self.finish()
         else:
             self.set_status(500)
