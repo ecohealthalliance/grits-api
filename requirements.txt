@@ -1,7 +1,7 @@
 Babel==2.3.4
 backports.ssl-match-hostname==3.4.0.2
 BeautifulSoup==3.2.1
-beautifulsoup4==4.4.1
+beautifulsoup4==4.6.0
 billiard==3.3.0.23
 boto==2.38.0
 celery==3.1.23
