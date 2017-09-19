@@ -26,7 +26,7 @@ def time_sofar_gen(start_time):
 
 class Diagnoser():
 
-    __version__ = '0.4.0'
+    __version__ = '0.4.2'
 
     def __init__(
         self, classifier, dict_vectorizer,
@@ -136,11 +136,14 @@ class Diagnoser():
                     [span.start, span.end]
                 ],
                 'timeRange': {
+                    'beginISO': range_start.isoformat().split('T')[0],
                     'begin': {
                         'year': range_start.year,
                         'month': range_start.month,
                         'date': range_start.day
                     },
+                    # The date range does not include the end day.
+                    'endISO': range_end.isoformat().split('T')[0],
                     'end': {
                         'year': range_end.year,
                         'month': range_end.month,
