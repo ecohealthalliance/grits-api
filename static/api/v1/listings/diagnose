@@ -1,5 +1,5 @@
 {
-  "apiVersion": "1.0.0",
+  "apiVersion": "1.2.0",
   "swaggerVersion": "1.2",
   "basePath": "/api/v1",
   "resourcePath": "/api/v1",
@@ -20,8 +20,7 @@
           "parameters": [
              {
               "name": "content",
-              "description": "the document to be analyzed",
-              "required": true,
+              "description": "The document to be analyzed",
               "type": "string",
               "paramType": "form"
             },
@@ -29,6 +28,12 @@
               "name": "api_key",
               "description": "the api key",
               "required": true,
+              "type": "string",
+              "paramType": "form"
+            },
+            {
+              "name": "url",
+              "description": "The url of a document to scrape then analyze",
               "type": "string",
               "paramType": "form"
             }
@@ -60,6 +65,12 @@
           "type": "array",
           "items": {
             "$ref": "Feature"
+          }
+        },
+        "structuredIncidents": {
+          "type": "array",
+          "items": {
+            "$ref": "StructuredIncident"
           }
         },
         "dateOfDiagnosis": {
@@ -94,6 +105,10 @@
           }
         }
       }
+    },
+    "StructuredIncident": {
+      "id": "StructuredIncident",
+      "properties": {}
     },
     "Feature": {
       "id": "Feature",
