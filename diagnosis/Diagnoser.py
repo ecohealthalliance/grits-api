@@ -12,6 +12,7 @@ from epitator.date_annotator import DateAnnotator
 import disease_label_table
 from epitator.keyword_annotator import KeywordAnnotator
 from epitator.resolved_keyword_annotator import ResolvedKeywordAnnotator
+from epitator.structured_incident_annotator import StructuredIncidentAnnotator
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -73,7 +74,7 @@ class Diagnoser():
             # classifications.
             norm = np.linalg.norm(scores)
             if norm > 0:
-               scores /= norm
+                scores /= norm
             scores *= p
             # These might be numpy types. I coerce them to native python
             # types so we can easily serialize the output as json.
@@ -85,17 +86,17 @@ class Diagnoser():
                     keyword_scores[keyword] = float(score)
 
             return {
-                'name' : unicode(self.classifier.classes_[i]),
-                'probability' : float(p),
-                'keywords' : [{
-                        'name' : unicode(kwd),
-                        'score' : float(score),
+                'name': unicode(self.classifier.classes_[i]),
+                'probability': float(p),
+                'keywords': [{
+                        'name': unicode(kwd),
+                        'score': float(score),
                     }
                     for kwd, score in scored_keywords
                     if score > 0 and kwd in base_keyword_dict],
-                'inferred_keywords' : [{
-                        'name' : unicode(kwd),
-                        'score' : float(score),
+                'inferred_keywords': [{
+                        'name': unicode(kwd),
+                        'score': float(score),
                     }
                     for kwd, score in scored_keywords
                     if score > 0 and kwd not in base_keyword_dict]
@@ -122,6 +123,8 @@ class Diagnoser():
             tier_names=[ 'dates', 'geonames', 'diseases', 'hosts', 'modes',
                          'pathogens', 'symptoms' ]
         )
+        anno_doc.add_tier(StructuredIncidentAnnotator())
+        logger.info('structured incidents annotated')
 
         logger.info('filtering overlapping spans done')
 
@@ -130,8 +133,8 @@ class Diagnoser():
             range_start, range_end = span.datetime_range
             dates.append({
                 'type': 'datetime',
-                'name': span.label,
-                'value': span.label,
+                'name': span.text,
+                'value': span.text,
                 'textOffsets': [
                     [span.start, span.end]
                 ],
@@ -157,7 +160,7 @@ class Diagnoser():
             if not span.geoname['geonameid'] in geonames_grouped:
                 geonames_grouped[span.geoname['geonameid']] = {
                     'type': 'location',
-                    'name': span.label,
+                    'name': span.geoname.name,
                     'geoname': span.geoname.to_dict(),
                     'textOffsets': [
                         [span.start, span.end]
@@ -172,17 +175,17 @@ class Diagnoser():
         logger.info(time_sofar.next() + 'Annotated geonames')
 
         counts = []
-        for span in anno_doc.tiers['counts'].spans:
+        for span in anno_doc.tiers['counts'].without_overlaps(anno_doc.tiers['structured_incidents']):
             count_dict = span.to_dict()
             count_dict['type'] = 'count'
             counts.append(count_dict)
             # Include legacy case counts so the diagnositic dashboard
             # doesn't break.
-            if "case" in count_dict['attributes']:
+            if 'case' in count_dict['attributes']:
                 counts.append({
-                    'type': "caseCount",
+                    'type': 'caseCount',
                     'text': count_dict['text'],
-                    'value': count_dict['label'],
+                    'value': count_dict['count'],
                     'modifiers': count_dict['attributes'],
                     'cumulative': "cumulative" in count_dict['attributes'],
                     'textOffsets': count_dict['textOffsets']
@@ -192,7 +195,7 @@ class Diagnoser():
         for keyword_type in keyword_types:
             keyword_groups[keyword_type] = {}
             for span in anno_doc.tiers[keyword_type].spans:
-                if not span.label in keyword_groups[keyword_type]:
+                if span.label not in keyword_groups[keyword_type]:
                     keyword_groups[keyword_type][span.label] = {
                         'type': keyword_type,
                         'value': span.label,
@@ -213,6 +216,9 @@ class Diagnoser():
             'diagnoserVersion': self.__version__,
             'dateOfDiagnosis': datetime.datetime.now(),
             'diseases': diseases,
+            'structuredIncidents': [
+                dict(span.metadata, textOffsets=[[span.start, span.end]])
+                for span in anno_doc.tiers['structured_incidents']],
             'features': counts +\
                         geonames_grouped.values() +\
                         dates +\
