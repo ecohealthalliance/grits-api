@@ -175,7 +175,7 @@ class Diagnoser():
         logger.info(time_sofar.next() + 'Annotated geonames')
 
         counts = []
-        for span in anno_doc.tiers['counts'].without_overlaps(anno_doc.tiers['structured_incidents']):
+        for span in anno_doc.tiers['counts'].without_overlaps(anno_doc.tiers['structured_data']):
             count_dict = span.to_dict()
             count_dict['type'] = 'count'
             counts.append(count_dict)
