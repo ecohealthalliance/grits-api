@@ -27,7 +27,7 @@ def time_sofar_gen(start_time):
 
 class Diagnoser():
 
-    __version__ = '0.4.2'
+    __version__ = '0.4.3'
 
     def __init__(
         self, classifier, dict_vectorizer,
@@ -119,12 +119,12 @@ class Diagnoser():
         logger.info('counts annotated')
         anno_doc.add_tier(self.geoname_annotator)
         logger.info('geonames annotated')
+        anno_doc.add_tier(StructuredIncidentAnnotator())
+        logger.info('structured incidents annotated')
         anno_doc.filter_overlapping_spans(
             tier_names=[ 'dates', 'geonames', 'diseases', 'hosts', 'modes',
                          'pathogens', 'symptoms' ]
         )
-        anno_doc.add_tier(StructuredIncidentAnnotator())
-        logger.info('structured incidents annotated')
 
         logger.info('filtering overlapping spans done')
 
@@ -156,7 +156,7 @@ class Diagnoser():
             })
 
         geonames_grouped = {}
-        for span in anno_doc.tiers['geonames'].spans:
+        for span in anno_doc.tiers['geonames']:
             if not span.geoname['geonameid'] in geonames_grouped:
                 geonames_grouped[span.geoname['geonameid']] = {
                     'type': 'location',
@@ -206,7 +206,7 @@ class Diagnoser():
                         [span.start, span.end]
                     )
         resolved_keywords = []
-        for span in anno_doc.tiers['resolved_keywords'].spans:
+        for span in anno_doc.tiers['resolved_keywords'].without_overlaps(anno_doc.tiers['geonames']):
             resolved_keywords.append({
                 'type': 'resolvedKeyword',
                 'resolutions': span.to_dict()['resolutions'],
