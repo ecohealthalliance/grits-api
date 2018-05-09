@@ -107,7 +107,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 }).set(queue='priority' if is_priority else 'process'),
                 tasks_diagnose.diagnose.s(extra_args).set(
                     queue='priority' if is_priority else 'diagnose',
-                    expires=60)
+                    expires=70)
             )()
         elif url:
             hostname = ""
@@ -132,7 +132,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 tasks_preprocess.process_text.s().set(queue='priority' if is_priority else 'process'),
                 tasks_diagnose.diagnose.s(extra_args).set(
                     queue='priority' if is_priority else 'diagnose',
-                    expires=60))()
+                    expires=70))()
         else:
             self.write({
                 'error' : "Please provide a url or content to diagnose."
@@ -288,7 +288,7 @@ class BSVEHandler(tornado.web.RequestHandler):
                         # (skipping location/date/case-count feature extraction) for speed.
                         # Classifications only take a fraction of a second.
                         dict(diseases_only=True)
-                    ).set(queue='priority', expires=60)
+                    ).set(queue='priority', expires=70)
                 ) for item in search_resp['results'][0:MAX_DIAGNOSES])()
                 on_task_complete(task, task_finished)
             bsve_search(search_finished)
