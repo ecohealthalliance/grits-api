@@ -149,7 +149,15 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             else:
                 if get_bool_arg('returnSourceContent'):
                     # The parent task returns the processed text.
-                    resp['source'] = task.parent.get()
+                    source = task.parent.get()
+                    if souce.get('englishTranslation', {}).get('content'):
+                        resp['source'] = {
+                            'cleanContent': souce['englishTranslation']
+                        }
+                    else:
+                        resp['source'] = {
+                            'cleanContent': souce['cleanContent']
+                        }
             self.set_header("Content-Type", "application/json")
             self.write(resp)
             self.finish()

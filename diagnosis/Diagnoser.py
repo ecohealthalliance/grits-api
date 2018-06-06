@@ -125,7 +125,6 @@ class Diagnoser():
             tier_names=[ 'dates', 'geonames', 'diseases', 'hosts', 'modes',
                          'pathogens', 'symptoms' ]
         )
-
         logger.info('filtering overlapping spans done')
 
         dates = []
