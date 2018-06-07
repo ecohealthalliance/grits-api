@@ -198,7 +198,11 @@ class Translator(object):
                 resp_text = resp_json[0]["translations"][0]["text"]
                 full_text += resp_text
             self.consecutive_exceptions = 0
-            return full_text
+            return {
+                'content' : full_text,
+                'translationDate' : datetime.datetime.now(),
+                'translationService' : 'MS'
+            }
         except Exception as e:
             self.consecutive_exceptions += 1
             self.last_failure = datetime.datetime.now()
