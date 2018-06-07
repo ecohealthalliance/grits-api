@@ -7,6 +7,7 @@ import os
 import datetime
 from googleapiclient.errors import Error as GoogleAPIError
 from googleapiclient.discovery import build
+import requests
 
 most_common_english_words = [
 'the','be','to','of','and',
@@ -131,7 +132,7 @@ class Translator(object):
                 return True
         return False
 
-    def translate_to_english(self, content):
+    def translate_to_english_google(self, content):
         if not translate_key:
             return {
                 'error' : 'The translation service is not configured.'
@@ -169,3 +170,42 @@ class Translator(object):
                 'error' : unicode(e),
                 'consecutive_exceptions' : self.consecutive_exceptions
             }
+
+    def translate_to_english_ms(self, content):
+        ms_translate_key = os.environ.get("MS_TRANSLATE_KEY")
+        if not ms_translate_key:
+            return {
+                'error' : 'Microsoft translate key is missing.'
+            }
+        if self.consecutive_exceptions > 4 and (datetime.datetime.now() - self.last_failure).total_seconds() < 60 * 60 * 12:
+            # Stop using the API after several consecutive exceptions because
+            # we probably hit the api limit or something is misconfigured.
+            return {
+                'error' : 'Translation has been temporarily disabled due to errors when attempting to access the tranlation service.'
+            }
+        try:
+            full_text = ""
+            url = "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=en"
+            # Break text into 5000 character chunks to stay under api limit
+            for section, noop in re.findall(r"(.{1,5000}(\s|$))", content, re.M | re.DOTALL):
+                response = requests.post(url, headers={
+                    "Ocp-Apim-Subscription-Key": ms_translate_key,
+                    "Content-type": "application/json",
+                }, json=[{
+                    "Text" : section.encode("utf-8"),
+                }])
+                resp_json = response.json()
+                resp_text = resp_json[0]["translations"][0]["text"]
+                full_text += resp_text
+            self.consecutive_exceptions = 0
+            return full_text
+        except Exception as e:
+            self.consecutive_exceptions += 1
+            self.last_failure = datetime.datetime.now()
+            return {
+                'error' : unicode(e),
+                'consecutive_exceptions' : self.consecutive_exceptions
+            }
+
+    def translate_to_english(self, content):
+        return self.translate_to_english_ms(content)
