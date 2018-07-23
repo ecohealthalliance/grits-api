@@ -10,7 +10,7 @@ from epitator.geoname_annotator import GeonameAnnotator
 from epitator.count_annotator import CountAnnotator
 from epitator.date_annotator import DateAnnotator
 import disease_label_table
-from epitator.keyword_annotator import KeywordAnnotator
+from keyword_annotator import KeywordAnnotator
 from epitator.resolved_keyword_annotator import ResolvedKeywordAnnotator
 from epitator.structured_incident_annotator import StructuredIncidentAnnotator
 
