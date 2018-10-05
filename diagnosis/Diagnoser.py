@@ -8,6 +8,7 @@ import datetime
 from epitator.annotator import AnnoDoc
 from epitator.geoname_annotator import GeonameAnnotator
 from epitator.count_annotator import CountAnnotator
+from epitator.infection_annotator import InfectionAnnotator
 from epitator.date_annotator import DateAnnotator
 import disease_label_table
 from keyword_annotator import KeywordAnnotator
@@ -37,6 +38,7 @@ class Diagnoser():
         self.classifier = classifier
         self.geoname_annotator = GeonameAnnotator()
         self.count_annotator = CountAnnotator()
+        self.infection_annotator = InfectionAnnotator()
         self.date_annotator = DateAnnotator()
         self.keyword_annotator = KeywordAnnotator()
         self.resolved_keyword_annotator = ResolvedKeywordAnnotator()
@@ -61,7 +63,7 @@ class Diagnoser():
                     if label in parents:
                         result[i2] = max(p, probs[i2], result.get(i2, 0))
         return result.items()
-    def diagnose(self, content, diseases_only=False, content_date=None):
+    def diagnose(self, content, diseases_only=False, content_date=None, use_infection_annotator=False):
         time_sofar = time_sofar_gen(datetime.datetime.now())
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
         feature_dict = self.keyword_processor.transform([base_keyword_dict])
@@ -115,7 +117,18 @@ class Diagnoser():
         logger.info('resolved keywords annotated')
         anno_doc.add_tier(self.date_annotator)
         logger.info('dates annotated')
-        anno_doc.add_tier(self.count_annotator)
+        if use_infection_annotator:
+            anno_doc.add_tier(self.infection_annotator)
+            anno_doc.tiers['counts'] = anno_doc.tiers.pop('infections')
+            attribute_remappings = {
+                'infection': 'case'
+            }
+            for span in anno_doc.tiers['counts']:
+                span.metadata['attributes'] = [
+                    attribute_remappings.get(attribute, attribute)
+                    for attribute in span.metadata['attributes']]
+        else:
+            anno_doc.add_tier(self.count_annotator)
         logger.info('counts annotated')
         anno_doc.add_tier(self.geoname_annotator)
         logger.info('geonames annotated')

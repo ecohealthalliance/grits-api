@@ -100,6 +100,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 self.finish()
                 return
         is_priority = get_bool_arg('priority', True)
+        extra_args['use_infection_annotator'] = get_bool_arg('use_infection_annotator', False)
         if content:
             task = celery.chain(
                 tasks_preprocess.process_text.s({
