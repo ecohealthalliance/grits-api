@@ -188,8 +188,11 @@ class Diagnoser():
 
         counts = []
         for span in anno_doc.tiers['counts'].without_overlaps(anno_doc.tiers['structured_data']):
-            count_dict = span.to_dict()
+            count_dict = dict(span.metadata)
             count_dict['type'] = 'count'
+            count_dict['text'] = span.text
+            count_dict['label']= span.label
+            count_dict['textOffsets']= [[span.start, span.end]]
             counts.append(count_dict)
             # Include legacy case counts so the diagnositic dashboard
             # doesn't break.
