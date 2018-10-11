@@ -14,6 +14,7 @@ import disease_label_table
 from keyword_annotator import KeywordAnnotator
 from epitator.resolved_keyword_annotator import ResolvedKeywordAnnotator
 from epitator.structured_incident_annotator import StructuredIncidentAnnotator
+from epitator.incident_annotator import IncidentAnnotator
 
 import logging
 logging.basicConfig(level=logging.INFO)
@@ -28,7 +29,7 @@ def time_sofar_gen(start_time):
 
 class Diagnoser():
 
-    __version__ = '0.4.3'
+    __version__ = '0.4.4'
 
     def __init__(
         self, classifier, dict_vectorizer,
@@ -63,7 +64,13 @@ class Diagnoser():
                     if label in parents:
                         result[i2] = max(p, probs[i2], result.get(i2, 0))
         return result.items()
-    def diagnose(self, content, diseases_only=False, content_date=None, use_infection_annotator=False):
+    def diagnose(
+        self,
+        content,
+        diseases_only=False,
+        content_date=None,
+        use_infection_annotator=False,
+        include_incidents=False):
         time_sofar = time_sofar_gen(datetime.datetime.now())
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
         feature_dict = self.keyword_processor.transform([base_keyword_dict])
@@ -141,7 +148,7 @@ class Diagnoser():
         logger.info('filtering overlapping spans done')
 
         dates = []
-        for span in anno_doc.tiers['dates'].spans:
+        for span in anno_doc.tiers['dates']:
             range_start, range_end = span.datetime_range
             dates.append({
                 'type': 'datetime',
@@ -209,7 +216,7 @@ class Diagnoser():
         keyword_groups = {}
         for keyword_type in keyword_types:
             keyword_groups[keyword_type] = {}
-            for span in anno_doc.tiers[keyword_type].spans:
+            for span in anno_doc.tiers[keyword_type]:
                 if span.label not in keyword_groups[keyword_type]:
                     keyword_groups[keyword_type][span.label] = {
                         'type': keyword_type,
@@ -224,10 +231,10 @@ class Diagnoser():
         for span in anno_doc.tiers['resolved_keywords'].without_overlaps(anno_doc.tiers['geonames']):
             resolved_keywords.append({
                 'type': 'resolvedKeyword',
-                'resolutions': span.to_dict()['resolutions'],
+                'resolutions': span.metadata['resolutions'],
                 'text': span.text,
                 'textOffsets': [[span.start, span.end]]})
-        return {
+        result = {
             'diagnoserVersion': self.__version__,
             'dateOfDiagnosis': datetime.datetime.now(),
             'diseases': diseases,
@@ -243,6 +250,36 @@ class Diagnoser():
                         keyword_groups['pathogens'].values() +\
                         keyword_groups['symptoms'].values() +\
                         resolved_keywords}
+        if include_incidents:
+            result['incidents'] = []
+            anno_doc.add_tier(IncidentAnnotator())
+            for incident_span in anno_doc.tiers['incidents']:
+                metadata = incident_span.metadata
+                result['incidents'].append({
+                    'offsets': [span.start, span.end],
+                    'type': metadata['type'],
+                    'count': metadata['count'],
+                    'dateRange': [d.isoformat().split('T')[0] for d in metadata['dateRange']],
+                    'locations': metadata['locations'],
+                    'species': metadata['species'],
+                    'status': metadata['status'],
+                    'annotations': {
+                        'case': [],
+                        'date': [
+                            { 'offsets': [anno.start, anno.end] }
+                            for anno in metadata['date_territory'].metadata
+                        ],
+                        'location': [
+                            { 'offsets': [anno.start, anno.end] }
+                            for anno in metadata['geoname_territory'].metadata
+                        ],
+                        'disease': [
+                            { 'offsets': [anno.start, anno.end] }
+                            for anno in metadata['disease_territory'].metadata
+                        ],
+                    }
+                })
+        return result
 
 if __name__ == '__main__':
     import Diagnoser
