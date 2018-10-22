@@ -258,7 +258,7 @@ class Diagnoser():
                 result['incidents'].append({
                     'offsets': [span.start, span.end],
                     'type': metadata['type'],
-                    'count': metadata['count'],
+                    'value': metadata['value'],
                     'dateRange': [d.isoformat().split('T')[0] for d in metadata['dateRange']],
                     'locations': metadata['locations'],
                     'species': metadata['species'],
