@@ -264,6 +264,7 @@ class Diagnoser():
                     'locations': metadata['locations'],
                     'species': metadata['species'],
                     'status': metadata.get('status'),
+                    'resolvedDisease': metadata.get('resolvedDisease'),
                     'annotations': {
                         'case': [{ 'offsets': [count_annotation.start, count_annotation.end] }],
                         'date': [
