@@ -216,7 +216,7 @@ class Diagnoser():
         keyword_groups = {}
         for keyword_type in keyword_types:
             keyword_groups[keyword_type] = {}
-            for span in anno_doc.tiers[keyword_type]:
+            for span in anno_doc.tiers['keyword.' + keyword_type]:
                 if span.label not in keyword_groups[keyword_type]:
                     keyword_groups[keyword_type][span.label] = {
                         'type': keyword_type,
