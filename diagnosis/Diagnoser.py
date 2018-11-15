@@ -255,8 +255,7 @@ class Diagnoser():
             anno_doc.add_tier(IncidentAnnotator())
             for incident_span in anno_doc.tiers['incidents']:
                 metadata = incident_span.metadata
-                count_annotation = metadata['count_annotation']
-                result['incidents'].append({
+                incident_data = {
                     'offsets': [span.start, span.end],
                     'type': metadata['type'],
                     'value': metadata['value'],
@@ -266,6 +265,12 @@ class Diagnoser():
                     'status': metadata.get('status'),
                     'resolvedDisease': metadata.get('resolvedDisease'),
                     'annotations': {
+                        'case': [{ 'offsets': [incident_span.start, incident_span.end] }]
+                    }
+                }
+                if 'count_annotation' in metadata:
+                    count_annotation = metadata['count_annotation']
+                    incident_data['annotations'] = {
                         'case': [{ 'offsets': [count_annotation.start, count_annotation.end] }],
                         'date': [
                             { 'offsets': [anno.start, anno.end] }
@@ -278,9 +283,9 @@ class Diagnoser():
                         'disease': [
                             { 'offsets': [anno.start, anno.end] }
                             for anno in metadata['disease_territory'].metadata
-                        ],
+                        ]
                     }
-                })
+                result['incidents'].append(incident_data)
         return result
 
 if __name__ == '__main__':
