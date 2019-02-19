@@ -1,10 +1,13 @@
-__version__ = '0.0.3'
-import urllib2, httplib
+from __future__ import absolute_import
+from __future__ import print_function
+import urllib.request as urllib2
 import chardet
 import httplib2
-import scrape_promed
-import sys, exceptions, socket
+import scraper.scrape_promed
+import sys, socket
 import datetime
+
+__version__ = '0.0.3'
 
 class OpenURLHandler(urllib2.HTTPRedirectHandler):
     def http_request(self, request):
@@ -116,12 +119,12 @@ def open_url(opener, url):
             'exception' : errDescription
         })
         return result
-    except exceptions.KeyboardInterrupt as e:
+    except KeyboardInterrupt as e:
         raise e
     except:
         errDescription = '\n'.join([str(i) for i in sys.exc_info()])
-        print "Unknown error:Could not scrape url: ", url
-        print errDescription
+        print("Unknown error:Could not scrape url: ", url)
+        print(errDescription)
         raise Exception("Unknown error")
 
 def scrape_main(url):
@@ -133,7 +136,7 @@ def scrape_main(url):
         raise Exception("urlparse exception")
     
     if parsed_url.path.endswith('.pdf'):
-        print "Could not scrape url because it is a PDF: " + url
+        print("Could not scrape url because it is a PDF: " + url)
         return {
             'sourceUrl' : url,
             'unscrapable' : True,
@@ -141,7 +144,7 @@ def scrape_main(url):
         }
     
     if not parsed_url or not parsed_url.hostname:
-        print "Could not parse url: " + url
+        print("Could not parse url: " + url)
         return {
             'sourceUrl' : url,
             'unscrapable' : True
@@ -172,13 +175,13 @@ def scrape_main(url):
         source_url = parsed_qs.get('url')[0]
         testparse = urllib2.urlparse.urlparse(source_url)
         if not testparse or not testparse.hostname:
-            print url, "has a bad url parameter"
+            print(url, "has a bad url parameter")
         if source_url:
             result = scrape_main(source_url)
             result['googleNews'] = True
             return result
         else:
-            print "Could not extract url parameter from: " + url
+            print("Could not extract url parameter from: " + url)
             return {
                 'sourceUrl' : source_url,
                 'unscrapable' : True,

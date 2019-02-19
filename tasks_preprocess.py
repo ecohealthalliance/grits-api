@@ -14,6 +14,8 @@ from scraper.process_resources import extract_clean_content
 from scraper import scraper
 from scraper.translation import Translator
 import os
+from six import string_types, integer_types
+import numpy
 
 my_translator = Translator()
 
@@ -23,11 +25,11 @@ def make_json_compat(obj):
     """
     Coerce the types in an object to values that can be jsonified.
     """
-    base_types = [str, unicode, basestring, bool, int, long, float, type(None)]
+    base_types = [bool, float, numpy.str_, type(None)] + list(string_types) + list(integer_types)
     if type(obj) in base_types:
         return obj
     elif isinstance(obj, list):
-        return map(make_json_compat, obj)
+        return list(map(make_json_compat, obj))
     elif isinstance(obj, dict):
         return { k : make_json_compat(v) for k,v in obj.items() }
     elif isinstance(obj, datetime.datetime):

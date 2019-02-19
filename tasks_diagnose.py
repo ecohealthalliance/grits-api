@@ -25,12 +25,12 @@ class DiagnoserTask(celery.Task):
     @property
     def diagnoser(self):
         if self._diagnoser is None:
-            with open('current_classifier/classifier.p') as f:
-                my_classifier = pickle.load(f)
-            with open('current_classifier/dict_vectorizer.p') as f:
-                my_dict_vectorizer = pickle.load(f)
-            with open('current_classifier/keyword_array.p') as f:
-                keyword_array = pickle.load(f)
+            with open('current_classifier/classifier.p', "rb") as f:
+                my_classifier = pickle.load(f, encoding='latin1')
+            with open('current_classifier/dict_vectorizer.p', "rb") as f:
+                my_dict_vectorizer = pickle.load(f, encoding='latin1')
+            with open('current_classifier/keyword_array.p', "rb") as f:
+                keyword_array = pickle.load(f, encoding='latin1')
             self._diagnoser = Diagnoser(
                 my_classifier,
                 my_dict_vectorizer,

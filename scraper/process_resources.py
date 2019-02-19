@@ -1,4 +1,4 @@
-import goose
+import goose3
 from bs4 import BeautifulSoup
 import random
 import ctypes

@@ -1,20 +1,16 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import json
-
 import config
-
 import celery
 import tasks_diagnose
 import tasks_preprocess
-
 import datetime
-
 import tornado.ioloop
 import tornado.web
 import tornado.httpclient
-
-import urlparse
+from urllib.parse import urlparse
 import re
-
 import hashlib
 import time
 import random
@@ -23,6 +19,8 @@ import dateutil.parser
 from diagnosis.Diagnoser import Diagnoser
 import epitator
 from epitator.database_interface import DatabaseInterface
+from six import string_types
+from tasks_preprocess import make_json_compat
 
 
 epitator_db_interface = DatabaseInterface()
@@ -65,15 +63,15 @@ class DiagnoseHandler(tornado.web.RequestHandler):
     public = False
     @tornado.web.asynchronous
     def get(self):
-        print "Diagnose request received"
+        print("Diagnose request received")
         # Try to parse the json bodies submitted by the diagnostic dash:
         try:
-            params = json.loads(self.request.body)
+            params = json.loads(self.request.body.decode("utf-8"))
         except ValueError as e:
             params = {}
         def get_bool_arg(key, default=False):
             val = self.get_argument(key, params.get(key, default))
-            if isinstance(val, basestring):
+            if isinstance(val, string_types):
                 if val.lower() == "true":
                     return True
                 elif val.lower() == "false":
@@ -161,7 +159,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                             'cleanContent': source['cleanContent']
                         }
             self.set_header("Content-Type", "application/json")
-            self.write(resp)
+            self.write(make_json_compat(resp))
             self.finish()
         on_task_complete(task, callback)
 
@@ -271,7 +269,7 @@ class BSVEHandler(tornado.web.RequestHandler):
                 def task_finished(err, diagnoses):
                     self.set_header("Content-Type", "application/json")
                     if err:
-                        print "ERROR:", err
+                        print("ERROR:", err)
                         self.write({
                             'error': repr(err)
                         })
@@ -361,8 +359,8 @@ application = tornado.web.Application([
 ])
 
 if __name__ == "__main__":
-    print "Starting grits-api server..."
     import argparse
+    print("Starting grits-api server...")
     parser = argparse.ArgumentParser()
     parser.add_argument('-debug', action='store_true')
     args = parser.parse_args()

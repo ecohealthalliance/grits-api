@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import csv
 import os
 
@@ -11,8 +13,8 @@ def get_table():
         return __table__
     __table__ = []
     curdir = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(curdir, "disease_label_table.csv")) as f:
-        header = csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL).next()
+    with open(os.path.join(curdir, "disease_label_table.csv"), encoding='utf-8') as f:
+        header = next(csv.reader(f, delimiter=',', quoting=csv.QUOTE_MINIMAL))
         reader = csv.DictReader(f,
             fieldnames=header,
             delimiter=',',
@@ -56,7 +58,7 @@ def is_not_human_disease(disease):
     for row in get_table():
         if row['label'] == disease:
             return row.get('is_not_disease') or row.get('not_human_disease')
-    print "WARNING: Unknown disease label:", disease
+    print("WARNING: Unknown disease label:", disease)
 
 __disease_to_parents__ = None
 def get_inferred_labels(disease):

@@ -1,7 +1,9 @@
+from __future__ import absolute_import
+from __future__ import print_function
 import argparse
 import pickle
 import numpy as np
-from KeywordExtractor import *
+from .KeywordExtractor import *
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.pipeline import Pipeline
 import datetime
@@ -76,7 +78,7 @@ class Diagnoser():
         feature_dict = self.keyword_processor.transform([base_keyword_dict])
         X = self.dict_vectorizer.transform(feature_dict)[0]
 
-        logger.info(time_sofar.next() + 'Computed feature vector')
+        logger.info(next(time_sofar) + 'Computed feature vector')
         def diagnosis(i, p):
             scores = self.classifier.coef_[i] * X
             # Scores are normalized so they can be compared across different
@@ -95,16 +97,16 @@ class Diagnoser():
                     keyword_scores[keyword] = float(score)
 
             return {
-                'name': unicode(self.classifier.classes_[i]),
+                'name': self.classifier.classes_[i],
                 'probability': float(p),
                 'keywords': [{
-                        'name': unicode(kwd),
+                        'name': kwd,
                         'score': float(score),
                     }
                     for kwd, score in scored_keywords
                     if score > 0 and kwd in base_keyword_dict],
                 'inferred_keywords': [{
-                        'name': unicode(kwd),
+                        'name': kwd,
                         'score': float(score),
                     }
                     for kwd, score in scored_keywords
@@ -115,7 +117,7 @@ class Diagnoser():
             return {
                 'diseases': diseases
             }
-        logger.info(time_sofar.next() + 'Diagnosed diseases')
+        logger.info(next(time_sofar) + 'Diagnosed diseases')
 
         anno_doc = AnnoDoc(content, date=content_date)
         anno_doc.add_tier(self.keyword_annotator)
@@ -191,7 +193,7 @@ class Diagnoser():
                 ]['textOffsets'].append(
                     [span.start, span.end]
                 )
-        logger.info(time_sofar.next() + 'Annotated geonames')
+        logger.info(next(time_sofar) + 'Annotated geonames')
 
         counts = []
         for span in anno_doc.tiers['counts'].without_overlaps(anno_doc.tiers['structured_data']):
@@ -242,13 +244,13 @@ class Diagnoser():
                 dict(span.metadata, textOffsets=[[span.start, span.end]])
                 for span in anno_doc.tiers['structured_incidents']],
             'features': counts +\
-                        geonames_grouped.values() +\
+                        list(geonames_grouped.values()) +\
                         dates +\
-                        keyword_groups['diseases'].values() +\
-                        keyword_groups['hosts'].values() +\
-                        keyword_groups['modes'].values() +\
-                        keyword_groups['pathogens'].values() +\
-                        keyword_groups['symptoms'].values() +\
+                        list(keyword_groups['diseases'].values()) +\
+                        list(keyword_groups['hosts'].values()) +\
+                        list(keyword_groups['modes'].values()) +\
+                        list(keyword_groups['pathogens'].values()) +\
+                        list(keyword_groups['symptoms'].values()) +\
                         resolved_keywords}
         if include_incidents:
             result['incidents'] = []
@@ -296,4 +298,4 @@ if __name__ == '__main__':
     content = args.content
     with open('diagnoser.p', 'rb') as f:
         my_diagnoser = pickle.load(f)
-        print my_diagnoser.diagnose(content)
+        print(my_diagnoser.diagnose(content))

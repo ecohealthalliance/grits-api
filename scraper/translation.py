@@ -2,6 +2,8 @@
 This script has functions for detecting english text and translating
 text to english using a translation service.
 """
+from __future__ import absolute_import
+from __future__ import print_function
 import re
 import os
 import datetime
@@ -152,7 +154,7 @@ class Translator(object):
                 len(result['translations']) < 1 or
                 'translatedText' not in result['translations'][0]):
                 self.consecutive_exceptions += 1
-                print "Unexpected Translation API response:", result
+                print("Unexpected Translation API response:", result)
                 return {
                     'error' : 'Unexpected response from translation API.',
                     'consecutive_exceptions' : self.consecutive_exceptions

@@ -129,7 +129,9 @@ https://docs.google.com/document/d/12N6hIDiX6pvIBfr78BAK_btFxqHepxbrPDEWTCOwqXk/
 
 ## Using existing classifier data
 
-A corpus of HealthMap articles in the girder database is used to train the classifier. It must be manually downloaded and restored to the db. The database collection can be obtained from S3, in the bucket girder-data/proddump/girder. 
+A corpus of HealthMap articles in the girder database is used to train the classifier.
+It must be manually downloaded and restored to the db.
+The database collection can be obtained from S3, in the bucket girder-data/proddump/girder. 
 One additional file is required to operate the classifier: ontologies.p.
 It will be downloaded from our S3 bucket by default, however that bucket might not
 be available to you, or it might no longer exist. In that case, ontologies.p can be
