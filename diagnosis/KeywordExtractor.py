@@ -1,7 +1,6 @@
 import re
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.pipeline import FeatureUnion
-from scipy.sparse import hstack
 from .utils import group_by, flatten
 
 class LowerKeyDict(dict):

@@ -26,11 +26,10 @@ readability-lxml==0.6.1
 redis==2.10.5
 requests==2.20.0
 scikit-learn==0.16.1
-scipy==0.16.0
 threadpool==1.3.2
 tornado==4.2.1
 tzlocal==1.2
 google-api-python-client==1.6.2
-numpy==1.16.1
+numpy
 six
 PyYAML
