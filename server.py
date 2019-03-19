@@ -27,6 +27,8 @@ epitator_db_interface = DatabaseInterface()
 
 API_VERSION = "1.2.0"
 
+DEFAULT_DIAGNOSE_TIMEOUT = 130
+
 def on_task_complete(task, callback):
     # if the task is a celery group with subtasks add them to the result set
     if hasattr(task, 'subtasks'):
@@ -84,6 +86,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
         # highlights, the default get_argument behavior of stripping the content
         # will cause misalignment.
         content = self.get_argument('content', params.get('content'), strip=False)
+        clean_content = params.get('cleanContent')
         url = self.get_argument('url', params.get('url'))
         extra_args = {}
         content_date = self.get_argument('content_date', params.get('content_date'))
@@ -100,14 +103,25 @@ class DiagnoseHandler(tornado.web.RequestHandler):
         is_priority = get_bool_arg('priority', True)
         extra_args['use_infection_annotator'] = get_bool_arg('use_infection_annotator', True)
         extra_args['include_incidents'] = get_bool_arg('include_incidents', False)
-        if content:
+        if clean_content:
+            # Allow preprocessed content to be passed in via the cleanContent/
+            # english translation parameters.
+            task = celery.chain(
+                tasks_diagnose.diagnose.s({
+                    'cleanContent': clean_content,
+                    'englishTranslation': params.get('englishTranslation')
+                }, extra_args).set(
+                    queue='priority' if is_priority else 'diagnose',
+                    expires=DEFAULT_DIAGNOSE_TIMEOUT)
+            )()
+        elif content:
             task = celery.chain(
                 tasks_preprocess.process_text.s({
                     'content' : content
                 }).set(queue='priority' if is_priority else 'process'),
                 tasks_diagnose.diagnose.s(extra_args).set(
                     queue='priority' if is_priority else 'diagnose',
-                    expires=70)
+                    expires=DEFAULT_DIAGNOSE_TIMEOUT)
             )()
         elif url:
             hostname = ""
@@ -132,7 +146,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 tasks_preprocess.process_text.s().set(queue='priority' if is_priority else 'process'),
                 tasks_diagnose.diagnose.s(extra_args).set(
                     queue='priority' if is_priority else 'diagnose',
-                    expires=70))()
+                    expires=DEFAULT_DIAGNOSE_TIMEOUT))()
         else:
             self.write({
                 'error' : "Please provide a url or content to diagnose."
@@ -296,7 +310,7 @@ class BSVEHandler(tornado.web.RequestHandler):
                         # (skipping location/date/case-count feature extraction) for speed.
                         # Classifications only take a fraction of a second.
                         dict(diseases_only=True)
-                    ).set(queue='priority', expires=70)
+                    ).set(queue='priority', expires=DEFAULT_DIAGNOSE_TIMEOUT)
                 ) for item in search_resp['results'][0:MAX_DIAGNOSES])()
                 on_task_complete(task, task_finished)
             bsve_search(search_finished)
