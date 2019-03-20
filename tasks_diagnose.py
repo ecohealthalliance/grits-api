@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 @celery_tasks.task(base=DiagnoserTask, name='tasks.diagnose')
 def diagnose(text_obj, extra_args):
     try:
-        english_translation = text_obj.get('englishTranslation', {}).get('content')
+        english_translation = (text_obj.get('englishTranslation') or {}).get('content')
         if english_translation:
             clean_english_content = english_translation
         else:

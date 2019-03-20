@@ -16,6 +16,7 @@ import dateutil.parser
 from bs4 import BeautifulSoup
 import disease_label_table
 import lxml.html.soupparser
+import six
 
 
 __version__ = '0.1.5'
@@ -84,7 +85,7 @@ def getTimeZoneDict():
 def dom_tree_to_formatted_text(el):
     result = ""
     if not hasattr(el, "children"):
-        normed_text = unicode(el).replace(u"\xa0", " ")
+        normed_text = six.u(el).replace(u"\xa0", " ")
         # Make it so spaces are the only whitespace char and there is never
         # more than one in a row.
         return re.sub("\s\s+", " ", re.sub(r"\s", " ", normed_text, re.M))
@@ -584,7 +585,7 @@ def translate_using_google(text, language):
         # strip newlines because URL encoding will do that anyway,
         # but we need a place holder determine line breaks when extracting dates
         chunk_text = chunk_text.replace('\n', '<br>')
-        if isinstance(chunk_text, unicode):
+        if isinstance(chunk_text, basestring):
             chunk_text = chunk_text.encode('utf-8', errors='backslashreplace')
         try:
             output += translate_chunk_using_google(chunk_text, language) + " "

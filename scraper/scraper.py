@@ -6,6 +6,7 @@ import httplib2
 import scraper.scrape_promed
 import sys, socket
 import datetime
+import six
 
 __version__ = '0.0.3'
 
@@ -80,7 +81,7 @@ def open_url(opener, url):
                 return result
             detected_encoding = chardet.detect(html)['encoding']
             encoding = detected_encoding if detected_encoding else 'utf-8'
-            result['htmlContent'] = unicode(
+            result['htmlContent'] = six.u(
                 html.decode(
                     encoding=encoding,
                     errors='replace'

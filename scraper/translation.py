@@ -169,7 +169,7 @@ class Translator(object):
         except GoogleAPIError as e:
             self.consecutive_exceptions += 1
             return {
-                'error' : unicode(e),
+                'error' : str(e),
                 'consecutive_exceptions' : self.consecutive_exceptions
             }
 
@@ -209,7 +209,7 @@ class Translator(object):
             self.consecutive_exceptions += 1
             self.last_failure = datetime.datetime.now()
             return {
-                'error' : unicode(e),
+                'error' : str(e),
                 'consecutive_exceptions' : self.consecutive_exceptions
             }
 
