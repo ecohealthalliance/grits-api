@@ -125,10 +125,8 @@ class DiagnoseHandler(tornado.web.RequestHandler):
             )()
         elif url:
             hostname = ""
-            try:
-                hostname = urlparse.urlparse(url).hostname or ""
-            except:
-                pass
+            if isinstance(url, str):
+                hostname = urlparse(url).hostname or ""
             # Only allow hostnames that end with .word
             # This is to avoid the security vulnerability Russ pointed out where
             # we could end up scrapping localhost or IP addresses that should
