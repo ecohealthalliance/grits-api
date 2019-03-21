@@ -3,10 +3,11 @@ from __future__ import print_function
 import urllib.request as urllib2
 import chardet
 import httplib2
-import scraper.scrape_promed
+from scraper.scrape_promed import scrape_promed_url
 import sys, socket
 import datetime
 import six
+from urllib.parse import urlparse
 
 __version__ = '0.0.3'
 
@@ -131,11 +132,10 @@ def open_url(opener, url):
 def scrape_main(url):
     parsed_url = None
     try:
-        # Can this handle unicode urls?
-        parsed_url = urllib2.urlparse.urlparse(url)
+        parsed_url = urlparse(url)
     except:
-        raise Exception("urlparse exception")
-    
+        raise Exception("urlparse exception. url: " + str(url))
+
     if parsed_url.path.endswith('.pdf'):
         print("Could not scrape url because it is a PDF: " + url)
         return {
@@ -151,7 +151,7 @@ def scrape_main(url):
             'unscrapable' : True
         }
     if 'promed' in parsed_url.hostname:
-        return_value = scrape_promed.scrape_promed_url(url)
+        return_value = scrape_promed_url(url)
         return_value['sourceUrl'] = url
         return return_value
     if 'empres-i.fao.org' in parsed_url.hostname:

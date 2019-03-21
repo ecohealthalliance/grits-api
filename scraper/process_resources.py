@@ -1,4 +1,4 @@
-import goose3
+from goose3 import Goose
 from bs4 import BeautifulSoup
 import random
 import ctypes
@@ -7,7 +7,9 @@ import os, sys, json
 import readability
 import lxml
 import re
-__version__ = '0.0.0'
+
+__version__ = '0.0.1'
+
 def extract_clean_content(content):
     global __version__
     # I found out about goose and readability here:
@@ -45,7 +47,7 @@ def extract_clean_content(content):
     if not content.startswith('<html>'):
         content = '<html><body>' + content + '</body></html>'
     try:
-        cleaned_content = goose.Goose({
+        cleaned_content = Goose({
             'parser_class':'soup',
             'enable_image_fetching' : False,
         }).extract(raw_html=content).cleaned_text

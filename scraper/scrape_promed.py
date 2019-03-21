@@ -655,7 +655,7 @@ def scrape_promed_url(url):
     """
     Scrape the ProMED article with the given URL
     """
-    article_id_regex = re.compile('id=(?P<id>\d+\.?\d*)')
+    article_id_regex = re.compile('(id=|\/post\/)(?P<id>\d+\.?\d*)')
     parse = article_id_regex.search(url)
     if parse:
         return scrape_promed_id(parse.groupdict().get('id'))
