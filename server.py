@@ -27,7 +27,7 @@ epitator_db_interface = DatabaseInterface()
 
 API_VERSION = "1.2.0"
 
-DEFAULT_DIAGNOSE_TIMEOUT = 130
+DEFAULT_DIAGNOSE_TIMEOUT = 300
 
 def on_task_complete(task, callback):
     # if the task is a celery group with subtasks add them to the result set
@@ -103,6 +103,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
         is_priority = get_bool_arg('priority', True)
         extra_args['use_infection_annotator'] = get_bool_arg('use_infection_annotator', True)
         extra_args['include_incidents'] = get_bool_arg('include_incidents', False)
+        extra_args['split_compound_geonames'] = get_bool_arg('split_compound_geonames', False)
         if clean_content:
             # Allow preprocessed content to be passed in via the cleanContent/
             # english translation parameters.

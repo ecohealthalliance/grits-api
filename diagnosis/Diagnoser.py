@@ -72,7 +72,8 @@ class Diagnoser():
         diseases_only=False,
         content_date=None,
         use_infection_annotator=False,
-        include_incidents=False):
+        include_incidents=False,
+        split_compound_geonames=False):
         time_sofar = time_sofar_gen(datetime.datetime.now())
         base_keyword_dict = self.keyword_extractor.transform([content])[0]
         feature_dict = self.keyword_processor.transform([base_keyword_dict])
@@ -139,7 +140,7 @@ class Diagnoser():
         else:
             anno_doc.add_tier(self.count_annotator)
         logger.info('counts annotated')
-        anno_doc.add_tier(self.geoname_annotator)
+        anno_doc.add_tier(self.geoname_annotator, split_compound_geonames=split_compound_geonames)
         logger.info('geonames annotated')
         anno_doc.add_tier(StructuredIncidentAnnotator())
         logger.info('structured incidents annotated')
