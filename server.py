@@ -20,14 +20,12 @@ from diagnosis.Diagnoser import Diagnoser
 import epitator
 from epitator.database_interface import DatabaseInterface
 from six import string_types
-from tasks_preprocess import make_json_compat
+from tasks_preprocess import make_json_compat, DEFAULT_TIMEOUT
 
 
 epitator_db_interface = DatabaseInterface()
 
 API_VERSION = "1.2.0"
-
-DEFAULT_DIAGNOSE_TIMEOUT = 300
 
 def on_task_complete(task, callback):
     # if the task is a celery group with subtasks add them to the result set
@@ -113,7 +111,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                     'englishTranslation': params.get('englishTranslation')
                 }, extra_args).set(
                     queue='priority' if is_priority else 'diagnose',
-                    expires=DEFAULT_DIAGNOSE_TIMEOUT)
+                    expires=DEFAULT_TIMEOUT)
             )()
         elif content:
             task = celery.chain(
@@ -122,7 +120,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 }).set(queue='priority' if is_priority else 'process'),
                 tasks_diagnose.diagnose.s(extra_args).set(
                     queue='priority' if is_priority else 'diagnose',
-                    expires=DEFAULT_DIAGNOSE_TIMEOUT)
+                    expires=DEFAULT_TIMEOUT)
             )()
         elif url:
             hostname = ""
@@ -145,7 +143,7 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 tasks_preprocess.process_text.s().set(queue='priority' if is_priority else 'process'),
                 tasks_diagnose.diagnose.s(extra_args).set(
                     queue='priority' if is_priority else 'diagnose',
-                    expires=DEFAULT_DIAGNOSE_TIMEOUT))()
+                    expires=DEFAULT_TIMEOUT))()
         else:
             self.write({
                 'error' : "Please provide a url or content to diagnose."
@@ -313,7 +311,7 @@ class BSVEHandler(tornado.web.RequestHandler):
                         # (skipping location/date/case-count feature extraction) for speed.
                         # Classifications only take a fraction of a second.
                         dict(diseases_only=True)
-                    ).set(queue='priority', expires=DEFAULT_DIAGNOSE_TIMEOUT)
+                    ).set(queue='priority', expires=DEFAULT_TIMEOUT)
                 ) for item in search_resp['results'][0:MAX_DIAGNOSES])()
                 on_task_complete(task, task_finished)
             bsve_search(search_finished)

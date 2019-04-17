@@ -17,6 +17,8 @@ import os
 from six import string_types, integer_types
 import numpy
 
+DEFAULT_TIMEOUT = 300
+
 my_translator = Translator()
 
 processor_version = '0.1.0'
@@ -51,8 +53,8 @@ celery_tasks.conf.update(
     CELERY_ACCEPT_CONTENT=['pickle'],  # Ignore other content
     CELERY_RESULT_SERIALIZER='pickle',
     CELERY_RESULT_BACKEND=os.environ.get('BROKER_URL') or config.BROKER_URL,
-    CELERYD_TASK_SOFT_TIME_LIMIT=60,
-    CELERYD_TASK_TIME_LIMIT=65,
+    CELERYD_TASK_SOFT_TIME_LIMIT=DEFAULT_TIMEOUT,
+    CELERYD_TASK_TIME_LIMIT=DEFAULT_TIMEOUT + 5,
 )
 
 celery_tasks.conf.broker_transport_options = {'visibility_timeout': 3600}  # 1 hour.
