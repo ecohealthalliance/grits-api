@@ -157,8 +157,12 @@ class DiagnoseHandler(tornado.web.RequestHandler):
                 resp = {
                     'error': repr(err)
                 }
-            else:
-                if get_bool_arg('returnSourceContent'):
+            elif get_bool_arg('returnSourceContent'):
+                if params.get('cleanContent'):
+                    resp['source'] = {
+                        'cleanContent': params.get('cleanContent')
+                    }
+                else:
                     # The parent task returns the processed text.
                     source = task.parent.get()
                     if source.get('englishTranslation', {}).get('content'):
