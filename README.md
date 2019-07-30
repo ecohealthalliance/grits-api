@@ -1,20 +1,18 @@
 # grits-api
 
-This project provides the backend for the GRITS [diagnostic-dashboard](https://github.com/ecohealthalliance/diagnostic-dashboard). The main API which it furnishes, accessible at `/diagnose`, takes an incoming document and returns a differential disease diagnosis and numerous extracted features for that document.
+This project provides the backend for the GRITS [diagnostic-dashboard](https://github.com/ecohealthalliance/diagnostic-dashboard) and a variety of other EHA projects. The main API which it furnishes, accessible at `/diagnose`, takes an incoming document and returns a differential disease diagnosis and numerous extracted features for that document.
 
 This project also provides resources for training the classifier model used to make disease predictions, and for managing long-running classification tasks over large corpora.
 
 # Dependencies
 
-Aside from the requirments noted in [requirements.txt](requirements.txt) which may be installed as usual with `pip install -r requirements.txt`, this project also relies on the annotation library [annie](https://github.com/ecohealthalliance/annie).
+Aside from the requirments noted in [requirements.txt](requirements.txt) which may be installed as usual with `pip install -r requirements.txt`, this project also relies on the annotation library [EpiTator](https://github.com/ecohealthalliance/EpiTator).
 
 # Installation and set-up
 
 ## Full setup with virtualenv
 
 These instructions will get `grits-api` working under a Python virtualenv.
-
-First, get a copy of the Girder data (backed up in S3 - the bucket is girder-data/proddump/girder). This will give you the file item.bson.
 
 Next, start mongo on port 27017 by running `mongod` and restore the girder database:
 
@@ -25,7 +23,7 @@ Clone grits-api
     git clone git@github.com:ecohealthalliance/grits-api.git
     cd grits-api
 
-Get a copy of `config.py` from someone at EHA (this contains sensitive AWS authentication information).
+Get a copy of `config.py` from someone at EHA (this contains sensitive AWS authentication information) or create your own from `config.sample.py`.
 
 If you do not have `virtualenv`, first install it globally.
 
@@ -39,79 +37,45 @@ Now create and enter the virtual environment. All `pip` and `python` commands fr
 Install `grits-api` dependencies and `nose`.
 
     pip install -r requirements.txt
+    pip install EpiTator
     pip install nose
 
 If lxml fails to install, run (in bash) `STATIC_DEPS=true pip install lxml`
 
-Clone and install `annie`.
+Download the GRITS classifier data:
 
-    cd ../
-    git clone git@github.com:ecohealthalliance/annie.git
-    cd annie
-    pip install -r requirements.txt
-    python setup.py install
+    aws s3 sync s3://classifier-data/classifiers/1456399096 current_classifier
 
-Clone other required repos:
+Download the EpiTator data dependencies:
 
-    cd ../
-    git clone https://github.com/ecohealthalliance/jvm-nlp.git
-    git clone https://github.com/ecohealthalliance/diagnostic-dashboard.git
-
-Train the GRITS api:
-
-    cd grits-api
-    mkdir current_classifier
-    python train.py -pickle_dir current_classifier
-
-Download NLTK data (within a python interpreter):
-
-    import nltk
-    nltk.download()
-
-A window will prompt you to choose what to download; download everything.
-
-Start the server:
-
-    python server.py -debug
-
-Start the diagnostic dashboard:
-
-    cd ../diagnostic-dashboard
-    meteor
-
-
-## As part of total GRITS deployment
-
-You may elect to install all GRITS components at once (this backend, the front-end [diagnostic-dashboard](https://github.com/ecohealthalliance/diagnostic-dashboard), and the [girder](https://github.com/ecohealthalliance/girder) database) by following the instructions in the [grits-deploy-ansible](https://github.com/ecohealthalliance/grits-deploy-ansible) project.
-
-The provided ansible playbook will install all dependencies, include nltk data and annie, and use `supervisorctl` to launch the API server and celery processes for managing diagnoses. There are 3 celery task queues, `priority`, `process` and `diagnose`. The process queue is for scraping and extracting articles prior to diagnosis. We recommend running a single threaded worker process on the process queue because it primarily makes http requests, so it spends most of it's time idling. The diagnose queue should have several worker processes as it is very CPU intensive. The priority queue is for both processing and diagnosing articles and should have a dedicated worker process for immediatly diagnosing individual articles. See the supervisor config in the grits-deploy-ansible for examples of how to initialize the various types of workers.
-
-
-## Standalone
-
-To run this project in isolation, without deploying the entire GRITS suite, clone this repository:
-
-    $ git@github.com:ecohealthalliance/grits-api.git
-
-Copy the default config to the operative version and edit it to suit your environment:
-
-    $ cp config.sample.py config.py
-
-Install the pip requirements:
-
-    $ sudo pip install -r requirements.txt
-
-Get the [annie](https://github.com/ecohealthalliance/annie) project and make sure it's in your pythonpath.
+    python -m spacy download en_core_web_md
+    python -m epitator.importers.import_all
 
 Start a celery worker:
 
-	$ celery worker -A tasks -Q priority --loglevel=INFO --concurrency=2
+There are 3 celery task queues, `priority`, `process` and `diagnose`. The process queue is for scraping and extracting     # articles prior to diagnosis. We recommend running a single threaded worker process on the process queue because it primarily makes http requests, so it spends most of it's time idling. The diagnose queue should have several worker processes as it is very CPU intensive. The priority queue is for both processing and diagnosing articles and should have a dedicated worker process for immediatly diagnosing individual articles.
+
+    celery worker -A tasks -Q priority --loglevel=INFO --concurrency=2
 
 Start the server:
 
-	# The -debug flag will run a celery worker synchronously in the same process,
-	# so you can debug without starting a separate worker process.
-	$ python server.py
+    # The -debug flag will run a celery worker synchronously in the same process,
+    # so you can debug without starting a separate worker process.
+    python server.py
+
+## Deployment
+
+We have created a script for deploying the grits API and diagnostic dashboard to Ubuntu AWS instances
+[here](https://github.com/ecohealthalliance/infrastructure/tree/master/ansible/main).
+
+You will need to edit inventory.ini if you are not deploying to our server.
+Furthermore, if you are not an EHA employee, you will need replace the my_secure.yml
+file with one of your own that defines any missing variables.
+
+The following commands invoke the build and deployment scripts:
+
+  ansible-playbook provision-instance-and-build.yml --extra-vars "image_name=grits"
+  ansible-playbook deploy-apps.yml --private-key ~/.ssh/id_rsa --tags deploy-grits
 
 # Testing
 
@@ -141,6 +105,8 @@ in a girder database, scraping and cleaning the content of the linked source art
 and generating pickles from it.
 
 # Training the classifier
+
+First, get a copy of the Girder data (backed up in S3 - the bucket is girder-data/proddump/girder). This will give you the file item.bson.
 
 New data may be generated using the `train.py` script:
 
