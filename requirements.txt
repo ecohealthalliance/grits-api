@@ -1,4 +1,4 @@
-Babel==2.3.4
+Babel==2.9.1
 backports.ssl-match-hostname==3.4.0.2
 BeautifulSoup==3.2.1
 beautifulsoup4==4.6.0
